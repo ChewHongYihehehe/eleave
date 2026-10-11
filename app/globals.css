@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  -webkit-tap-highlight-color: transparent;
+}
+
+@layer components {
+  /* Primary action — solid pine fill */
+  .btn-primary {
+    @apply w-full rounded-md bg-pine px-4 py-2.5 text-sm font-semibold text-white
+      transition-colors hover:bg-pine-deep disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  /* Secondary / quiet action — text only, no chrome */
+  .btn-ghost {
+    @apply text-sm font-medium text-ink-soft underline decoration-line underline-offset-4
+      transition-colors hover:text-ink;
+  }
+
+  /* Link-style action in the accent color */
+  .btn-link {
+    @apply text-sm font-medium text-pine underline decoration-pine/30 underline-offset-4
+      transition-colors hover:text-pine-deep;
+  }
+
+  .btn-danger-ghost {
+    @apply text-sm font-medium text-rust underline decoration-rust/30 underline-offset-4;
+  }
+
+  /* The one bordered "panel" treatment — reserved for hero content
+     (leave balances, forms), not applied to every block on the page. */
+  .panel {
+    @apply rounded-lg border border-line bg-surface p-5;
+  }
+
+  /* Flat section separated by a hairline — the default for lists and
+     secondary content, so not everything competes for attention. */
+  .section-divided > * + * {
+    @apply border-t border-line pt-3 mt-3;
+  }
+
+  .field-label {
+    @apply mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-faint;
+  }
+
+  .field-input {
+    @apply w-full rounded-md border border-line bg-surface px-3 py-2.5 text-sm text-ink
+      placeholder:text-ink-faint focus:border-pine focus:outline-none focus:ring-1 focus:ring-pine
+      disabled:bg-paper disabled:text-ink-faint;
+  }
+
+  .stat-number {
+    @apply font-display text-3xl font-semibold tabular-nums text-ink;
+  }
+
+  .badge {
+    @apply rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+  .badge-pending { @apply bg-gold-soft text-gold; }
+  .badge-approved { @apply bg-pine-soft text-pine-deep; }
+  .badge-rejected { @apply bg-rust-soft text-rust; }
+  .badge-cancelled { @apply bg-paper text-ink-faint; }
+}
