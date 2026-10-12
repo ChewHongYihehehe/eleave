@@ -326,7 +326,14 @@ export async function POST(request: NextRequest) {
         reason ? `Reason: ${esc(reason.slice(0, 200))}` : '',
         link ? `\nReview: ${link}` : '',
       ].filter(Boolean).join('\n'),
-      actor.id
+      actor.id,
+      {
+        applicationId: inserted.id,
+        buttons: [
+          { text: '✅ Approve', callback_data: `a:${inserted.id}` },
+          { text: '❌ Reject', callback_data: `r:${inserted.id}` },
+        ],
+      }
     )
   }
 

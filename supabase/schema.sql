@@ -407,3 +407,27 @@ create table if not exists telegram_link_tokens (
 -- 开启 RLS 但故意不建任何 policy = 浏览器(anon/authenticated)完全读不到,
 -- 只有服务器端用 service role key 才能操作这张表。
 alter table telegram_link_tokens enable row level security;
+
+
+-- ============================================================================
+-- TELEGRAM 按钮(在 Telegram 里直接批准 / 拒绝)
+--   telegram_messages 记住"哪条 Telegram 消息对应哪笔申请":
+--     · kind = 'notice'        发给负责人的申请通知(带按钮)。无论是在网页还是 Telegram 里
+--                              做了决定,都靠它把所有负责人手上的按钮收掉、改成结果。
+--     · kind = 'reason_prompt' 点了"拒绝"之后,bot 问"请回复理由"的那条消息。
+--                              负责人回复它时,靠这一行知道这个理由是给哪一笔申请的。
+--   同样开启 RLS 且不建 policy:只有服务器能读写。
+-- ============================================================================
+create table if not exists telegram_messages (
+  id bigserial primary key,
+  leave_application_id uuid not null references leave_applications(id) on delete cascade,
+  chat_id bigint not null,
+  message_id bigint not null,
+  kind text not null check (kind in ('notice', 'reason_prompt')),
+  action text,
+  original_text text,
+  created_at timestamptz not null default now()
+);
+create index if not exists telegram_messages_app_idx on telegram_messages (leave_application_id);
+create index if not exists telegram_messages_chat_msg_idx on telegram_messages (chat_id, message_id);
+alter table telegram_messages enable row level security;
