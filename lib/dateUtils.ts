@@ -27,3 +27,16 @@ export function eachDay(startStr: string, endStr: string, fn: (d: Date, iso: str
     fn(d, toLocalDateStr(d))
   }
 }
+
+/**
+ * 马来西亚时间(Asia/Kuala_Lumpur,UTC+8)的"今天",以本地 00:00 的 Date 回传。
+ *
+ * 为什么需要:服务器(Vercel)的时区是 UTC,比马来西亚慢 8 小时。直接用 new Date() 的话,
+ * 每天凌晨 0 点到 8 点之间服务器以为还是"昨天";元旦凌晨 8 小时内以为还是"去年"
+ * (会影响"不能选过去日期"、"本年度额度 / 结转"的判断)。
+ * 这个系统本来就是按马来西亚规定(Employment Act)在用,所以日期一律以马来西亚时间为准。
+ */
+export function malaysiaToday(): Date {
+  const iso = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kuala_Lumpur' }) // "YYYY-MM-DD"
+  return parseLocalDate(iso)
+}

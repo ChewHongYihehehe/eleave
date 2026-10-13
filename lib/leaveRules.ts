@@ -1,6 +1,6 @@
 // Malaysia Employment Act - leave entitlement helper logic
 
-import { eachDay, parseLocalDate, toLocalDateStr } from './dateUtils'
+import { eachDay, malaysiaToday, parseLocalDate, toLocalDateStr } from './dateUtils'
 
 // ─── 年资 ────────────────────────────────────────────────────────────────────
 
@@ -9,7 +9,7 @@ import { eachDay, parseLocalDate, toLocalDateStr } from './dateUtils'
  * 按"周年日"计算:满 N 个周年 + 当前这一年已过的比例。
  * 不再用 365.25 天估算,所以周年当天就会准确跳档,不会提前或延后。
  */
-export function getYearsOfService(dateOfCommencement: string, asOf: Date = new Date()): number {
+export function getYearsOfService(dateOfCommencement: string, asOf: Date = malaysiaToday()): number {
   const start = parseLocalDate(dateOfCommencement)
   if (asOf < start) return 0
 
@@ -33,7 +33,7 @@ export function getYearsOfService(dateOfCommencement: string, asOf: Date = new D
  *  - 未来的年度 → 该年 1 月 1 日
  * 这样看去年的报表不会被"今天的年资"影响,今年的额度也保持和以前一致。
  */
-export function getEntitlementReferenceDate(year: number, today: Date = new Date()): Date {
+export function getEntitlementReferenceDate(year: number, today: Date = malaysiaToday()): Date {
   const thisYear = today.getFullYear()
   if (year < thisYear) return new Date(year, 11, 31)
   if (year > thisYear) return new Date(year, 0, 1)
@@ -137,8 +137,14 @@ export function calculateWorkingDays(
   publicHolidayDates: string[],
   workWeek: WorkWeek = DEFAULT_WORK_WEEK
 ): number {
-  if (isHalfDay) return 0.5
   const holidaySet = new Set(publicHolidayDates)
+  if (isHalfDay) {
+    // 半天假也要落在"上班日"才算:周六日(休息日)或公假请半天,不扣年假,
+    // 回传 0 会让申请被挡下("没有工作日")。
+    const day = parseLocalDate(startDate)
+    if (holidaySet.has(startDate) || (workWeek[day.getDay()] ?? 0) === 0) return 0
+    return 0.5
+  }
   let count = 0
   eachDay(startDate, endDate, (d, iso) => {
     if (!holidaySet.has(iso)) count += workWeek[d.getDay()] ?? 0
