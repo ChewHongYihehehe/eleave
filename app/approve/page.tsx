@@ -273,16 +273,27 @@ export default function ApprovePage() {
     )
   }
 
+  // 所有审批动作统一走服务器的 /api/leave-applications/decision:
+  // 规则只在服务器一处定义,而且会写审计日志、通知员工的 Telegram、收掉其他负责人的按钮。
+  // 成功回 null,失败回要显示给负责人的错误文字。
+  async function sendDecision(action: string, ids: string[], reason?: string): Promise<string | null> {
+    const { data: { session } } = await supabase.auth.getSession()
+    const res = await fetch('/api/leave-applications/decision', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+      body: JSON.stringify({ ids, action, reason }),
+    })
+    if (res.ok) return null
+    const body = await res.json().catch(() => ({}))
+    return body.error || 'Something went wrong. Please try again.'
+  }
+
   async function handleBatchApprove() {
     if (!approverId || selected.size === 0) return
     setActionError('')
     setBatchBusy(true)
-    const { error } = await supabase
-      .from('leave_applications')
-      .update({ status: 'approved', approved_by: approverId, approved_at: new Date().toISOString() })
-      .in('id', Array.from(selected))
-      .eq('status', 'pending')
-    if (error) setActionError('Could not approve. Please try again.')
+    const err = await sendDecision('approve', Array.from(selected))
+    if (err) setActionError(err)
     setSelected(new Set())
     setBatchBusy(false)
     loadData()
@@ -299,18 +310,9 @@ export default function ApprovePage() {
     const reason = rejectReason.trim()
     if (!reason) return
     setRejectBusy(true)
-    const { error } = await supabase
-      .from('leave_applications')
-      .update({
-        status: 'rejected',
-        approved_by: approverId,
-        approved_at: new Date().toISOString(),
-        remarks: reason,
-      })
-      .in('id', rejectIds)
-      .eq('status', 'pending')
+    const err = await sendDecision('reject', rejectIds, reason)
     setRejectBusy(false)
-    if (error) { setActionError('Could not reject. Please try again.'); return }
+    if (err) { setActionError(err); return }
     setRejectIds(null)
     setRejectReason('')
     setSelected(new Set())
@@ -320,23 +322,15 @@ export default function ApprovePage() {
   async function handleApprove(id: string) {
     if (!approverId) return
     setActionError('')
-    const { error } = await supabase
-      .from('leave_applications')
-      .update({ status: 'approved', approved_by: approverId, approved_at: new Date().toISOString() })
-      .eq('id', id)
-      .eq('status', 'pending')
-    if (error) setActionError('Could not approve. Please try again.')
+    const err = await sendDecision('approve', [id])
+    if (err) setActionError(err)
     loadData()
   }
 
   async function handleConfirmCancellation(id: string) {
     setActionError('')
-    const { error } = await supabase
-      .from('leave_applications')
-      .update({ status: 'cancelled', cancellation_status: 'none' })
-      .eq('id', id)
-      .eq('cancellation_status', 'requested')
-    if (error) { setActionError('Could not confirm the cancellation. Please try again.'); return }
+    const err = await sendDecision('confirm_cancellation', [id])
+    if (err) { setActionError(err); loadData(); return }
     loadData()
   }
 
@@ -350,17 +344,9 @@ export default function ApprovePage() {
     if (!managerCancelId) return
     setManagerCancelBusy(true)
     const reason = managerCancelReason.trim()
-    const { error } = await supabase
-      .from('leave_applications')
-      .update({
-        status: 'cancelled',
-        cancellation_status: 'none',
-        cancellation_decision_reason: reason || null,
-      })
-      .eq('id', managerCancelId)
-      .eq('status', 'approved')
+    const err = await sendDecision('cancel', [managerCancelId], reason)
     setManagerCancelBusy(false)
-    if (error) { setActionError('Could not cancel this leave. Please try again.'); return }
+    if (err) { setActionError(err); return }
     setManagerCancelId(null)
     setManagerCancelReason('')
     loadData()
@@ -377,13 +363,9 @@ export default function ApprovePage() {
     const reason = declineCancelReason.trim()
     if (!reason) return
     setDeclineCancelBusy(true)
-    const { error } = await supabase
-      .from('leave_applications')
-      .update({ cancellation_status: 'none', cancellation_decision_reason: reason })
-      .eq('id', declineCancelId)
-      .eq('cancellation_status', 'requested')
+    const err = await sendDecision('decline_cancellation', [declineCancelId], reason)
     setDeclineCancelBusy(false)
-    if (error) { setActionError('Could not decline the cancellation. Please try again.'); return }
+    if (err) { setActionError(err); return }
     setDeclineCancelId(null)
     setDeclineCancelReason('')
     loadData()
