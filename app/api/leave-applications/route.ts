@@ -10,7 +10,7 @@ import {
   LEAVE_TYPE_LABELS,
   type LeaveSpan,
 } from '@/lib/leaveRules'
-import { toLocalDateStr } from '@/lib/dateUtils'
+import { malaysiaToday, toLocalDateStr } from '@/lib/dateUtils'
 import { logAudit } from '@/lib/auditLog'
 import { appLink, esc, fmtDays, fmtRange, notifyEmployee, notifyManagers } from '@/lib/telegram'
 
@@ -156,7 +156,7 @@ export async function POST(request: NextRequest) {
   }
   // 自己申请:不能选过去的日期。负责人代员工登记时可以(例如事后补交 MC)。
   if (!isRecordMode) {
-    const today = toLocalDateStr(new Date())
+    const today = toLocalDateStr(malaysiaToday())
     if (startDate < today) {
       return NextResponse.json({ error: 'You cannot apply for a date in the past.' }, { status: 400 })
     }
@@ -218,7 +218,7 @@ export async function POST(request: NextRequest) {
     for (const year of spanYears) {
       const baseEntitled = getEntitlementForYear(target, leaveType, year)
       if (baseEntitled === null) continue
-      const isCurrentYear = year === new Date().getFullYear()
+      const isCurrentYear = year === malaysiaToday().getFullYear()
       const entitled = leaveType === 'annual' && isCurrentYear
         ? baseEntitled + (Number(target.annual_leave_carry_forward) || 0)
         : baseEntitled
