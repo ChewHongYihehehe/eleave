@@ -65,6 +65,13 @@
 
 没绑定 Telegram 的人会被静默跳过;发送失败不会影响提交、审批这些主要操作。
 
+**直接在 Telegram 里审批:** 负责人收到的"新申请"和"申请取消"通知下面带按钮——
+- **✅ Approve / ✅ Confirm cancel**:一键完成
+- **❌ Reject / ❌ Decline**:bot 会问"请回复理由",负责人打字发送后才完成(和网页规则一样:拒绝必须有理由)
+- 有人处理后(不论在网页还是 Telegram),所有负责人手上那条通知都会改成结果("✅ Approved by xxx"),按钮消失;之后再点会提示"已被处理"
+- 只有"已绑定 Telegram 的负责人"点按钮才有效;所有操作照样写进审计日志(details 里有 `via: telegram`)
+- 审批规则只写在 `lib/leaveDecision.ts` 一处,网页和 Telegram 共用,所以两边不会不一致
+
 **一次性设定(负责人做):**
 1. Telegram 里找 `@BotFather` → `/newbot`,取名字和用户名,得到 **bot token**
 2. 在 `.env.local`(和 Vercel 的 Environment Variables)填 `TELEGRAM_BOT_TOKEN`、`TELEGRAM_BOT_USERNAME`(不含 @)、
@@ -74,7 +81,7 @@
    ```bash
    node --env-file=.env.local scripts/setup-telegram.mjs https://你的网站.vercel.app
    ```
-   这一步告诉 Telegram"收到消息就送到网站的 `/api/telegram/webhook`"。换网址时要重跑。
+   这一步告诉 Telegram"收到消息和按钮点击就送到网站的 `/api/telegram/webhook`"。换网址、或升级到有按钮的版本时要重跑。
 
 **每位员工(含负责人)自己绑定:** 登录后点右上角头像(电脑版是左侧栏底部)→ **Telegram Notifications** → **Connect Telegram** → 在 Telegram 按 Start。
 页面会自动变成"Connected"。想停的话在同一个页面按 Disconnect,或在 bot 里发 `/unlink`。
@@ -121,6 +128,7 @@ lib/useEmployee.ts  各页面共用的"取得当前员工 + 权限检查"
 lib/recalcLeave.ts  公假/工作周变动后重算年假天数
 lib/settings.ts     读写公司设定(工作周)
 lib/telegram.ts     Telegram 发送与消息格式(服务器端)
+lib/leaveDecision.ts 批准/拒绝/取消的共用规则(网页和 Telegram 按钮都走这里)
 scripts/            setup-telegram.mjs(一次性登记 webhook)
 middleware.ts       服务器端路由守卫
 supabase/schema.sql 完整数据库结构(可重复执行)
@@ -133,7 +141,20 @@ supabase/schema.sql 完整数据库结构(可重复执行)
 3. Environment Variables 填 `.env.local` 里的值(Supabase 三个;要用 Telegram 通知的话再加那四个)
 4. Deploy
 
+## 权限与安全(重要)
+
+- **所有审批动作(批准 / 拒绝 / 取消 / 确认或拒绝取消申请)都只走 `/api/leave-applications/decision`**,
+  审批页面 `/approve` 和 Telegram 按钮共用它。所以审计日志、员工的 Telegram 通知、其他负责人手上的按钮更新,
+  不论在哪边操作都一样。**不要**在页面里直接 `supabase.from('leave_applications').update(...)` 做审批。
+- 员工能直接对 `leave_applications` 做的更新,只剩 4 种:取消自己待批的、申请取消、撤回取消申请、补传 MC。
+  这由 `supabase/schema.sql` 末尾的触发器 `guard_employee_leave_updates` 把关
+  (光靠 RLS policy 拦不住:多条 policy 的条件会各自用"或"合并,员工曾经可以绕过网站把自己待批的假改成已批准)。
+  **改了请假流程、要让员工多改某些栏位时,记得同步改这个触发器。**
+- 日期一律以马来西亚时间为准(`lib/dateUtils.ts` 的 `malaysiaToday()`),不依赖服务器时区。
+
 ## 已知问题 / 还没做
+
+- 没有设定 ESLint(`npm run lint` 会进入交互设定)
 
 - 邮件通知(目前只有 Telegram + dashboard 里的"有更新"横幅)
 - 年度结转自动化;2027 年之后的公假需要手动加
