@@ -431,3 +431,72 @@ create table if not exists telegram_messages (
 create index if not exists telegram_messages_app_idx on telegram_messages (leave_application_id);
 create index if not exists telegram_messages_chat_msg_idx on telegram_messages (chat_id, message_id);
 alter table telegram_messages enable row level security;
+
+
+-- ============================================================================
+-- 员工只能"取消 / 申请取消 / 撤回取消 / 补传 MC",不能改别的栏位
+--
+-- 为什么需要这个触发器:
+-- 上面几条 "employees can ..." 的 UPDATE policy,Postgres 会把它们的 USING 条件、
+-- WITH CHECK 条件各自用"或"合并,而不是一条一条配对检查。结果是:旧资料符合
+-- "取消自己待批的申请" 的 USING,新资料又符合 "撤回取消申请" 的 WITH CHECK,
+-- 两条拼在一起,员工就能绕过网站,直接把自己待批的假改成"已批准",或改日期、天数。
+-- RLS 本身没办法限制"哪些栏位可以改",所以用触发器把关:
+--   · 负责人 / 服务器(没有登录用户时 auth.uid() 为空):不受限制
+--   · 员工:只允许下面 4 种改动,其他一律拒绝
+-- ============================================================================
+create or replace function public.guard_employee_leave_updates()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+declare
+  changed text[];
+begin
+  if auth.uid() is null or is_manager() then
+    return new;
+  end if;
+
+  select coalesce(array_agg(n.key), '{}') into changed
+  from jsonb_each(to_jsonb(new)) n
+  where to_jsonb(old) -> n.key is distinct from n.value;
+
+  if cardinality(changed) = 0 then
+    return new;
+  end if;
+
+  -- 1) 取消自己"待批"的申请:只能改 status
+  if old.status = 'pending' and new.status = 'cancelled'
+     and changed <@ array['status'] then
+    return new;
+  end if;
+
+  -- 2) 对已批准的假"申请取消"
+  if old.status = 'approved' and new.status = 'approved'
+     and old.cancellation_status = 'none' and new.cancellation_status = 'requested'
+     and changed <@ array['cancellation_status', 'cancellation_requested_at', 'cancellation_decision_reason'] then
+    return new;
+  end if;
+
+  -- 3) 撤回自己的取消申请
+  if old.status = 'approved' and new.status = 'approved'
+     and old.cancellation_status = 'requested' and new.cancellation_status = 'none'
+     and changed <@ array['cancellation_status', 'cancellation_requested_at', 'cancellation_decision_reason'] then
+    return new;
+  end if;
+
+  -- 4) 补传 MC:原本没有附件的病假,只能改 mc_attachment_path
+  if old.leave_type = 'medical' and old.mc_attachment_path is null
+     and changed = array['mc_attachment_path'] then
+    return new;
+  end if;
+
+  raise exception 'Employees can only cancel, request cancellation of, or attach an MC to their own leave.'
+    using errcode = '42501';
+end;
+$$;
+
+drop trigger if exists guard_employee_leave_updates on leave_applications;
+create trigger guard_employee_leave_updates
+  before update on leave_applications
+  for each row execute function public.guard_employee_leave_updates();
