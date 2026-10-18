@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 
@@ -23,6 +23,29 @@ function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const notice = searchParams.get('notice')
+  // 一进来先看是不是已经登录:是的话直接跳到该去的页面(装成桌面图标后,每次点开不用再登录一遍)
+  const [checking, setChecking] = useState(!notice)
+
+  useEffect(() => {
+    if (notice) return // 被挡下来的账号(停用 / 兼职)不要自动跳转,让他看到提示
+    let cancelled = false
+    ;(async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { if (!cancelled) setChecking(false); return }
+      const { data: profile } = await supabase
+        .from('employees')
+        .select('role, is_active, employment_type')
+        .eq('auth_user_id', user.id)
+        .maybeSingle()
+      if (cancelled) return
+      if (!profile || profile.is_active === false || profile.employment_type === 'part_time') {
+        setChecking(false)
+        return
+      }
+      router.replace(profile.role === 'manager' ? '/calendar' : '/dashboard')
+    })()
+    return () => { cancelled = true }
+  }, [notice, router])
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -66,10 +89,13 @@ function LoginForm() {
     }
   }
 
+  if (checking) return <div className="min-h-screen" />
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8">
+          <img src="/logo.png" alt="Puro" width={64} height={64} className="mb-4 h-16 w-16" />
           <h1 className="font-display text-3xl font-semibold text-ink">E-Leave</h1>
           <p className="mt-1 text-sm text-ink-soft">Sign in with your Staff ID</p>
         </div>
