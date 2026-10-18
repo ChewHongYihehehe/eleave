@@ -607,14 +607,17 @@ export default function DashboardPage() {
 
       {/* ── Top Bar with Manage-style User Profile ── */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="font-display text-2xl font-bold tracking-tight text-ink">
-            Hi, {employee.full_name.split(' ')[0]} 👋
-          </h1>
-          <p className="mt-0.5 text-sm text-ink-soft">
-            {employee.employee_no ? `#${employee.employee_no} · ` : ''}
-            {years.toFixed(1)} years of service
-          </p>
+        <div className="flex items-center gap-3">
+          <img src="/logo.png" alt="Puro" width={44} height={44} className="h-11 w-11 shrink-0 rounded-xl" />
+          <div>
+            <h1 className="font-display text-2xl font-bold tracking-tight text-ink">
+              Hi, {employee.full_name.split(' ')[0]} 👋
+            </h1>
+            <p className="mt-0.5 text-sm text-ink-soft">
+              {employee.employee_no ? `#${employee.employee_no} · ` : ''}
+              {years.toFixed(1)} years of service
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-3 self-start sm:self-auto">
