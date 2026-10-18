@@ -18,12 +18,23 @@ const fraunces = Fraunces({
 export const metadata: Metadata = {
   title: 'E-Leave System',
   description: 'Company leave application & approval system',
+  applicationName: 'E-Leave',
+  // 浏览器分页图标 + iPhone"添加到主屏幕"用的图标(iOS 不看 manifest 里的图标,要单独指定)
+  icons: {
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+    ],
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180' }],
+  },
+  appleWebApp: { capable: true, title: 'E-Leave', statusBarStyle: 'default' },
 }
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
+  themeColor: '#F6F4EE',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
