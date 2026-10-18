@@ -141,6 +141,17 @@ supabase/schema.sql 完整数据库结构(可重复执行)
 3. Environment Variables 填 `.env.local` 里的值(Supabase 三个;要用 Telegram 通知的话再加那四个)
 4. Deploy
 
+## Logo、图标与"添加到主屏幕"
+
+- 公司 logo 在 `public/logo.png`(登录页、负责人侧边栏、员工首页用),各种尺寸的图标在 `public/icons/`、
+  `public/apple-touch-icon.png`(iPhone)、`public/favicon.ico`(浏览器分页)。
+- 应用设定在 `app/manifest.ts`(名字、图标、颜色、全屏显示),图标的引用在 `app/layout.tsx`。
+- **想换 logo:** 直接用同名文件替换 `public/` 里那几个图片即可(尺寸:logo 256、icon-192、icon-512、maskable-512、apple-touch-icon 180)。
+  `maskable-512.png` 是给安卓用的:logo 要缩小放在中间 74% 的范围内,不然会被圆形遮罩切掉。
+- 员工要自己把网站"添加到主屏幕"(iPhone 用 Safari:分享 → 添加到主屏幕;安卓用 Chrome:菜单 → 添加到主屏幕 / 安装应用)。
+  这不是 App Store 的 App,没有离线功能,没网络时打不开。
+- 登录页会自动识别已登录的人并直接跳转(装成桌面图标后,点开不用再登录一遍)。
+
 ## 权限与安全(重要)
 
 - **所有审批动作(批准 / 拒绝 / 取消 / 确认或拒绝取消申请)都只走 `/api/leave-applications/decision`**,
