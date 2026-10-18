@@ -99,9 +99,7 @@ export default function ManagerShell({
     >
       {/* Brand */}
       <div className="mb-8 flex items-center gap-2.5 px-2">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-pine text-white">
-          <SvgIcon d={IC.leaf} size={16} />
-        </div>
+        <img src="/logo.png" alt="Puro" width={32} height={32} className="h-8 w-8 rounded-lg" />
         <span className="text-base font-bold tracking-tight text-gray-900">eLeave</span>
       </div>
 
