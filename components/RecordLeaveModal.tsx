@@ -48,6 +48,7 @@ export default function RecordLeaveModal({
         .from('employees')
         .select('id, employee_no, full_name')
         .eq('is_active', true)
+        .eq('is_owner', false)
         .eq('employment_type', 'full_time')
         .order('employee_no', { ascending: true })
       if (loadError) {
