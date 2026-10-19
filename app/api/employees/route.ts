@@ -172,11 +172,14 @@ export async function PATCH(request: NextRequest) {
     }
     const { data: before } = await supabaseAdmin
       .from('employees')
-      .select('date_of_commencement, annual_leave_carry_forward, annual_leave_entitlement_override, role')
+      .select('date_of_commencement, annual_leave_carry_forward, annual_leave_entitlement_override, role, is_owner')
       .eq('id', body.id)
       .maybeSingle()
     if (!before) {
       return NextResponse.json({ error: 'Employee not found' }, { status: 404 })
+    }
+    if (before.is_owner) {
+      return NextResponse.json({ error: 'This account is protected and can only be changed in Supabase.' }, { status: 403 })
     }
     const { error: updError } = await supabaseAdmin
       .from('employees')
@@ -207,11 +210,14 @@ export async function PATCH(request: NextRequest) {
 
   const { data: target } = await supabaseAdmin
     .from('employees')
-    .select('id, auth_user_id, is_active')
+    .select('id, auth_user_id, is_active, is_owner')
     .eq('id', body.id)
     .maybeSingle()
   if (!target) {
     return NextResponse.json({ error: 'Employee not found' }, { status: 404 })
+  }
+  if (target.is_owner) {
+    return NextResponse.json({ error: 'This account is protected and can only be changed in Supabase.' }, { status: 403 })
   }
 
   // 先改登录账号,再改资料;资料写入失败就把封禁状态还原,避免两边不一致。
@@ -272,11 +278,14 @@ export async function PUT(request: NextRequest) {
 
   const { data: target } = await supabaseAdmin
     .from('employees')
-    .select('id, auth_user_id')
+    .select('id, auth_user_id, is_owner')
     .eq('id', body.id)
     .maybeSingle()
   if (!target) {
     return NextResponse.json({ error: 'Employee not found' }, { status: 404 })
+  }
+  if (target.is_owner) {
+    return NextResponse.json({ error: 'This account is protected and can only be changed in Supabase.' }, { status: 403 })
   }
   if (!target.auth_user_id) {
     return NextResponse.json({ error: 'This employee has no login account (part-time), so there is no password to reset.' }, { status: 400 })
