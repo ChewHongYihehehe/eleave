@@ -5,6 +5,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 //   1. 有没有登录
 //   2. 员工资料是否存在、是否启用、是否全职
 //   3. 负责人专属页面是否由负责人访问
+//   4. 还没设定自己密码的人(must_change_password),只能去 /change-password
 // 不通过就直接 redirect,不会先闪出页面再跳走。
 // API 路由(/api/**)不经过这里,它们自己验证 Bearer token。
 
@@ -18,7 +19,7 @@ const startsWithAny = (path: string, list: string[]) =>
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname
   const needsManager = startsWithAny(path, MANAGER_PATHS)
-  const needsProfile = needsManager || startsWithAny(path, STAFF_PATHS)
+  const needsProfile = needsManager || startsWithAny(path, STAFF_PATHS) || startsWithAny(path, ['/notifications'])
   const needsLogin = needsProfile || startsWithAny(path, LOGIN_ONLY_PATHS)
 
   if (!needsLogin) return NextResponse.next()
@@ -57,7 +58,7 @@ export async function middleware(request: NextRequest) {
 
   const { data: emp } = await supabase
     .from('employees')
-    .select('role, is_active, employment_type')
+    .select('role, is_active, employment_type, must_change_password')
     .eq('auth_user_id', user.id)
     .maybeSingle()
 
@@ -73,6 +74,8 @@ export async function middleware(request: NextRequest) {
     await supabase.auth.signOut()
     return redirect('/', 'part-time')
   }
+  // 初始密码是负责人设的 → 第一次登录必须先换成自己的(设好之后服务器会把这个标记关掉)
+  if (emp.must_change_password) return redirect('/change-password')
   if (needsManager && emp.role !== 'manager') return redirect('/dashboard')
 
   return response
