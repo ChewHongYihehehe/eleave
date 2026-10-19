@@ -96,11 +96,14 @@ export async function POST(request: NextRequest) {
   if (isRecordMode) {
     const { data: targetEmp } = await supabaseAdmin
       .from('employees')
-      .select('id, date_of_commencement, annual_leave_carry_forward, annual_leave_entitlement_override, employment_type, is_active, full_name')
+      .select('id, date_of_commencement, annual_leave_carry_forward, annual_leave_entitlement_override, employment_type, is_active, full_name, is_owner')
       .eq('id', requestedEmployeeId)
       .maybeSingle()
     if (!targetEmp) {
       return NextResponse.json({ error: 'Employee not found' }, { status: 404 })
+    }
+    if (targetEmp.is_owner) {
+      return NextResponse.json({ error: 'This account is protected.' }, { status: 403 })
     }
     if (targetEmp.is_active === false) {
       return NextResponse.json({ error: 'This employee is deactivated.' }, { status: 400 })
