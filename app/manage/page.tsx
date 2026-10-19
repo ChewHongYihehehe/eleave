@@ -48,11 +48,12 @@ export default function ManageEmployeesPage() {
     setLoading(true)
     const { data, error: loadError } = await supabase
       .from('employees')
-      .select('id, employee_no, full_name, date_of_commencement, employment_type, role, annual_leave_carry_forward, annual_leave_entitlement_override, is_active')
+      .select('id, employee_no, full_name, date_of_commencement, employment_type, role, annual_leave_carry_forward, annual_leave_entitlement_override, is_active, is_owner')
       .order('employment_type', { ascending: false })
       .order('employee_no', { ascending: true })
     if (loadError) setError('Could not load employees.')
-    if (data) setEmployees(data)
+    // 老板账号不列在这里(只能在 Supabase 后台管理)
+    if (data) setEmployees(data.filter((e) => !e.is_owner))
     setLoading(false)
   }
 
