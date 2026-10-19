@@ -2,13 +2,16 @@
 
 import { useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
+import { checkPassword, MIN_PASSWORD_LENGTH } from '@/lib/passwordPolicy'
 
 export default function ChangePasswordForm({
   open: controlledOpen,
   onOpenChange,
+  forced = false,
 }: {
   open?: boolean
   onOpenChange?: (open: boolean) => void
+  forced?: boolean // 第一次登录的强制改密码:不能关掉这个表单,改好后回到首页
 } = {}) {
   const [internalOpen, setInternalOpen] = useState(false)
   const isControlled = controlledOpen !== undefined
@@ -28,8 +31,9 @@ export default function ChangePasswordForm({
     setError('')
     setSuccess(false)
 
-    if (newPassword.length < 6) {
-      setError('Password must be at least 6 characters.')
+    const problem = checkPassword(newPassword) // 先在浏览器给即时提示;真正的把关在服务器
+    if (problem) {
+      setError(problem)
       return
     }
     if (newPassword !== confirmPassword) {
@@ -38,17 +42,25 @@ export default function ChangePasswordForm({
     }
 
     setLoading(true)
-    const { error: updateError } = await supabase.auth.updateUser({ password: newPassword })
+    // 走服务器:规则由服务器强制执行,而且"必须改密码"的标记只有服务器能关掉
+    const { data: { session } } = await supabase.auth.getSession()
+    const res = await fetch('/api/account/password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+      body: JSON.stringify({ newPassword }),
+    })
+    const result = await res.json().catch(() => ({}))
     setLoading(false)
 
-    if (updateError) {
-      setError('Failed to change password. Please try again.')
+    if (!res.ok) {
+      setError(result.error || 'Failed to change password. Please try again.')
       return
     }
 
     setSuccess(true)
     setNewPassword('')
     setConfirmPassword('')
+    if (forced) setTimeout(() => { window.location.href = '/' }, 1200)
   }
 
   if (!open) {
@@ -64,9 +76,11 @@ export default function ChangePasswordForm({
     <div className="panel">
       <div className="mb-3 flex items-center justify-between">
         <h2 className="font-display text-base font-semibold text-ink">Change Password</h2>
-        <button onClick={() => setOpen(false)} className="btn-ghost">
-          Close
-        </button>
+        {!forced && (
+          <button onClick={() => setOpen(false)} className="btn-ghost">
+            Close
+          </button>
+        )}
       </div>
 
       <form onSubmit={handleChangePassword} className="space-y-3">
@@ -75,11 +89,11 @@ export default function ChangePasswordForm({
           <input
             type="password"
             required
-            minLength={6}
+            minLength={MIN_PASSWORD_LENGTH}
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
             className="field-input"
-            placeholder="At least 6 characters"
+            placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
           />
         </div>
         <div>
@@ -87,7 +101,7 @@ export default function ChangePasswordForm({
           <input
             type="password"
             required
-            minLength={6}
+            minLength={MIN_PASSWORD_LENGTH}
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             className="field-input"
@@ -95,7 +109,11 @@ export default function ChangePasswordForm({
         </div>
 
         {error && <p className="text-sm text-rust">{error}</p>}
-        {success && <p className="text-sm text-pine-deep">Password changed successfully!</p>}
+        {success && (
+          <p className="text-sm text-pine-deep">
+            Password changed successfully!{forced ? ' Taking you to the home page…' : ''}
+          </p>
+        )}
 
         <button type="submit" disabled={loading} className="btn-primary">
           {loading ? 'Saving...' : 'Save New Password'}
