@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseAdmin'
 import { logAudit } from '@/lib/auditLog'
+import { checkPassword } from '@/lib/passwordPolicy'
 
 const INTERNAL_EMAIL_DOMAIN = 'purewaternature.local'
 // 停用 = 把登录账号封禁约 100 年;启用 = 解除封禁
@@ -102,8 +103,9 @@ export async function POST(request: NextRequest) {
   if (employeeNo === null || !password) {
     return NextResponse.json({ error: 'Staff ID and password are required for full-time employees' }, { status: 400 })
   }
-  if (password.length < 6) {
-    return NextResponse.json({ error: 'Password must be at least 6 characters' }, { status: 400 })
+  const passwordProblem = checkPassword(password, { staffId: employeeNo })
+  if (passwordProblem) {
+    return NextResponse.json({ error: passwordProblem }, { status: 400 })
   }
   const role = body.role === 'manager' ? 'manager' : 'staff'
 
@@ -129,6 +131,8 @@ export async function POST(request: NextRequest) {
       date_of_commencement,
       employment_type: 'full_time',
       role,
+      // 初始密码是负责人设的,员工第一次登录必须自己换一个(见 middleware.ts / /change-password)
+      must_change_password: true,
     })
     .select()
     .single()
@@ -272,13 +276,10 @@ export async function PUT(request: NextRequest) {
   if (!body.id) {
     return NextResponse.json({ error: 'Employee id is required' }, { status: 400 })
   }
-  if (newPassword.length < 6) {
-    return NextResponse.json({ error: 'Password must be at least 6 characters' }, { status: 400 })
-  }
 
   const { data: target } = await supabaseAdmin
     .from('employees')
-    .select('id, auth_user_id, is_owner')
+    .select('id, auth_user_id, is_owner, employee_no')
     .eq('id', body.id)
     .maybeSingle()
   if (!target) {
@@ -290,6 +291,10 @@ export async function PUT(request: NextRequest) {
   if (!target.auth_user_id) {
     return NextResponse.json({ error: 'This employee has no login account (part-time), so there is no password to reset.' }, { status: 400 })
   }
+  const passwordProblem = checkPassword(newPassword, { staffId: target.employee_no })
+  if (passwordProblem) {
+    return NextResponse.json({ error: passwordProblem }, { status: 400 })
+  }
 
   const { error: pwError } = await supabaseAdmin.auth.admin.updateUserById(target.auth_user_id, {
     password: newPassword,
@@ -297,6 +302,9 @@ export async function PUT(request: NextRequest) {
   if (pwError) {
     return NextResponse.json({ error: `Could not reset password: ${pwError.message}` }, { status: 400 })
   }
+
+  // 密码是负责人设的 → 员工下次登录必须自己换掉
+  await supabaseAdmin.from('employees').update({ must_change_password: true }).eq('id', body.id)
 
   await logAudit({
     actorId: manager.employeeId,
