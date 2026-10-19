@@ -12,7 +12,7 @@ export async function getActiveEmployee(request: NextRequest) {
 
   const { data: emp } = await supabaseAdmin
     .from('employees')
-    .select('id, full_name, role, is_active, employment_type, telegram_chat_id')
+    .select('id, full_name, role, is_active, employment_type, telegram_chat_id, employee_no, auth_user_id')
     .eq('auth_user_id', user.id)
     .maybeSingle()
 
