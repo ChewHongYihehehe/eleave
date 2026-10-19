@@ -550,3 +550,14 @@ drop trigger if exists guard_owner_employee_row on employees;
 create trigger guard_owner_employee_row
   before insert or update or delete on employees
   for each row execute function public.guard_owner_employee_row();
+
+
+-- ============================================================================
+-- 强制第一次登录改密码
+--   · must_change_password = true 的人,登录后只能先去 /change-password 设定自己的新密码
+--     (由 middleware.ts 把守),设好后服务器会把它改回 false。
+--   · 新增员工、负责人重设密码时,服务器会自动设成 true。
+--   · 已经存在的员工默认是 false。上线前想让"所有人"都重新设一次自己的密码,执行下面这行:
+--       update employees set must_change_password = true where employment_type = 'full_time';
+-- ============================================================================
+alter table employees add column if not exists must_change_password boolean not null default false;
