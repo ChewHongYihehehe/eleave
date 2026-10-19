@@ -500,3 +500,53 @@ drop trigger if exists guard_employee_leave_updates on leave_applications;
 create trigger guard_employee_leave_updates
   before update on leave_applications
   for each row execute function public.guard_employee_leave_updates();
+
+
+-- ============================================================================
+-- 老板账号(is_owner)
+--   · 登录后权限和 manager 一样(role 仍然是 'manager',所有现有的检查照常运作)
+--   · 不会出现在"员工"页面和"补录请假"的员工名单里
+--   · 其他负责人(包括她自己)都不能改她这一行、也不能重设她的密码、停用或降级她
+--     —— 这些只能在 Supabase 后台由项目拥有者处理
+--
+-- 设定方法(在 Supabase 的 SQL Editor 执行,把 99 换成老板账号的 Staff ID):
+--   update employees set is_owner = true where employee_no = 99;
+-- 取消:同样的语句把 true 改成 false。
+-- ============================================================================
+alter table employees add column if not exists is_owner boolean not null default false;
+
+create or replace function public.guard_owner_employee_row()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  -- 服务器(service role)和 SQL Editor 没有"登录用户",不受限制。
+  -- 所有登录的人(包括负责人)都走不过这里。
+  if auth.uid() is null then
+    return case when tg_op = 'DELETE' then old else new end;
+  end if;
+
+  if tg_op = 'INSERT' then
+    if new.is_owner then
+      raise exception 'The owner flag can only be set in Supabase.' using errcode = '42501';
+    end if;
+    return new;
+  end if;
+
+  if old.is_owner then
+    raise exception 'This account is protected and can only be changed in Supabase.' using errcode = '42501';
+  end if;
+
+  if tg_op = 'UPDATE' and new.is_owner then
+    raise exception 'The owner flag can only be set in Supabase.' using errcode = '42501';
+  end if;
+
+  return case when tg_op = 'DELETE' then old else new end;
+end;
+$$;
+
+drop trigger if exists guard_owner_employee_row on employees;
+create trigger guard_owner_employee_row
+  before insert or update or delete on employees
+  for each row execute function public.guard_owner_employee_row();
