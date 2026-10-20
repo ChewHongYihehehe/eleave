@@ -48,12 +48,11 @@ export default function ManageEmployeesPage() {
     setLoading(true)
     const { data, error: loadError } = await supabase
       .from('employees')
-      .select('id, employee_no, full_name, date_of_commencement, employment_type, role, annual_leave_carry_forward, annual_leave_entitlement_override, is_active, is_owner')
+      .select('id, employee_no, full_name, date_of_commencement, employment_type, role, annual_leave_carry_forward, annual_leave_entitlement_override, is_active')
       .order('employment_type', { ascending: false })
       .order('employee_no', { ascending: true })
     if (loadError) setError('Could not load employees.')
-    // 老板账号不列在这里(只能在 Supabase 后台管理)
-    if (data) setEmployees(data.filter((e) => !e.is_owner))
+    if (data) setEmployees(data)
     setLoading(false)
   }
 
@@ -311,62 +310,142 @@ function FullTimeTable({ employees, managerId, onToggleActive, onUpdateField, on
 }) {
   const th = 'px-3 py-2.5 text-xs font-medium uppercase tracking-wide text-ink-faint whitespace-nowrap'
   return (
-    <div className="overflow-x-auto rounded-lg border border-line">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-line bg-paper">
-            <th className={`sticky left-0 z-10 bg-paper text-left ${th}`}>Employee</th>
-            <th className={`text-left ${th}`}>Commencement</th>
-            <th className={`text-left ${th}`}>Entitled (Override)</th>
-            <th className={`text-left ${th}`}>Leave Carry-Fwd</th>
-            <th className={`text-left ${th}`}>Role</th>
-            <th className={`text-center ${th}`}>Status</th>
-            <th className={`text-center ${th}`}>Password</th>
-          </tr>
-        </thead>
-        <tbody>
-          {employees.map((emp, idx) => {
-            const bg = idx % 2 === 0 ? 'bg-surface' : 'bg-paper/40'
-            return (
-              <tr key={emp.id} className={`border-b border-line last:border-b-0 ${bg} ${!emp.is_active ? 'opacity-50' : ''}`}>
-                <td className={`sticky left-0 z-10 px-3 py-2.5 whitespace-nowrap ${bg}`}>
-                  <span className="mr-1.5 text-xs text-ink-faint">{emp.employee_no ? `#${emp.employee_no}` : '—'}</span>
-                  <span className="font-medium text-ink">{emp.full_name}</span>
-                </td>
-                <td className="px-3 py-2">
-                  <input type="date" defaultValue={emp.date_of_commencement} onBlur={(e) => onUpdateField(emp.id, 'date_of_commencement', e.target.value)} className="field-input py-1 text-xs" />
-                </td>
-                <td className="px-3 py-2">
-                  <input type="number" step="0.5" defaultValue={emp.annual_leave_entitlement_override ?? ''} placeholder="auto" onBlur={(e) => {
+    <>
+      {/* ── Desktop table ── */}
+      <div className="hidden md:block overflow-x-auto rounded-lg border border-line">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-line bg-paper">
+              <th className={`sticky left-0 z-10 bg-paper text-left ${th}`}>Employee</th>
+              <th className={`text-left ${th}`}>Commencement</th>
+              <th className={`text-left ${th}`}>Entitled (Override)</th>
+              <th className={`text-left ${th}`}>Leave Carry-Fwd</th>
+              <th className={`text-left ${th}`}>Role</th>
+              <th className={`text-center ${th}`}>Status</th>
+              <th className={`text-center ${th}`}>Password</th>
+            </tr>
+          </thead>
+          <tbody>
+            {employees.map((emp, idx) => {
+              const bg = idx % 2 === 0 ? 'bg-surface' : 'bg-paper/40'
+              return (
+                <tr key={emp.id} className={`border-b border-line last:border-b-0 ${bg} ${!emp.is_active ? 'opacity-50' : ''}`}>
+                  <td className={`sticky left-0 z-10 px-3 py-2.5 whitespace-nowrap ${bg}`}>
+                    <span className="mr-1.5 text-xs text-ink-faint">{emp.employee_no ? `#${emp.employee_no}` : '—'}</span>
+                    <span className="font-medium text-ink">{emp.full_name}</span>
+                  </td>
+                  <td className="px-3 py-2">
+                    <input type="date" defaultValue={emp.date_of_commencement} onBlur={(e) => onUpdateField(emp.id, 'date_of_commencement', e.target.value)} className="field-input py-1 text-xs" />
+                  </td>
+                  <td className="px-3 py-2">
+                    <input type="number" step="0.5" defaultValue={emp.annual_leave_entitlement_override ?? ''} placeholder="auto" onBlur={(e) => {
+                      const v = e.target.value.trim()
+                      onUpdateField(emp.id, 'annual_leave_entitlement_override', v === '' ? (null as unknown as number) : Number(v))
+                    }} className="field-input w-20 py-1 text-xs" />
+                  </td>
+                  <td className="px-3 py-2">
+                    <input type="number" step="0.5" defaultValue={emp.annual_leave_carry_forward} onBlur={(e) => onUpdateField(emp.id, 'annual_leave_carry_forward', Number(e.target.value))} className="field-input w-20 py-1 text-xs" />
+                  </td>
+                  <td className="px-3 py-2">
+                    <select value={emp.role} onChange={(e) => onUpdateField(emp.id, 'role', e.target.value)} className="field-input py-1 text-xs">
+                      <option value="staff">Staff</option>
+                      <option value="manager">Manager</option>
+                    </select>
+                  </td>
+                  <td className="px-3 py-2 text-center">
+                    <button onClick={() => onToggleActive(emp.id, emp.is_active)} className={`badge ${emp.is_active ? 'bg-paper text-ink-soft' : 'badge-rejected'}`}>
+                      {emp.is_active ? 'Active' : 'Inactive'}
+                    </button>
+                  </td>
+                  <td className="px-3 py-2 text-center">
+                    <button onClick={() => onResetPassword(emp.id, emp.full_name)} className="rounded-md bg-paper px-2.5 py-1 text-xs font-medium text-ink-soft ring-1 ring-line hover:bg-pine-soft/40">
+                      Reset
+                    </button>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* ── Mobile cards ── */}
+      <div className="md:hidden space-y-3">
+        {employees.map((emp) => (
+          <div key={emp.id} className={`rounded-xl border border-line bg-surface p-4 space-y-3 ${!emp.is_active ? 'opacity-60' : ''}`}>
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-semibold text-ink">{emp.full_name}</p>
+                <p className="text-xs text-ink-faint">{emp.employee_no ? `#${emp.employee_no}` : 'No ID'} · {emp.role === 'manager' ? 'Manager' : 'Staff'}</p>
+              </div>
+              <button
+                onClick={() => onToggleActive(emp.id, emp.is_active)}
+                className={`rounded-full px-3 py-1 text-xs font-medium ${emp.is_active ? 'bg-pine-soft text-pine-deep' : 'bg-rust-soft text-rust'}`}
+              >
+                {emp.is_active ? 'Active' : 'Inactive'}
+              </button>
+            </div>
+
+            {/* Fields grid */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <p className="mb-1 text-xs font-medium text-ink-faint">Commencement</p>
+                <input
+                  type="date"
+                  defaultValue={emp.date_of_commencement}
+                  onBlur={(e) => onUpdateField(emp.id, 'date_of_commencement', e.target.value)}
+                  className="field-input w-full py-1.5 text-xs"
+                />
+              </div>
+              <div>
+                <p className="mb-1 text-xs font-medium text-ink-faint">Role</p>
+                <select
+                  value={emp.role}
+                  onChange={(e) => onUpdateField(emp.id, 'role', e.target.value)}
+                  className="field-input w-full py-1.5 text-xs"
+                >
+                  <option value="staff">Staff</option>
+                  <option value="manager">Manager</option>
+                </select>
+              </div>
+              <div>
+                <p className="mb-1 text-xs font-medium text-ink-faint">Entitled Override</p>
+                <input
+                  type="number"
+                  step="0.5"
+                  defaultValue={emp.annual_leave_entitlement_override ?? ''}
+                  placeholder="auto"
+                  onBlur={(e) => {
                     const v = e.target.value.trim()
                     onUpdateField(emp.id, 'annual_leave_entitlement_override', v === '' ? (null as unknown as number) : Number(v))
-                  }} className="field-input w-20 py-1 text-xs" />
-                </td>
-                <td className="px-3 py-2">
-                  <input type="number" step="0.5" defaultValue={emp.annual_leave_carry_forward} onBlur={(e) => onUpdateField(emp.id, 'annual_leave_carry_forward', Number(e.target.value))} className="field-input w-20 py-1 text-xs" />
-                </td>
-                <td className="px-3 py-2">
-                  <select value={emp.role} onChange={(e) => onUpdateField(emp.id, 'role', e.target.value)} className="field-input py-1 text-xs">
-                    <option value="staff">Staff</option>
-                    <option value="manager">Manager</option>
-                  </select>
-                </td>
-                <td className="px-3 py-2 text-center">
-                  <button onClick={() => onToggleActive(emp.id, emp.is_active)} className={`badge ${emp.is_active ? 'bg-paper text-ink-soft' : 'badge-rejected'}`}>
-                    {emp.is_active ? 'Active' : 'Inactive'}
-                  </button>
-                </td>
-                <td className="px-3 py-2 text-center">
-                  <button onClick={() => onResetPassword(emp.id, emp.full_name)} className="rounded-md bg-paper px-2.5 py-1 text-xs font-medium text-ink-soft ring-1 ring-line hover:bg-pine-soft/40">
-                    Reset
-                  </button>
-                </td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
-    </div>
+                  }}
+                  className="field-input w-full py-1.5 text-xs"
+                />
+              </div>
+              <div>
+                <p className="mb-1 text-xs font-medium text-ink-faint">Leave Carry-Fwd</p>
+                <input
+                  type="number"
+                  step="0.5"
+                  defaultValue={emp.annual_leave_carry_forward}
+                  onBlur={(e) => onUpdateField(emp.id, 'annual_leave_carry_forward', Number(e.target.value))}
+                  className="field-input w-full py-1.5 text-xs"
+                />
+              </div>
+            </div>
+
+            {/* Reset password button */}
+            <button
+              onClick={() => onResetPassword(emp.id, emp.full_name)}
+              className="w-full rounded-lg border border-line bg-paper py-2 text-xs font-medium text-ink-soft hover:bg-pine-soft/30"
+            >
+              Reset Password
+            </button>
+          </div>
+        ))}
+      </div>
+    </>
   )
 }
 
@@ -379,37 +458,69 @@ function PartTimeTable({ employees, onToggleActive, onUpdateField }: {
 }) {
   const th = 'px-3 py-2.5 text-xs font-medium uppercase tracking-wide text-ink-faint whitespace-nowrap'
   return (
-    <div className="overflow-x-auto rounded-lg border border-line">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-line bg-paper">
-            <th className={`sticky left-0 z-10 bg-paper text-left ${th}`}>Employee</th>
-            <th className={`text-left ${th}`}>Commencement</th>
-            <th className={`text-center ${th}`}>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {employees.map((emp, idx) => {
-            const bg = idx % 2 === 0 ? 'bg-surface' : 'bg-paper/40'
-            return (
-              <tr key={emp.id} className={`border-b border-line last:border-b-0 ${bg} ${!emp.is_active ? 'opacity-50' : ''}`}>
-                <td className={`sticky left-0 z-10 px-3 py-2.5 whitespace-nowrap ${bg}`}>
-                  <span className="mr-1.5 text-xs text-ink-faint">{emp.employee_no ? `#${emp.employee_no}` : '—'}</span>
-                  <span className="font-medium text-ink">{emp.full_name}</span>
-                </td>
-                <td className="px-3 py-2">
-                  <input type="date" defaultValue={emp.date_of_commencement} onBlur={(e) => onUpdateField(emp.id, 'date_of_commencement', e.target.value)} className="field-input py-1 text-xs" />
-                </td>
-                <td className="px-3 py-2 text-center">
-                  <button onClick={() => onToggleActive(emp.id, emp.is_active)} className={`badge ${emp.is_active ? 'bg-paper text-ink-soft' : 'badge-rejected'}`}>
-                    {emp.is_active ? 'Active' : 'Inactive'}
-                  </button>
-                </td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
-    </div>
+    <>
+      {/* ── Desktop table ── */}
+      <div className="hidden md:block overflow-x-auto rounded-lg border border-line">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-line bg-paper">
+              <th className={`sticky left-0 z-10 bg-paper text-left ${th}`}>Employee</th>
+              <th className={`text-left ${th}`}>Commencement</th>
+              <th className={`text-center ${th}`}>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {employees.map((emp, idx) => {
+              const bg = idx % 2 === 0 ? 'bg-surface' : 'bg-paper/40'
+              return (
+                <tr key={emp.id} className={`border-b border-line last:border-b-0 ${bg} ${!emp.is_active ? 'opacity-50' : ''}`}>
+                  <td className={`sticky left-0 z-10 px-3 py-2.5 whitespace-nowrap ${bg}`}>
+                    <span className="mr-1.5 text-xs text-ink-faint">{emp.employee_no ? `#${emp.employee_no}` : '—'}</span>
+                    <span className="font-medium text-ink">{emp.full_name}</span>
+                  </td>
+                  <td className="px-3 py-2">
+                    <input type="date" defaultValue={emp.date_of_commencement} onBlur={(e) => onUpdateField(emp.id, 'date_of_commencement', e.target.value)} className="field-input py-1 text-xs" />
+                  </td>
+                  <td className="px-3 py-2 text-center">
+                    <button onClick={() => onToggleActive(emp.id, emp.is_active)} className={`badge ${emp.is_active ? 'bg-paper text-ink-soft' : 'badge-rejected'}`}>
+                      {emp.is_active ? 'Active' : 'Inactive'}
+                    </button>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* ── Mobile cards ── */}
+      <div className="md:hidden space-y-3">
+        {employees.map((emp) => (
+          <div key={emp.id} className={`rounded-xl border border-line bg-surface p-4 space-y-3 ${!emp.is_active ? 'opacity-60' : ''}`}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-semibold text-ink">{emp.full_name}</p>
+                <p className="text-xs text-ink-faint">{emp.employee_no ? `#${emp.employee_no}` : 'No ID'} · Part-time</p>
+              </div>
+              <button
+                onClick={() => onToggleActive(emp.id, emp.is_active)}
+                className={`rounded-full px-3 py-1 text-xs font-medium ${emp.is_active ? 'bg-pine-soft text-pine-deep' : 'bg-rust-soft text-rust'}`}
+              >
+                {emp.is_active ? 'Active' : 'Inactive'}
+              </button>
+            </div>
+            <div>
+              <p className="mb-1 text-xs font-medium text-ink-faint">Commencement Date</p>
+              <input
+                type="date"
+                defaultValue={emp.date_of_commencement}
+                onBlur={(e) => onUpdateField(emp.id, 'date_of_commencement', e.target.value)}
+                className="field-input w-full py-1.5 text-xs"
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
   )
 }
