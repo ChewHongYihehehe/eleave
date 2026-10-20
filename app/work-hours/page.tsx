@@ -188,8 +188,8 @@ export default function WorkHoursPage() {
             </button>
           </div>
 
-          {/* ── Grid ────────────────────────────────────────────── */}
-          <div className="overflow-x-auto rounded-lg border border-line">
+          {/* ── Desktop: Full spreadsheet grid ───────────────────── */}
+          <div className="hidden md:block overflow-x-auto rounded-lg border border-line">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-line bg-paper">
@@ -213,7 +213,6 @@ export default function WorkHoursPage() {
                     key={emp.id}
                     className={`border-b border-line transition-colors ${idx % 2 === 0 ? 'bg-surface' : 'bg-paper/40'}`}
                   >
-                    {/* Employee name — sticky on scroll */}
                     <td className={`sticky left-0 z-10 px-3 py-2 font-medium text-ink whitespace-nowrap ${idx % 2 === 0 ? 'bg-surface' : 'bg-paper/40'}`}>
                       {emp.full_name}
                     </td>
@@ -245,7 +244,6 @@ export default function WorkHoursPage() {
                       )
                     })}
 
-                    {/* Row total */}
                     <td className="px-3 py-2 text-right font-semibold text-ink tabular-nums">
                       {rowTotal(emp.id) > 0 ? `${rowTotal(emp.id).toFixed(1)}h` : '—'}
                     </td>
@@ -253,7 +251,6 @@ export default function WorkHoursPage() {
                 ))}
               </tbody>
 
-              {/* Column totals footer */}
               <tfoot>
                 <tr className="border-t-2 border-line bg-paper">
                   <td className="sticky left-0 z-10 bg-paper px-3 py-2 text-xs font-semibold uppercase tracking-wide text-ink-faint">
@@ -275,6 +272,28 @@ export default function WorkHoursPage() {
             </table>
           </div>
 
+          {/* ── Mobile: Employee picker + month cards ─────────────── */}
+          <div className="md:hidden space-y-4">
+            {/* Employee selector */}
+            {(() => {
+              const [mobileEmpId, setMobileEmpId] = [
+                employees[0]?.id ?? '',
+                (v: string) => { /* handled by select below */ void v }
+              ] as const
+              return null
+            })()}
+            <MobileWorkHours
+              employees={employees}
+              hours={hours}
+              saving={saving}
+              months={MONTHS}
+              onChangeHours={handleChange}
+              onBlurHours={handleBlur}
+              rowTotal={rowTotal}
+              keyFn={key}
+            />
+          </div>
+
           <p className="text-xs text-ink-faint">
             Click any cell to enter hours for that month. Saves automatically when you click away.
           </p>
@@ -282,5 +301,90 @@ export default function WorkHoursPage() {
       )}
     </div>
   </ManagerShell>
+  )
+}
+
+// ─── Mobile helper sub-component ─────────────────────────────────────────────
+
+function MobileWorkHours({
+  employees,
+  hours,
+  saving,
+  months,
+  onChangeHours,
+  onBlurHours,
+  rowTotal,
+  keyFn,
+}: {
+  employees: { id: string; full_name: string }[]
+  hours: Record<string, string>
+  saving: Set<string>
+  months: string[]
+  onChangeHours: (id: string, month: number, value: string) => void
+  onBlurHours: (id: string, month: number, value: string) => Promise<void>
+  rowTotal: (id: string) => number
+  keyFn: (id: string, month: number) => string
+}) {
+  const [selectedId, setSelectedId] = useState(employees[0]?.id ?? '')
+  const emp = employees.find((e) => e.id === selectedId)
+
+  return (
+    <div className="space-y-4">
+      {/* Employee picker */}
+      <div>
+        <label className="field-label">Employee</label>
+        <select
+          value={selectedId}
+          onChange={(e) => setSelectedId(e.target.value)}
+          className="field-input w-full"
+        >
+          {employees.map((e) => (
+            <option key={e.id} value={e.id}>{e.full_name}</option>
+          ))}
+        </select>
+      </div>
+
+      {emp && (
+        <>
+          {/* Month grid — 2 columns */}
+          <div className="grid grid-cols-2 gap-3">
+            {months.map((m, i) => {
+              const monthNum = i + 1
+              const k = keyFn(emp.id, monthNum)
+              const isSaving = saving.has(k)
+              return (
+                <div key={m} className="rounded-xl border border-line bg-surface p-3">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-faint">{m}</p>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    value={hours[k] ?? ''}
+                    onChange={(e) => onChangeHours(emp.id, monthNum, e.target.value)}
+                    onBlur={(e) => onBlurHours(emp.id, monthNum, e.target.value)}
+                    placeholder="0"
+                    className={[
+                      'w-full rounded-lg border px-3 py-2.5 text-center text-base font-semibold focus:outline-none transition-all',
+                      isSaving
+                        ? 'border-pine bg-pine-soft text-pine-deep'
+                        : hours[k]
+                          ? 'border-line bg-white text-ink focus:border-pine'
+                          : 'border-line bg-paper/40 text-ink-faint focus:border-pine focus:bg-white',
+                    ].join(' ')}
+                  />
+                  <p className="mt-1 text-center text-[10px] text-ink-faint">hours</p>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Row total */}
+          <div className="flex items-center justify-between rounded-xl border border-line bg-paper px-4 py-3">
+            <span className="text-sm font-medium text-ink-soft">Total for {emp.full_name.split(' ')[0]}</span>
+            <span className="text-lg font-bold text-ink">{rowTotal(emp.id).toFixed(1)}h</span>
+          </div>
+        </>
+      )}
+    </div>
   )
 }
