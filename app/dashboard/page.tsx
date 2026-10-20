@@ -316,6 +316,9 @@ export default function DashboardPage() {
 
   // User profile menu state (matching manage)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+
+  // Mobile bottom tab state
+  const [mobileTab, setMobileTab] = useState<'home' | 'records' | 'me'>('home')
   const userMenuRef = useRef<HTMLDivElement | null>(null)
 
   // Modal state
@@ -624,9 +627,6 @@ export default function DashboardPage() {
   const safeCurrentPage = Math.min(currentPage, totalPages)
   const startIndex = (safeCurrentPage - 1) * pageSize
   const paginatedApps = filteredApps.slice(startIndex, startIndex + pageSize)
-
-  // ── Mobile tab state ──────────────────────────────────────────────────────
-  const [mobileTab, setMobileTab] = useState<'home' | 'records' | 'me'>('home')
 
   return (
     <div className="flex min-h-screen flex-col bg-[#F5F6F8]">
