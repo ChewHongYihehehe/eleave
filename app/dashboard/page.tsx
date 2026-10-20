@@ -161,6 +161,44 @@ function MoreHorizontalIcon({ className }: { className?: string }) {
   )
 }
 
+// ── Bottom Tab Icons ─────────────────────────────────────────────────────────
+
+function HomeTabIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" />
+      <path d="M9 21V12h6v9" />
+    </svg>
+  )
+}
+
+function RecordsTabIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="5" y="2" width="14" height="20" rx="2" />
+      <path d="M9 7h6M9 11h6M9 15h4" />
+    </svg>
+  )
+}
+
+function ProfileTabIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+    </svg>
+  )
+}
+
+function ApplyLeaveTabIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="3" />
+      <path d="M16 2v4M8 2v4M3 10h18M12 14v4M10 16h4" />
+    </svg>
+  )
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function getInitials(name: string) {
@@ -587,246 +625,571 @@ export default function DashboardPage() {
   const startIndex = (safeCurrentPage - 1) * pageSize
   const paginatedApps = filteredApps.slice(startIndex, startIndex + pageSize)
 
+  // ── Mobile tab state ──────────────────────────────────────────────────────
+  const [mobileTab, setMobileTab] = useState<'home' | 'records' | 'me'>('home')
+
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8 space-y-7 pb-16">
+    <div className="flex min-h-screen flex-col bg-[#F5F6F8]">
 
-      {/* ── "You have updates" banner ── */}
-      {unseenCount > 0 && !noticeDismissed && (
-        <div className="flex items-center justify-between gap-3 rounded-xl border border-gold/40 bg-gold-soft px-4 py-3 text-sm text-gold">
-          <span>
-            You have {unseenCount} update{unseenCount > 1 ? 's' : ''} on your leave application{unseenCount > 1 ? 's' : ''} below.
-          </span>
-          <button
-            onClick={() => setNoticeDismissed(true)}
-            className="shrink-0 text-xs font-medium underline decoration-dotted hover:no-underline"
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
+      {/* ════════════════════════════════════════════
+          MOBILE LAYOUT  (shown on screens < md)
+          ════════════════════════════════════════════ */}
+      <div className="md:hidden flex flex-col min-h-screen">
 
-      {/* ── Top Bar with Manage-style User Profile ── */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <img src="/logo.png" alt="Puro" width={44} height={44} className="h-11 w-11 shrink-0 rounded-xl" />
-          <div>
-            <h1 className="font-display text-2xl font-bold tracking-tight text-ink">
-              Hi, {employee.full_name.split(' ')[0]} 👋
-            </h1>
-            <p className="mt-0.5 text-sm text-ink-soft">
-              {employee.employee_no ? `#${employee.employee_no} · ` : ''}
-              {years.toFixed(1)} years of service
-            </p>
+        {/* ── Mobile: Top header ── */}
+        <div className="sticky top-0 z-30 bg-white border-b border-gray-100">
+          <div className="flex items-center justify-between px-4 py-3">
+            <div className="flex items-center gap-2.5">
+              <img src="/logo.png" alt="Puro" width={32} height={32} className="h-8 w-8 rounded-lg" />
+              <div>
+                <h1 className="text-sm font-bold text-gray-900 leading-tight">E-Leave</h1>
+                <p className="text-[10px] text-gray-400 leading-tight">Hi, {employee.full_name.split(' ')[0]}</p>
+              </div>
+            </div>
+            {/* User avatar with dropdown */}
+            <div className="relative" ref={userMenuRef}>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setUserMenuOpen((v) => !v) }}
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1677FF]/15 text-sm font-bold text-[#1677FF]"
+              >
+                {initials}
+              </button>
+              {userMenuOpen && (
+                <div
+                  className="absolute right-0 z-50 mt-2 w-56 rounded-2xl border border-gray-100 bg-white p-2 shadow-xl"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="mb-1 flex flex-col gap-0.5">
+                    <button onClick={() => { setUserMenuOpen(false); router.push('/change-password') }}
+                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-gray-600 hover:bg-gray-50">
+                      <KeyIcon className="h-4 w-4 text-gray-400" />
+                      Change Password
+                    </button>
+                    <button onClick={() => { setUserMenuOpen(false); router.push('/notifications') }}
+                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-gray-600 hover:bg-gray-50">
+                      <BellIcon className="h-4 w-4 text-gray-400" />
+                      Telegram Notifications
+                    </button>
+                    <button onClick={handleLogout}
+                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-500 hover:bg-red-50">
+                      <LogoutIcon className="h-4 w-4" />
+                      Log Out
+                    </button>
+                  </div>
+                  <div className="mt-1 flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#1677FF]/15 text-xs font-bold text-[#1677FF]">{initials}</div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-gray-900">{employee.full_name}</p>
+                      <p className="text-xs text-gray-400 capitalize">{employee.employment_type || 'Employee'}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 self-start sm:self-auto">
-          <button
-            onClick={() => { setModalOpen(true); setFormError('') }}
-            className="inline-flex items-center gap-2 rounded-xl bg-pine px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-pine-deep focus:outline-none focus:ring-2 focus:ring-pine/30"
-          >
-            <PlusIcon className="h-4 w-4" />
-            Request Leave
-          </button>
+        {/* ── Mobile: Unseen updates notice ── */}
+        {unseenCount > 0 && !noticeDismissed && (
+          <div className="mx-4 mt-3 flex items-center justify-between gap-3 rounded-2xl bg-amber-50 border border-amber-200 px-4 py-2.5 text-sm text-amber-700">
+            <span>{unseenCount} update{unseenCount > 1 ? 's' : ''} on your leave applications.</span>
+            <button onClick={() => setNoticeDismissed(true)} className="shrink-0 text-xs font-semibold underline">Dismiss</button>
+          </div>
+        )}
+        {loadError && (
+          <div className="mx-4 mt-3 rounded-2xl bg-red-50 border border-red-200 px-4 py-2.5 text-sm text-red-600">{loadError}</div>
+        )}
 
-          {/* User Profile matching ManagerShell style */}
-          <div className="relative" ref={userMenuRef}>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                setUserMenuOpen((v) => !v)
-              }}
-              className="flex items-center gap-2.5 rounded-xl border border-line bg-surface px-3 py-2 shadow-sm transition hover:bg-paper focus:outline-none"
-            >
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-pine/20 text-xs font-bold text-pine">
-                {initials}
-              </div>
-              <span className="text-sm font-medium text-ink">
-                {employee.full_name}
-              </span>
-              <ChevronDownIcon className="h-4 w-4 text-ink-faint ml-0.5" />
-            </button>
+        {/* ══ MOBILE HOME TAB ══ */}
+        {mobileTab === 'home' && (
+          <div className="flex-1 overflow-y-auto pb-24">
 
-            {/* Dropdown menu matching ManagerShell sidebar account section */}
-            {userMenuOpen && (
-              <div
-                className="absolute right-0 z-30 mt-2 w-64 rounded-2xl border border-line bg-surface p-2 shadow-xl"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="mb-1 flex flex-col gap-0.5">
-                  <button
-                    onClick={() => { setUserMenuOpen(false); router.push('/change-password') }}
-                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-ink-soft transition-colors hover:bg-paper hover:text-ink"
-                  >
-                    <KeyIcon className="h-4 w-4 text-ink-faint" />
-                    Change Password
-                  </button>
-                  <button
-                    onClick={() => { setUserMenuOpen(false); router.push('/notifications') }}
-                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-ink-soft transition-colors hover:bg-paper hover:text-ink"
-                  >
-                    <BellIcon className="h-4 w-4 text-ink-faint" />
-                    Telegram Notifications
-                  </button>
-                  <button
-                    onClick={handleLogout}
-                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-ink-soft transition-colors hover:bg-rust-soft hover:text-rust"
-                  >
-                    <LogoutIcon className="h-4 w-4 text-ink-faint" />
-                    Log Out
-                  </button>
+            {/* ── Blue gradient Banner ── */}
+            <div className="mx-4 mt-4 rounded-2xl overflow-hidden"
+              style={{ background: 'linear-gradient(135deg, #1677FF 0%, #4096FF 60%, #69B1FF 100%)' }}>
+              <div className="flex items-center justify-between px-5 py-4">
+                <div>
+                  <p className="text-xs font-semibold text-blue-100 uppercase tracking-wider mb-1">Leave Balance</p>
+                  <p className="text-2xl font-bold text-white leading-tight">
+                    {statCards[0]?.remaining ?? '—'}
+                    <span className="text-sm font-normal text-blue-100 ml-1">days left</span>
+                  </p>
+                  <p className="text-xs text-blue-100 mt-0.5">Annual Leave · {thisYear}</p>
                 </div>
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20">
+                  <CalendarGridIcon className="h-9 w-9 text-white" />
+                </div>
+              </div>
+              <div className="flex border-t border-white/20">
+                {statCards.slice(1).map(({ label, remaining }) => (
+                  <div key={label} className="flex-1 border-r border-white/20 last:border-r-0 px-3 py-2.5 text-center">
+                    <p className="text-sm font-bold text-white">{remaining}</p>
+                    <p className="text-[10px] text-blue-100 leading-tight mt-0.5">{label.replace(' Leave', '')}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
 
-                {/* User Info Card matching manage */}
-                <div className="flex items-center gap-3 rounded-xl border border-line bg-paper px-3 py-2.5 mt-1">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-pine/20 text-xs font-bold text-pine">
-                    {initials}
+            {/* ── Quick Actions Grid ── */}
+            <div className="mx-4 mt-5">
+              <p className="text-sm font-semibold text-gray-500 mb-3">快捷功能</p>
+              <div className="grid grid-cols-4 gap-3">
+                {/* Apply Leave */}
+                <button
+                  onClick={() => { setModalOpen(true); setFormError('') }}
+                  className="flex flex-col items-center gap-1.5"
+                >
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl shadow-sm"
+                    style={{ background: 'linear-gradient(135deg, #1677FF, #4096FF)' }}>
+                    <PlusIcon className="h-7 w-7 text-white" />
                   </div>
-                  <div className="min-w-0 text-left">
-                    <p className="truncate text-sm font-medium text-ink">{employee.full_name}</p>
-                    <p className="text-xs text-ink-faint capitalize">{employee.employment_type || 'Employee'}</p>
+                  <span className="text-[11px] text-gray-600 leading-tight text-center">申请请假</span>
+                </button>
+                {/* My Records */}
+                <button
+                  onClick={() => setMobileTab('records')}
+                  className="flex flex-col items-center gap-1.5"
+                >
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl shadow-sm"
+                    style={{ background: 'linear-gradient(135deg, #FA8C16, #FFA940)' }}>
+                    <RecordsTabIcon className="h-7 w-7 text-white" />
                   </div>
+                  <span className="text-[11px] text-gray-600 leading-tight text-center">我的记录</span>
+                </button>
+                {/* Calendar */}
+                <button
+                  onClick={() => router.push('/calendar')}
+                  className="flex flex-col items-center gap-1.5"
+                >
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl shadow-sm"
+                    style={{ background: 'linear-gradient(135deg, #13C2C2, #36CFC9)' }}>
+                    <CalendarGridIcon className="h-7 w-7 text-white" />
+                  </div>
+                  <span className="text-[11px] text-gray-600 leading-tight text-center">日历</span>
+                </button>
+                {/* Notifications */}
+                <button
+                  onClick={() => router.push('/notifications')}
+                  className="flex flex-col items-center gap-1.5"
+                >
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl shadow-sm"
+                    style={{ background: 'linear-gradient(135deg, #722ED1, #9254DE)' }}>
+                    <BellIcon className="h-7 w-7 text-white" />
+                  </div>
+                  <span className="text-[11px] text-gray-600 leading-tight text-center">通知</span>
+                </button>
+              </div>
+            </div>
+
+            {/* ── Leave Balance List (DingTalk style) ── */}
+            <div className="mx-4 mt-5">
+              <p className="text-sm font-semibold text-gray-500 mb-3">假期余额</p>
+              <div className="rounded-2xl bg-white overflow-hidden shadow-sm">
+                {statCards.map(({ label, remaining, total, accent }, idx) => {
+                  const dotColors: Record<string, string> = {
+                    'Annual Leave': '#1677FF',
+                    'Medical Leave': '#F5222D',
+                    'Maternity Leave': '#EB2F96',
+                    'Paternity Leave': '#722ED1',
+                  }
+                  const dotColor = dotColors[label] ?? '#52C41A'
+                  return (
+                    <div key={label}
+                      className={`flex items-center px-4 py-3.5 ${
+                        idx < statCards.length - 1 ? 'border-b border-gray-100' : ''
+                      }`}>
+                      <span className="mr-3 h-2.5 w-2.5 flex-shrink-0 rounded-full" style={{ backgroundColor: dotColor }} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">{label}</p>
+                        <p className="text-[11px] text-gray-400 mt-0.5">of {total} days this year</p>
+                      </div>
+                      <div className="text-right ml-3">
+                        <p className="text-base font-bold text-gray-900">{remaining}</p>
+                        <p className="text-[10px] text-gray-400">days left</p>
+                      </div>
+                      <ChevronRightIcon className="ml-2 h-4 w-4 text-gray-300 flex-shrink-0" />
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* ── Upcoming Public Holidays (mobile) ── */}
+            {upcomingHolidays.length > 0 && (
+              <div className="mx-4 mt-5">
+                <p className="text-sm font-semibold text-gray-500 mb-3">即将到来的公假</p>
+                <div className="rounded-2xl bg-white overflow-hidden shadow-sm">
+                  {upcomingHolidays.map((h, idx) => {
+                    const d = new Date(h.holiday_date + 'T00:00:00')
+                    const isToday = h.holiday_date === today
+                    return (
+                      <div key={h.holiday_date}
+                        className={`flex items-center gap-3 px-4 py-3.5 ${
+                          idx < upcomingHolidays.length - 1 ? 'border-b border-gray-100' : ''
+                        }`}>
+                        <div className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl bg-[#1677FF]/10">
+                          <span className="text-[9px] font-bold uppercase tracking-wider text-[#1677FF]">
+                            {d.toLocaleDateString('en-MY', { month: 'short' })}
+                          </span>
+                          <span className="text-sm font-bold text-[#1677FF]">{d.getDate()}</span>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-gray-900">{h.name}</p>
+                          <p className="mt-0.5 text-xs text-gray-400">
+                            {d.toLocaleDateString('en-MY', { weekday: 'long' })}
+                            {isToday && <span className="ml-2 font-semibold text-amber-500">· Today</span>}
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             )}
           </div>
-        </div>
-      </div>
+        )}
 
-      {loadError && (
-        <div className="rounded-xl border border-rust/30 bg-rust-soft px-4 py-3 text-sm text-rust">
-          {loadError}
-        </div>
-      )}
+        {/* ══ MOBILE RECORDS TAB ══ */}
+        {mobileTab === 'records' && (
+          <div className="flex-1 overflow-y-auto pb-24">
+            <div className="px-4 pt-4 pb-2">
+              <h2 className="text-lg font-bold text-gray-900">我的记录</h2>
+              <p className="text-xs text-gray-400 mt-0.5">Your leave request history</p>
+            </div>
 
-      {/* ── 4 Stat Cards (Annual, Medical, Maternity, Paternity) ── */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        {statCards.map(({ label, remaining, total, Icon, accent }) => (
-          <div
-            key={label}
-            className="rounded-2xl border border-line bg-surface p-5 shadow-sm transition hover:shadow-md"
-          >
-            <div className="flex items-start justify-between">
-              <span className="text-xs sm:text-sm font-medium text-ink-soft">{label}</span>
-              <div className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${accent}`}>
-                <Icon className="h-5 w-5" />
+            {/* Unseen updates */}
+            {unseenCount > 0 && !noticeDismissed && (
+              <div className="mx-4 mb-3 flex items-center justify-between gap-3 rounded-2xl bg-amber-50 border border-amber-200 px-4 py-2.5 text-sm text-amber-700">
+                <span>{unseenCount} update{unseenCount > 1 ? 's' : ''} on your applications.</span>
+                <button onClick={() => setNoticeDismissed(true)} className="text-xs font-semibold underline">Dismiss</button>
+              </div>
+            )}
+
+            {/* Filter Tabs */}
+            <div className="mx-4 mb-3">
+              <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+                {(['all', 'pending', 'approved', 'rejected', 'cancelled'] as const).map((tab) => (
+                  <button key={tab}
+                    onClick={() => { setFilterTab(tab); setCurrentPage(1) }}
+                    className={`shrink-0 rounded-full px-4 py-1.5 text-xs font-semibold transition ${
+                      filterTab === tab
+                        ? 'bg-[#1677FF] text-white shadow-sm'
+                        : 'bg-white text-gray-500 border border-gray-200'
+                    }`}>
+                    {tab === 'all' ? 'All' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                  </button>
+                ))}
               </div>
             </div>
-            <div className="mt-3.5 flex items-baseline">
-              <span className="text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-                {remaining}
-              </span>
-              <span className="ml-1.5 text-sm font-normal text-ink-soft">days</span>
+
+            {/* Records list */}
+            <div className="mx-4 rounded-2xl bg-white shadow-sm overflow-hidden">
+              {paginatedApps.length === 0 ? (
+                <p className="py-12 text-center text-sm text-gray-400">No leave requests found.</p>
+              ) : (
+                <div className="divide-y divide-gray-100">
+                  {paginatedApps.map((app) => {
+                    const isUpcomingApproved = app.status === 'approved' && app.cancellation_status === 'none' && app.start_date > today
+                    return (
+                      <div key={app.id} className="p-4 space-y-2.5">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="text-sm font-semibold text-gray-900">
+                              {LEAVE_TYPE_LABELS[app.leave_type] || app.leave_type}
+                              {app.is_half_day && app.half_day_period && (
+                                <span className="ml-1.5 text-xs font-normal text-gray-400">({app.half_day_period.toUpperCase()})</span>
+                              )}
+                            </p>
+                            <p className="text-xs text-gray-400 mt-0.5">{formatLeaveDates(app.start_date, app.end_date, app.remarks)}</p>
+                          </div>
+                          <StatusBadge status={app.status} cancellationStatus={app.cancellation_status} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 rounded-xl bg-gray-50 px-3 py-2 text-xs">
+                          <div>
+                            <span className="text-gray-400 block mb-0.5">Duration</span>
+                            <span className="font-semibold text-gray-800">{app.total_days} {app.total_days === 1 ? 'day' : 'days'}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-400 block mb-0.5">Submitted</span>
+                            <span className="font-semibold text-gray-800">{new Date(app.created_at).toLocaleDateString('en-MY')}</span>
+                          </div>
+                        </div>
+                        {app.remarks && !app.remarks.includes('Historical import') && (
+                          <p className="text-xs text-gray-500"><span className="text-gray-400">Note: </span>{app.remarks}</p>
+                        )}
+                        {app.status === 'approved' && app.cancellation_status === 'requested' && (
+                          <p className="text-xs text-amber-600 font-medium">Cancellation requested · waiting for manager</p>
+                        )}
+                        {app.status === 'rejected' && app.remarks && (
+                          <p className="text-xs text-red-500 font-medium">Reason: {app.remarks}</p>
+                        )}
+                        {/* MC attachment */}
+                        {app.mc_attachment_path && (
+                          <button onClick={() => handleViewMc(app.mc_attachment_path as string)}
+                            className="text-xs font-medium text-[#1677FF] underline decoration-dotted">View MC</button>
+                        )}
+                        {!app.mc_attachment_path && app.leave_type === 'medical' && (app.status === 'pending' || app.status === 'approved') && (
+                          <button onClick={() => handleAttachMcClick(app.id)} disabled={attachingId === app.id}
+                            className="text-xs font-medium text-gray-400 underline decoration-dotted disabled:opacity-50">
+                            {attachingId === app.id ? 'Uploading...' : 'Attach MC'}
+                          </button>
+                        )}
+                        {/* Action buttons */}
+                        <div className="flex gap-2 pt-0.5">
+                          {app.status === 'pending' && (
+                            <button onClick={() => handleCancel(app.id)}
+                              className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-500 hover:bg-red-100">
+                              Cancel Request
+                            </button>
+                          )}
+                          {isUpcomingApproved && (
+                            <button onClick={() => handleRequestCancellation(app.id)}
+                              className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-600 hover:bg-amber-100">
+                              Request Cancellation
+                            </button>
+                          )}
+                          {app.status === 'approved' && app.cancellation_status === 'requested' && (
+                            <button onClick={() => handleWithdrawCancellation(app.id)}
+                              className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-semibold text-gray-500 hover:bg-gray-100">
+                              Withdraw
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+              {/* Pagination */}
+              <div className="flex items-center justify-between border-t border-gray-100 px-4 py-3">
+                <span className="text-xs text-gray-400">Showing {Math.min(filteredApps.length, paginatedApps.length)} of {filteredApps.length}</span>
+                <div className="flex gap-1.5">
+                  <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={safeCurrentPage <= 1}
+                    className="flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 text-gray-400 disabled:opacity-40">
+                    <ChevronLeftIcon className="h-4 w-4" />
+                  </button>
+                  <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={safeCurrentPage >= totalPages}
+                    className="flex h-7 w-7 items-center justify-center rounded-lg border border-gray-200 text-gray-400 disabled:opacity-40">
+                    <ChevronRightIcon className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
             </div>
-            <p className="mt-1 text-xs text-ink-soft">
-              of {total} days this year
-            </p>
           </div>
-        ))}
+        )}
+
+        {/* ══ MOBILE ME TAB ══ */}
+        {mobileTab === 'me' && (
+          <div className="flex-1 overflow-y-auto pb-24">
+            <div className="px-4 pt-4 pb-2">
+              <h2 className="text-lg font-bold text-gray-900">我的</h2>
+            </div>
+            {/* Profile card */}
+            <div className="mx-4 mt-2">
+              <div className="flex items-center gap-4 rounded-2xl bg-white p-4 shadow-sm">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#1677FF]/15 text-xl font-bold text-[#1677FF]">{initials}</div>
+                <div>
+                  <p className="text-base font-bold text-gray-900">{employee.full_name}</p>
+                  <p className="text-sm text-gray-400 capitalize">{employee.employment_type || 'Employee'}
+                    {employee.employee_no ? ` · #${employee.employee_no}` : ''}
+                  </p>
+                  <p className="text-xs text-gray-400">{years.toFixed(1)} years of service</p>
+                </div>
+              </div>
+            </div>
+            {/* Menu items */}
+            <div className="mx-4 mt-4 rounded-2xl bg-white overflow-hidden shadow-sm">
+              {[
+                { label: 'Change Password', icon: <KeyIcon className="h-5 w-5" />, color: '#1677FF', href: '/change-password' },
+                { label: 'Telegram Notifications', icon: <BellIcon className="h-5 w-5" />, color: '#722ED1', href: '/notifications' },
+              ].map(({ label, icon, color, href }, idx, arr) => (
+                <button key={label} onClick={() => router.push(href)}
+                  className={`flex w-full items-center gap-3.5 px-4 py-3.5 text-sm text-gray-800 hover:bg-gray-50 ${
+                    idx < arr.length - 1 ? 'border-b border-gray-100' : ''
+                  }`}>
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: `${color}18`, color }}>{icon}</span>
+                  <span className="flex-1 text-left font-medium">{label}</span>
+                  <ChevronRightIcon className="h-4 w-4 text-gray-300" />
+                </button>
+              ))}
+            </div>
+            {/* Logout */}
+            <div className="mx-4 mt-4">
+              <button onClick={handleLogout}
+                className="flex w-full items-center justify-center gap-2.5 rounded-2xl bg-white py-4 text-sm font-semibold text-red-500 shadow-sm hover:bg-red-50">
+                <LogoutIcon className="h-5 w-5" />
+                Log Out
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Mobile Bottom Tab Bar ── */}
+        <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-100 bg-white"
+          style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+          <div className="flex">
+            {([
+              { key: 'home', label: '工作台', icon: <HomeTabIcon className="h-6 w-6" /> },
+              { key: 'records', label: '记录', icon: <RecordsTabIcon className="h-6 w-6" /> },
+              { key: 'me', label: '我的', icon: <ProfileTabIcon className="h-6 w-6" /> },
+            ] as const).map(({ key, label, icon }) => (
+              <button key={key} onClick={() => setMobileTab(key)}
+                className={`flex flex-1 flex-col items-center gap-1 py-2.5 transition-colors ${
+                  mobileTab === key ? 'text-[#1677FF]' : 'text-gray-400'
+                }`}>
+                {icon}
+                <span className={`text-[10px] font-semibold ${
+                  mobileTab === key ? 'text-[#1677FF]' : 'text-gray-400'
+                }`}>{label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {/* ── Upcoming Public Holidays ── */}
-      {upcomingHolidays.length > 0 && (
-        <div className="rounded-2xl border border-line bg-surface shadow-sm overflow-hidden">
-          <div className="border-b border-line px-5 py-4">
-            <h2 className="text-base font-semibold text-ink">Upcoming Public Holidays</h2>
-            <p className="mt-0.5 text-xs text-ink-soft">Next {upcomingHolidays.length} upcoming holiday{upcomingHolidays.length > 1 ? 's' : ''}</p>
+      {/* ════════════════════════════════════════════
+          DESKTOP LAYOUT  (shown on screens >= md)
+          ════════════════════════════════════════════ */}
+      <div className="hidden md:block">
+        <div className="mx-auto max-w-5xl px-6 py-8 space-y-7 pb-16">
+
+          {/* ── "You have updates" banner ── */}
+          {unseenCount > 0 && !noticeDismissed && (
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-gold/40 bg-gold-soft px-4 py-3 text-sm text-gold">
+              <span>You have {unseenCount} update{unseenCount > 1 ? 's' : ''} on your leave application{unseenCount > 1 ? 's' : ''} below.</span>
+              <button onClick={() => setNoticeDismissed(true)} className="shrink-0 text-xs font-medium underline decoration-dotted hover:no-underline">Dismiss</button>
+            </div>
+          )}
+
+          {/* ── Top Bar ── */}
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <img src="/logo.png" alt="Puro" width={44} height={44} className="h-11 w-11 shrink-0 rounded-xl" />
+              <div>
+                <h1 className="font-display text-2xl font-bold tracking-tight text-ink">Hi, {employee.full_name.split(' ')[0]} 👋</h1>
+                <p className="mt-0.5 text-sm text-ink-soft">
+                  {employee.employee_no ? `#${employee.employee_no} · ` : ''}{years.toFixed(1)} years of service
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <button onClick={() => { setModalOpen(true); setFormError('') }}
+                className="inline-flex items-center gap-2 rounded-xl bg-pine px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-pine-deep focus:outline-none focus:ring-2 focus:ring-pine/30">
+                <PlusIcon className="h-4 w-4" /> Request Leave
+              </button>
+              <div className="relative" ref={userMenuRef}>
+                <button type="button" onClick={(e) => { e.stopPropagation(); setUserMenuOpen(v => !v) }}
+                  className="flex items-center gap-2.5 rounded-xl border border-line bg-surface px-3 py-2 shadow-sm transition hover:bg-paper focus:outline-none">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-pine/20 text-xs font-bold text-pine">{initials}</div>
+                  <span className="text-sm font-medium text-ink">{employee.full_name}</span>
+                  <ChevronDownIcon className="h-4 w-4 text-ink-faint ml-0.5" />
+                </button>
+                {userMenuOpen && (
+                  <div className="absolute right-0 z-30 mt-2 w-64 rounded-2xl border border-line bg-surface p-2 shadow-xl" onClick={e => e.stopPropagation()}>
+                    <div className="mb-1 flex flex-col gap-0.5">
+                      <button onClick={() => { setUserMenuOpen(false); router.push('/change-password') }}
+                        className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-ink-soft transition-colors hover:bg-paper hover:text-ink">
+                        <KeyIcon className="h-4 w-4 text-ink-faint" /> Change Password
+                      </button>
+                      <button onClick={() => { setUserMenuOpen(false); router.push('/notifications') }}
+                        className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-ink-soft transition-colors hover:bg-paper hover:text-ink">
+                        <BellIcon className="h-4 w-4 text-ink-faint" /> Telegram Notifications
+                      </button>
+                      <button onClick={handleLogout}
+                        className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-ink-soft transition-colors hover:bg-rust-soft hover:text-rust">
+                        <LogoutIcon className="h-4 w-4 text-ink-faint" /> Log Out
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-3 rounded-xl border border-line bg-paper px-3 py-2.5 mt-1">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-pine/20 text-xs font-bold text-pine">{initials}</div>
+                      <div className="min-w-0 text-left">
+                        <p className="truncate text-sm font-medium text-ink">{employee.full_name}</p>
+                        <p className="text-xs text-ink-faint capitalize">{employee.employment_type || 'Employee'}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
-          <div className="divide-y divide-line">
-            {upcomingHolidays.map((h) => {
-              const d = new Date(h.holiday_date + 'T00:00:00')
-              const isToday = h.holiday_date === today
-              return (
-                <div key={h.holiday_date} className="flex items-center gap-3.5 px-5 py-3.5 transition hover:bg-paper/40">
-                  <div className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl border border-line bg-paper">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-ink-faint">
-                      {d.toLocaleDateString('en-MY', { month: 'short' })}
-                    </span>
-                    <span className="text-sm font-bold text-ink">{d.getDate()}</span>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-ink">{h.name}</p>
-                    <p className="mt-0.5 text-xs text-ink-faint">
-                      {d.toLocaleDateString('en-MY', { weekday: 'long' })}
-                      {isToday && <span className="ml-2 font-semibold text-gold">· Today</span>}
-                    </p>
-                  </div>
+
+          {loadError && (
+            <div className="rounded-xl border border-rust/30 bg-rust-soft px-4 py-3 text-sm text-rust">{loadError}</div>
+          )}
+
+          {/* ── 4 Stat Cards ── */}
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            {statCards.map(({ label, remaining, total, Icon, accent }) => (
+              <div key={label} className="rounded-2xl border border-line bg-surface p-5 shadow-sm transition hover:shadow-md">
+                <div className="flex items-start justify-between">
+                  <span className="text-xs sm:text-sm font-medium text-ink-soft">{label}</span>
+                  <div className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${accent}`}><Icon className="h-5 w-5" /></div>
                 </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ── Your leave requests (Design & Layout from reference) ── */}
-      <div className="rounded-2xl border border-line bg-surface shadow-sm">
-        {/* Card Header with Title and Segmented Status Tabs */}
-        <div className="flex flex-col gap-4 border-b border-line p-5 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-ink">Your leave requests</h2>
-            <p className="mt-0.5 text-xs sm:text-sm text-ink-soft">
-              View the status of your time-off requests.
-            </p>
+                <div className="mt-3.5 flex items-baseline">
+                  <span className="text-3xl font-bold tracking-tight text-ink sm:text-4xl">{remaining}</span>
+                  <span className="ml-1.5 text-sm font-normal text-ink-soft">days</span>
+                </div>
+                <p className="mt-1 text-xs text-ink-soft">of {total} days this year</p>
+              </div>
+            ))}
           </div>
 
-          {/* Filter Tabs including Cancelled matching manager architecture */}
-          <div className="inline-flex flex-wrap self-start rounded-xl border border-line bg-paper p-1 gap-0.5">
-            <button
-              type="button"
-              onClick={() => { setFilterTab('all'); setCurrentPage(1) }}
-              className={`rounded-lg px-3 py-1.5 text-xs sm:text-sm font-medium transition ${filterTab === 'all'
-                ? 'bg-surface text-ink font-semibold shadow-sm'
-                : 'text-ink-soft hover:text-ink'
-                }`}
-            >
-              All requests
-            </button>
-            <button
-              type="button"
-              onClick={() => { setFilterTab('pending'); setCurrentPage(1) }}
-              className={`rounded-lg px-3 py-1.5 text-xs sm:text-sm font-medium transition ${filterTab === 'pending'
-                ? 'bg-surface text-ink font-semibold shadow-sm'
-                : 'text-ink-soft hover:text-ink'
-                }`}
-            >
-              Pending
-            </button>
-            <button
-              type="button"
-              onClick={() => { setFilterTab('approved'); setCurrentPage(1) }}
-              className={`rounded-lg px-3 py-1.5 text-xs sm:text-sm font-medium transition ${filterTab === 'approved'
-                ? 'bg-surface text-ink font-semibold shadow-sm'
-                : 'text-ink-soft hover:text-ink'
-                }`}
-            >
-              Approved
-            </button>
-            <button
-              type="button"
-              onClick={() => { setFilterTab('rejected'); setCurrentPage(1) }}
-              className={`rounded-lg px-3 py-1.5 text-xs sm:text-sm font-medium transition ${filterTab === 'rejected'
-                ? 'bg-surface text-ink font-semibold shadow-sm'
-                : 'text-ink-soft hover:text-ink'
-                }`}
-            >
-              Rejected
-            </button>
-            <button
-              type="button"
-              onClick={() => { setFilterTab('cancelled'); setCurrentPage(1) }}
-              className={`rounded-lg px-3 py-1.5 text-xs sm:text-sm font-medium transition ${filterTab === 'cancelled'
-                ? 'bg-surface text-ink font-semibold shadow-sm'
-                : 'text-ink-soft hover:text-ink'
-                }`}
-            >
-              Cancelled
-            </button>
-          </div>
-        </div>
+          {/* ── Upcoming Public Holidays (desktop) ── */}
+          {upcomingHolidays.length > 0 && (
+            <div className="rounded-2xl border border-line bg-surface shadow-sm overflow-hidden">
+              <div className="border-b border-line px-5 py-4">
+                <h2 className="text-base font-semibold text-ink">Upcoming Public Holidays</h2>
+                <p className="mt-0.5 text-xs text-ink-soft">Next {upcomingHolidays.length} upcoming holiday{upcomingHolidays.length > 1 ? 's' : ''}</p>
+              </div>
+              <div className="divide-y divide-line">
+                {upcomingHolidays.map((h) => {
+                  const d = new Date(h.holiday_date + 'T00:00:00')
+                  const isToday = h.holiday_date === today
+                  return (
+                    <div key={h.holiday_date} className="flex items-center gap-3.5 px-5 py-3.5 transition hover:bg-paper/40">
+                      <div className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl border border-line bg-paper">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-ink-faint">
+                          {d.toLocaleDateString('en-MY', { month: 'short' })}
+                        </span>
+                        <span className="text-sm font-bold text-ink">{d.getDate()}</span>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-ink">{h.name}</p>
+                        <p className="mt-0.5 text-xs text-ink-faint">
+                          {d.toLocaleDateString('en-MY', { weekday: 'long' })}
+                          {isToday && <span className="ml-2 font-semibold text-gold">· Today</span>}
+                        </p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
-        {/* Table View (Desktop & Tablet) */}
-        <div className="hidden md:block overflow-x-auto">
+          {/* ── Your leave requests (desktop) ── */}
+          <div className="rounded-2xl border border-line bg-surface shadow-sm">
+            {/* Card Header with Title and Segmented Status Tabs */}
+            <div className="flex flex-col gap-4 border-b border-line p-5 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-ink">Your leave requests</h2>
+                <p className="mt-0.5 text-xs sm:text-sm text-ink-soft">View the status of your time-off requests.</p>
+              </div>
+              <div className="inline-flex flex-wrap self-start rounded-xl border border-line bg-paper p-1 gap-0.5">
+                {(['all', 'pending', 'approved', 'rejected', 'cancelled'] as const).map((tab) => (
+                  <button key={tab} type="button" onClick={() => { setFilterTab(tab); setCurrentPage(1) }}
+                    className={`rounded-lg px-3 py-1.5 text-xs sm:text-sm font-medium transition ${
+                      filterTab === tab ? 'bg-surface text-ink font-semibold shadow-sm' : 'text-ink-soft hover:text-ink'
+                    }`}>
+                    {tab === 'all' ? 'All requests' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Table View */}
+            <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-line text-xs font-semibold uppercase tracking-wider text-ink-soft">
@@ -1029,177 +1392,38 @@ export default function DashboardPage() {
                 })
               )}
             </tbody>
-          </table>
-        </div>
+            </table>
+            </div>
 
-        {/* Mobile Card List View (Dedicated mobile experience) */}
-        <div className="md:hidden divide-y divide-line">
-          {paginatedApps.length === 0 ? (
-            <p className="py-10 text-center text-sm text-ink-faint">
-              No leave requests found in this category.
-            </p>
-          ) : (
-            paginatedApps.map((app) => {
-              const itemInitials = getInitials(employee.full_name)
-              const isUpcomingApproved =
-                app.status === 'approved' &&
-                app.cancellation_status === 'none' &&
-                app.start_date > today
 
-              return (
-                <div key={app.id} className="p-4 space-y-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-pine/20 font-bold text-xs text-pine">
-                        {itemInitials}
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-ink">{employee.full_name}</p>
-                        <p className="text-xs text-ink-faint">{LEAVE_TYPE_LABELS[app.leave_type] || app.leave_type}</p>
-                      </div>
-                    </div>
-                    <StatusBadge
-                      status={app.status}
-                      cancellationStatus={app.cancellation_status}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 rounded-xl bg-paper p-3 text-xs">
-                    <div>
-                      <span className="text-ink-faint block mb-0.5">Dates</span>
-                      <span className="font-medium text-ink">
-                        {formatLeaveDates(app.start_date, app.end_date, app.remarks)}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-ink-faint block mb-0.5">Duration</span>
-                      <span className="font-medium text-ink">
-                        {app.total_days} {app.total_days === 1 ? 'day' : 'days'}
-                        {app.is_half_day && app.half_day_period && ` (${app.half_day_period.toUpperCase()})`}
-                      </span>
-                    </div>
-                  </div>
-
-                  {app.remarks && (
-                    <p className="text-xs text-ink-soft">
-                      <span className="text-ink-faint">Note:</span> {app.remarks}
-                    </p>
-                  )}
-
-                  {app.mc_attachment_path && (
-                    <button
-                      onClick={() => handleViewMc(app.mc_attachment_path as string)}
-                      className="text-xs font-medium text-pine underline decoration-dotted"
-                    >
-                      View MC
-                    </button>
-                  )}
-                  {!app.mc_attachment_path && app.leave_type === 'medical' && (app.status === 'pending' || app.status === 'approved') && (
-                    <button
-                      onClick={() => handleAttachMcClick(app.id)}
-                      disabled={attachingId === app.id}
-                      className="block text-xs font-medium text-ink-soft underline decoration-dotted disabled:opacity-50"
-                    >
-                      {attachingId === app.id ? 'Uploading...' : 'Attach MC'}
-                    </button>
-                  )}
-
-                  {app.status === 'approved' && app.cancellation_status === 'requested' && (
-                    <p className="text-xs text-amber-700 font-medium">
-                      Cancellation requested · waiting for manager confirmation
-                    </p>
-                  )}
-                  {app.status === 'approved' && app.cancellation_status === 'none' && app.cancellation_decision_reason && (
-                    <p className="text-xs text-rust font-medium">
-                      Cancellation declined: {app.cancellation_decision_reason}
-                    </p>
-                  )}
-                  {app.status === 'cancelled' && app.cancellation_decision_reason && (
-                    <p className="text-xs text-ink-soft">
-                      Cancelled reason: {app.cancellation_decision_reason}
-                    </p>
-                  )}
-                  {app.status === 'rejected' && app.remarks && (
-                    <p className="text-xs text-rust font-medium">
-                      Reason: {app.remarks}
-                    </p>
-                  )}
-
-                  {/* Mobile Action Buttons */}
-                  <div className="flex items-center justify-end gap-2 pt-1">
-                    {app.status === 'pending' && (
-                      <button
-                        onClick={() => handleCancel(app.id)}
-                        className="rounded-lg border border-rust/30 bg-rust-soft px-3 py-1.5 text-xs font-medium text-rust transition hover:bg-rust/20"
-                      >
-                        Cancel Request
-                      </button>
-                    )}
-
-                    {isUpcomingApproved && (
-                      <button
-                        onClick={() => handleRequestCancellation(app.id)}
-                        className="rounded-lg border border-gold/40 bg-gold-soft px-3 py-1.5 text-xs font-medium text-gold transition hover:bg-gold/30"
-                      >
-                        Request Cancellation
-                      </button>
-                    )}
-
-                    {app.status === 'approved' && app.cancellation_status === 'requested' && (
-                      <button
-                        onClick={() => handleWithdrawCancellation(app.id)}
-                        className="rounded-lg border border-line bg-paper px-3 py-1.5 text-xs font-medium text-ink-soft transition hover:bg-line/40"
-                      >
-                        Withdraw Request
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )
-            })
-          )}
-        </div>
-
-        {/* Footer Pagination (Design copied from reference) */}
-        <div className="flex items-center justify-between border-t border-line px-5 py-3.5">
-          <span className="text-xs sm:text-sm text-ink-soft">
-            {filteredApps.length === 0 ? (
-              'Showing 0 of 0 requests'
-            ) : (
-              `Showing ${Math.min(filteredApps.length, paginatedApps.length)} of ${filteredApps.length} requests`
-            )}
-          </span>
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={safeCurrentPage <= 1}
-              aria-label="Previous page"
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-surface text-ink-soft transition hover:bg-paper hover:text-ink disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-surface disabled:hover:text-ink-soft"
-            >
-              <ChevronLeftIcon className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              disabled={safeCurrentPage >= totalPages}
-              aria-label="Next page"
-              className="flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-surface text-ink-soft transition hover:bg-paper hover:text-ink disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-surface disabled:hover:text-ink-soft"
-            >
-              <ChevronRightIcon className="h-4 w-4" />
-            </button>
+            {/* Footer Pagination */}
+            <div className="flex items-center justify-between border-t border-line px-5 py-3.5">
+              <span className="text-xs sm:text-sm text-ink-soft">
+                {filteredApps.length === 0 ? 'Showing 0 of 0 requests' : `Showing ${Math.min(filteredApps.length, paginatedApps.length)} of ${filteredApps.length} requests`}
+              </span>
+              <div className="flex items-center gap-1.5">
+                <button type="button" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={safeCurrentPage <= 1} aria-label="Previous page"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-surface text-ink-soft transition hover:bg-paper hover:text-ink disabled:cursor-not-allowed disabled:opacity-40">
+                  <ChevronLeftIcon className="h-4 w-4" />
+                </button>
+                <button type="button" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={safeCurrentPage >= totalPages} aria-label="Next page"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-surface text-ink-soft transition hover:bg-paper hover:text-ink disabled:cursor-not-allowed disabled:opacity-40">
+                  <ChevronRightIcon className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+        </div>{/* end desktop space-y-7 */}
+      </div>{/* end desktop md:block */}
 
-      {/* ── Request Leave Modal ── */}
+      {/* ── Request Leave Modal (shared for mobile & desktop) ── */}
       {modalOpen && (
         <div
-          className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 grid place-items-end sm:place-items-center bg-black/50 p-0 sm:p-4 backdrop-blur-sm"
           onClick={() => setModalOpen(false)}
         >
           <div
-            className="w-full max-w-md rounded-2xl border border-line bg-surface p-6 shadow-2xl"
+            className="w-full max-w-md rounded-t-3xl sm:rounded-2xl border border-line bg-surface p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-5 flex items-start justify-between">
@@ -1362,9 +1586,9 @@ export default function DashboardPage() {
 
       {/* ── Toast ── */}
       {toast && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 rounded-xl border border-line bg-surface px-4 py-3 shadow-xl">
-          <span className="h-2 w-2 rounded-full bg-pine" />
-          <p className="text-sm font-medium text-ink">{toast}</p>
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 rounded-2xl border border-gray-100 bg-white px-5 py-3 shadow-2xl md:bottom-6 md:left-auto md:right-6 md:translate-x-0">
+          <span className="h-2 w-2 rounded-full bg-[#1677FF]" />
+          <p className="text-sm font-semibold text-gray-900 whitespace-nowrap">{toast}</p>
         </div>
       )}
     </div>
