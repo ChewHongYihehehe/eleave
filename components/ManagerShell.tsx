@@ -1,11 +1,9 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
-
-// ─── Inline SVG icon helper ───────────────────────────────────────────────────
 
 function SvgIcon({ d, size = 18 }: { d: string; size?: number }) {
   return (
@@ -18,7 +16,7 @@ function SvgIcon({ d, size = 18 }: { d: string; size?: number }) {
 const IC = {
   approve: 'M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
   calendar: 'M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5',
-  people: 'M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z',
+  people: 'M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.75 3.75 0 11-6.75 0 3.75 3.75 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z',
   reports: 'M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z',
   holidays: 'M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z',
   hours: 'M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z',
@@ -43,7 +41,20 @@ const MANAGE = [
   { href: '/audit-log', label: 'Audit Log', icon: 'audit' as const },
 ]
 
-// ─── Main component ───────────────────────────────────────────────────────────
+const BOTTOM_TABS: { href: string; label: string; icon: keyof typeof IC; showBadge?: boolean }[] = [
+  { href: '/approve', label: 'Approvals', icon: 'approve', showBadge: true },
+  { href: '/calendar', label: 'Calendar', icon: 'calendar' },
+  { href: '/manage', label: 'Employees', icon: 'people' },
+  { href: '/reports', label: 'Reports', icon: 'reports' },
+]
+
+const MORE_PAGES: { href: string; label: string; icon: keyof typeof IC }[] = [
+  { href: '/work-hours', label: 'Work Hours', icon: 'hours' },
+  { href: '/holidays', label: 'Holidays', icon: 'holidays' },
+  { href: '/audit-log', label: 'Audit Log', icon: 'audit' },
+  { href: '/change-password', label: 'Change Password', icon: 'key' },
+  { href: '/notifications', label: 'Telegram Notifications', icon: 'bell' },
+]
 
 export default function ManagerShell({
   children,
@@ -55,9 +66,8 @@ export default function ManagerShell({
   const pathname = usePathname()
   const router = useRouter()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
   const [user, setUser] = useState<{ name: string; initials: string } | null>(null)
-  // 需要经理处理的件数(待审批 + 等待确认的取消申请),放在这里统一抓,
-  // 这样不管经理现在在哪一页,侧边栏的红点数字都是准的,不是只有在 /approve 才看得到。
   const [attentionCount, setAttentionCount] = useState<number | undefined>(pendingCount)
 
   useEffect(() => {
@@ -86,24 +96,25 @@ export default function ManagerShell({
     return () => { cancelled = true }
   }, [])
 
+  useEffect(() => { setMoreOpen(false) }, [pathname])
+
   async function handleLogout() {
     await supabase.auth.signOut()
     router.push('/')
   }
 
-  // ── Sidebar content (reused for desktop + mobile) ──
   const SidebarContent = () => (
     <div
       style={{ width: 256, flexShrink: 0 }}
       className="flex h-full flex-col border-r border-gray-200 bg-white px-4 py-5"
     >
-      {/* Brand */}
       <div className="mb-8 flex items-center gap-2.5 px-2">
-        <img src="/logo.png" alt="Puro" width={32} height={32} className="h-8 w-8 rounded-lg" />
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-pine text-white">
+          <SvgIcon d={IC.leaf} size={16} />
+        </div>
         <span className="text-base font-bold tracking-tight text-gray-900">eLeave</span>
       </div>
 
-      {/* Workspace section */}
       <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
         Workspace
       </p>
@@ -117,9 +128,7 @@ export default function ManagerShell({
               onClick={() => setMobileOpen(false)}
               className={[
                 'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors',
-                active
-                  ? 'bg-pine/10 font-medium text-pine'
-                  : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900',
+                active ? 'bg-pine/10 font-medium text-pine' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900',
               ].join(' ')}
             >
               <SvgIcon d={IC[icon]} size={17} />
@@ -134,7 +143,6 @@ export default function ManagerShell({
         })}
       </nav>
 
-      {/* Manage section */}
       <p className="mb-1.5 mt-8 px-3 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
         Manage
       </p>
@@ -148,9 +156,7 @@ export default function ManagerShell({
               onClick={() => setMobileOpen(false)}
               className={[
                 'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors',
-                active
-                  ? 'bg-pine/10 font-medium text-pine'
-                  : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900',
+                active ? 'bg-pine/10 font-medium text-pine' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900',
               ].join(' ')}
             >
               <SvgIcon d={IC[icon]} size={17} />
@@ -160,37 +166,21 @@ export default function ManagerShell({
         })}
       </nav>
 
-      {/* Bottom: account + user */}
       <div className="mt-auto">
         <div className="mb-1 flex flex-col gap-0.5">
-          <button
-            onClick={() => router.push('/change-password')}
-            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
-          >
-            <SvgIcon d={IC.key} size={17} />
-            Change Password
+          <button onClick={() => router.push('/change-password')} className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900">
+            <SvgIcon d={IC.key} size={17} />Change Password
           </button>
-          <button
-            onClick={() => router.push('/notifications')}
-            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
-          >
-            <SvgIcon d={IC.bell} size={17} />
-            Telegram Notifications
+          <button onClick={() => router.push('/notifications')} className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900">
+            <SvgIcon d={IC.bell} size={17} />Telegram Notifications
           </button>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-gray-500 transition-colors hover:bg-red-50 hover:text-red-600"
-          >
-            <SvgIcon d={IC.logout} size={17} />
-            Log Out
+          <button onClick={handleLogout} className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-gray-500 transition-colors hover:bg-red-50 hover:text-red-600">
+            <SvgIcon d={IC.logout} size={17} />Log Out
           </button>
         </div>
-
         {user && (
           <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 mt-1">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-pine/20 text-xs font-bold text-pine">
-              {user.initials}
-            </div>
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-pine/20 text-xs font-bold text-pine">{user.initials}</div>
             <div className="min-w-0">
               <p className="truncate text-sm font-medium text-gray-900">{user.name}</p>
               <p className="text-xs text-gray-400">Manager</p>
@@ -203,67 +193,108 @@ export default function ManagerShell({
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      {/* Desktop sidebar — always visible */}
       <div className="hidden lg:flex lg:flex-shrink-0 print:hidden">
-        <div style={{ width: 256 }} className="flex flex-col">
-          <div className="flex h-full flex-col">
-            <SidebarContent />
-          </div>
-        </div>
+        <div style={{ width: 256 }} className="flex flex-col"><SidebarContent /></div>
       </div>
 
-      {/* Mobile sidebar overlay */}
       {mobileOpen && (
         <div className="fixed inset-0 z-40 flex lg:hidden">
           <div className="relative flex flex-col" style={{ width: 256 }}>
             <div className="absolute right-0 top-0 -mr-12 pt-2">
-              <button
-                onClick={() => setMobileOpen(false)}
-                className="ml-1 flex h-10 w-10 items-center justify-center rounded-full text-white"
-              >
+              <button onClick={() => setMobileOpen(false)} className="ml-1 flex h-10 w-10 items-center justify-center rounded-full text-white">
                 <SvgIcon d={IC.x} />
               </button>
             </div>
             <SidebarContent />
           </div>
-          <div
-            className="w-14 flex-shrink-0 bg-black/40"
-            onClick={() => setMobileOpen(false)}
-          />
+          <div className="w-14 flex-shrink-0 bg-black/40" onClick={() => setMobileOpen(false)} />
         </div>
       )}
 
-      {/* Main content */}
-      <div className="flex min-w-0 flex-1 flex-col">
-        {/* Top bar */}
-        <div className="sticky top-0 z-10 flex h-14 flex-shrink-0 items-center border-b border-gray-200 bg-white px-4 shadow-sm print:hidden">
-          {/* Mobile hamburger */}
-          <button
-            onClick={() => setMobileOpen(true)}
-            className="mr-3 text-gray-500 lg:hidden"
-          >
-            <SvgIcon d={IC.menu} />
-          </button>
+      {moreOpen && (
+        <div className="fixed inset-0 z-50 flex items-end lg:hidden" onClick={() => setMoreOpen(false)}>
+          <div className="w-full rounded-t-2xl border-t border-gray-200 bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-center pt-3 pb-2">
+              <div className="h-1 w-10 rounded-full bg-gray-300" />
+            </div>
+            <div className="px-4 pb-4">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-gray-400">More</p>
+              <nav className="flex flex-col gap-1">
+                {MORE_PAGES.map(({ href, label, icon }) => (
+                  <Link key={href} href={href} className={['flex items-center gap-3 rounded-xl px-3 py-3 text-sm transition-colors', pathname === href ? 'bg-pine/10 font-medium text-pine' : 'text-gray-700 hover:bg-gray-100'].join(' ')}>
+                    <div className={['flex h-9 w-9 items-center justify-center rounded-xl', pathname === href ? 'bg-pine/15 text-pine' : 'bg-gray-100 text-gray-500'].join(' ')}>
+                      <SvgIcon d={IC[icon]} size={18} />
+                    </div>
+                    {label}
+                  </Link>
+                ))}
+              </nav>
+              <div className="mt-3 border-t border-gray-100 pt-3">
+                <button onClick={handleLogout} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm text-red-600 transition-colors hover:bg-red-50">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-red-50 text-red-500"><SvgIcon d={IC.logout} size={18} /></div>
+                  Log Out
+                </button>
+              </div>
+            </div>
+            <div style={{ height: 'env(safe-area-inset-bottom, 8px)' }} />
+          </div>
+        </div>
+      )}
 
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="sticky top-0 z-10 flex h-14 flex-shrink-0 items-center border-b border-gray-200 bg-white px-4 shadow-sm print:hidden">
+          <div className="flex items-center gap-2 lg:hidden">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-pine text-white"><SvgIcon d={IC.leaf} size={14} /></div>
+            <span className="text-sm font-bold tracking-tight text-gray-900">eLeave</span>
+          </div>
           <div className="flex flex-1 justify-end">
             {user && (
               <div className="flex items-center gap-2.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-pine/20 text-xs font-bold text-pine">
-                  {user.initials}
-                </div>
-                <span className="hidden text-sm font-medium text-gray-700 md:block">
-                  {user.name}
-                </span>
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-pine/20 text-xs font-bold text-pine">{user.initials}</div>
+                <span className="hidden text-sm font-medium text-gray-700 md:block">{user.name}</span>
               </div>
             )}
           </div>
         </div>
 
-        {/* Page content */}
-        <main className="flex-1 px-6 py-6 md:px-8 md:py-8">
+        <main className="flex-1 px-4 py-5 md:px-8 md:py-8 pb-24 lg:pb-8">
           {children}
         </main>
       </div>
+
+      <nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-gray-200 bg-white lg:hidden print:hidden" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+        <div className="flex">
+          {BOTTOM_TABS.map(({ href, label, icon, showBadge }) => {
+            const active = pathname === href
+            return (
+              <Link key={href} href={href} className={['relative flex flex-1 flex-col items-center justify-center gap-0.5 py-2.5 text-[10px] font-medium transition-colors', active ? 'text-pine' : 'text-gray-400'].join(' ')}>
+                {active && <span className="absolute top-0 left-1/2 -translate-x-1/2 h-0.5 w-8 rounded-full bg-pine" />}
+                <div className="relative">
+                  <svg width={22} height={22} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
+                    <path d={IC[icon]} />
+                  </svg>
+                  {showBadge && !!attentionCount && (
+                    <span className="absolute -right-2 -top-1.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-pine px-1 text-[9px] font-bold text-white leading-none">
+                      {attentionCount > 99 ? '99+' : attentionCount}
+                    </span>
+                  )}
+                </div>
+                <span>{label}</span>
+              </Link>
+            )
+          })}
+          <button onClick={() => setMoreOpen((v) => !v)} className={['flex flex-1 flex-col items-center justify-center gap-0.5 py-2.5 text-[10px] font-medium transition-colors', moreOpen ? 'text-pine' : 'text-gray-400'].join(' ')}>
+            <div className="relative">
+              {moreOpen ? (
+                <svg width={22} height={22} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round"><path d={IC.x} /></svg>
+              ) : (
+                <svg width={22} height={22} viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" /></svg>
+              )}
+            </div>
+            <span>More</span>
+          </button>
+        </div>
+      </nav>
     </div>
   )
 }
