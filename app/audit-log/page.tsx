@@ -170,28 +170,59 @@ export default function AuditLogPage() {
           ) : paginated.length === 0 ? (
             <p className="p-8 text-center text-sm text-ink-faint">No matching log entries.</p>
           ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-line bg-paper/60 text-left text-xs font-medium uppercase tracking-wide text-ink-faint">
-                  <th className="px-4 py-2.5">When</th>
-                  <th className="px-4 py-2.5">Who</th>
-                  <th className="px-4 py-2.5">Action</th>
-                  <th className="px-4 py-2.5">On behalf of</th>
-                  <th className="px-4 py-2.5">Details</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginated.map((log) => (
-                  <tr key={log.id} className="border-b border-line last:border-b-0">
-                    <td className="whitespace-nowrap px-4 py-3 text-xs text-ink-soft">{formatWhen(log.created_at)}</td>
-                    <td className="px-4 py-3 font-medium text-ink">{log.actor?.full_name || '—'}</td>
-                    <td className="px-4 py-3 text-ink-soft">{ACTION_LABELS[log.action] || log.action}</td>
-                    <td className="px-4 py-3 text-ink-soft">{log.target?.full_name || '—'}</td>
-                    <td className="max-w-xs px-4 py-3 text-xs text-ink-faint">{describeDetails(log.action, log.details)}</td>
+            <>
+              {/* ── Desktop table ── */}
+              <table className="hidden md:table w-full text-sm">
+                <thead>
+                  <tr className="border-b border-line bg-paper/60 text-left text-xs font-medium uppercase tracking-wide text-ink-faint">
+                    <th className="px-4 py-2.5">When</th>
+                    <th className="px-4 py-2.5">Who</th>
+                    <th className="px-4 py-2.5">Action</th>
+                    <th className="px-4 py-2.5">On behalf of</th>
+                    <th className="px-4 py-2.5">Details</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {paginated.map((log) => (
+                    <tr key={log.id} className="border-b border-line last:border-b-0">
+                      <td className="whitespace-nowrap px-4 py-3 text-xs text-ink-soft">{formatWhen(log.created_at)}</td>
+                      <td className="px-4 py-3 font-medium text-ink">{log.actor?.full_name || '—'}</td>
+                      <td className="px-4 py-3 text-ink-soft">{ACTION_LABELS[log.action] || log.action}</td>
+                      <td className="px-4 py-3 text-ink-soft">{log.target?.full_name || '—'}</td>
+                      <td className="max-w-xs px-4 py-3 text-xs text-ink-faint">{describeDetails(log.action, log.details)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {/* ── Mobile timeline cards ── */}
+              <div className="md:hidden divide-y divide-line">
+                {paginated.map((log) => {
+                  const detail = describeDetails(log.action, log.details)
+                  return (
+                    <div key={log.id} className="p-4 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-ink">{log.actor?.full_name || '—'}</p>
+                          <p className="text-xs text-ink-soft">{ACTION_LABELS[log.action] || log.action}</p>
+                          {log.target?.full_name && log.target.full_name !== log.actor?.full_name && (
+                            <p className="text-xs text-ink-faint">→ {log.target.full_name}</p>
+                          )}
+                        </div>
+                        <p className="shrink-0 text-[11px] text-ink-faint text-right">
+                          {new Date(log.created_at).toLocaleDateString('en-MY', { day: '2-digit', month: 'short' })}
+                          <br />
+                          {new Date(log.created_at).toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                      {detail && (
+                        <p className="rounded-lg bg-paper px-3 py-2 text-xs text-ink-faint">{detail}</p>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </>
           )}
         </div>
 
