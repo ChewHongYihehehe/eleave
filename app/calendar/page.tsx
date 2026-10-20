@@ -135,85 +135,164 @@ export default function TeamCalendarPage() {
   const monthLabel = currentDate.toLocaleString('en-US', { month: 'long', year: 'numeric' })
   const todayKey = toLocalDateStr(new Date())
 
+  // Build a sorted list of active days (with leave or holiday) for mobile list view
+  const activeDays = cells
+    .filter((d): d is number => d !== null)
+    .map((d) => {
+      const dateKey = toLocalDateStr(new Date(year, month, d))
+      return { day: d, dateKey, entries: entriesByDate[dateKey] || [], holiday: holidaysByDate[dateKey] }
+    })
+    .filter(({ entries, holiday }) => entries.length > 0 || !!holiday)
+
+  const WEEKDAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  const LEAVE_LABELS: Record<string, string> = {
+    annual: 'Annual Leave', medical: 'Medical Leave', maternity: 'Maternity Leave',
+    paternity: 'Paternity Leave', unpaid: 'Unpaid Leave',
+  }
+
   return (
     <ManagerShell>
-      <div className="space-y-6 pb-10"><h1 className="font-display text-2xl font-semibold text-ink">Team Leave Calendar</h1>
+      <div className="space-y-5 pb-10">
+        <h1 className="font-display text-2xl font-semibold text-ink">Team Leave Calendar</h1>
 
-      <div className="flex items-center justify-between panel py-3">
-        <button onClick={() => changeMonth(-1)} className="px-2 text-ink-soft hover:text-ink">←</button>
-        <span className="font-display text-base font-semibold text-ink">{monthLabel}</span>
-        <button onClick={() => changeMonth(1)} className="px-2 text-ink-soft hover:text-ink">→</button>
-      </div>
+        {/* Month navigation */}
+        <div className="flex items-center justify-between panel py-3">
+          <button onClick={() => changeMonth(-1)} className="px-3 py-1 text-ink-soft hover:text-ink text-lg">‹</button>
+          <span className="font-display text-base font-semibold text-ink">{monthLabel}</span>
+          <button onClick={() => changeMonth(1)} className="px-3 py-1 text-ink-soft hover:text-ink text-lg">›</button>
+        </div>
 
-      <div className="panel">
-        <div className="grid grid-cols-7 gap-1 text-center text-xs text-ink-faint">
-          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
-            <div key={d} className="py-1">{d}</div>
+        {/* ── Desktop: Grid calendar ─────────────────────────────── */}
+        <div className="hidden md:block panel">
+          <div className="grid grid-cols-7 gap-1 text-center text-xs text-ink-faint">
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
+              <div key={d} className="py-1">{d}</div>
+            ))}
+          </div>
+          <div className="grid grid-cols-7 gap-1">
+            {cells.map((day, idx) => {
+              if (day === null) return <div key={idx} className="min-h-[64px]" />
+              const dateKey = toLocalDateStr(new Date(year, month, day))
+              const isToday = dateKey === todayKey
+              const holidayName = holidaysByDate[dateKey]
+              const entries = entriesByDate[dateKey] || []
+              return (
+                <div
+                  key={idx}
+                  className={`min-h-[64px] rounded-md border p-1 text-left ${isToday
+                    ? 'border-pine bg-pine-soft ring-1 ring-pine'
+                    : holidayName
+                      ? 'border-gold/40 bg-gold-soft'
+                      : 'border-line'
+                    }`}
+                >
+                  <p className={`text-xs ${isToday ? 'font-semibold text-pine-deep' : 'text-ink-faint'}`}>
+                    {day}
+                    {isToday && <span className="ml-1 text-[9px] font-medium uppercase tracking-wide">Today</span>}
+                  </p>
+                  <div className="mt-0.5 space-y-0.5">
+                    {holidayName && (
+                      <p className="truncate rounded bg-leave-holiday px-1 text-[10px] font-medium text-white">
+                        {holidayName}
+                      </p>
+                    )}
+                    {entries.slice(0, 2).map((e, i) => (
+                      <p
+                        key={i}
+                        title={`${e.full_name} · ${e.leave_type}${e.half_day_period ? ` (${e.half_day_period.toUpperCase()})` : ''}`}
+                        className={`truncate rounded px-1 text-[10px] text-white ${LEAVE_TYPE_BG[e.leave_type] || 'bg-ink-faint'}`}
+                      >
+                        {displayName(e.full_name)}
+                        {e.half_day_period ? ` (${e.half_day_period.toUpperCase()})` : ''}
+                      </p>
+                    ))}
+                    {entries.length > 2 && (
+                      <p className="text-[10px] text-ink-faint" title={entries.slice(2).map((e) => e.full_name).join(', ')}>
+                        +{entries.length - 2} more
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* ── Mobile: Date-list view ──────────────────────────────── */}
+        <div className="md:hidden">
+          {activeDays.length === 0 ? (
+            <div className="panel text-center py-10">
+              <p className="text-sm text-ink-faint">No approved leave or holidays this month.</p>
+            </div>
+          ) : (
+            <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm divide-y divide-line">
+              {activeDays.map(({ day, dateKey, entries, holiday }) => {
+                const d = new Date(year, month, day)
+                const isToday = dateKey === todayKey
+                const weekdayLabel = WEEKDAY[d.getDay()]
+                return (
+                  <div key={dateKey} className={`p-4 ${isToday ? 'bg-pine-soft/30' : ''}`}>
+                    {/* Date header */}
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className={`flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl border ${isToday ? 'border-pine bg-pine text-white' : 'border-line bg-paper'}`}>
+                        <span className={`text-[10px] font-bold uppercase tracking-wide ${isToday ? 'text-white/80' : 'text-ink-faint'}`}>{weekdayLabel}</span>
+                        <span className={`text-sm font-bold ${isToday ? 'text-white' : 'text-ink'}`}>{day}</span>
+                      </div>
+                      <div>
+                        <p className={`text-sm font-semibold ${isToday ? 'text-pine-deep' : 'text-ink'}`}>
+                          {d.toLocaleDateString('en-MY', { day: 'numeric', month: 'long' })}
+                          {isToday && <span className="ml-2 rounded-full bg-pine/15 px-2 py-0.5 text-xs font-medium text-pine">Today</span>}
+                        </p>
+                        <p className="text-xs text-ink-faint">
+                          {holiday ? `Public Holiday · ${entries.length} on leave` : `${entries.length} on leave`}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Holiday chip */}
+                    {holiday && (
+                      <div className="mb-2 flex items-center gap-2 rounded-lg bg-gold-soft px-3 py-2">
+                        <span className="h-2 w-2 rounded-full bg-leave-holiday shrink-0" />
+                        <span className="text-sm font-medium text-amber-800">{holiday}</span>
+                      </div>
+                    )}
+
+                    {/* Leave entries */}
+                    {entries.length > 0 && (
+                      <div className="space-y-2">
+                        {entries.map((e, i) => (
+                          <div key={i} className="flex items-center gap-3 rounded-lg bg-paper px-3 py-2.5">
+                            <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${LEAVE_TYPE_BG[e.leave_type] || 'bg-ink-faint'}`} />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium text-ink">{e.full_name}</p>
+                              <p className="text-xs text-ink-faint">
+                                {LEAVE_LABELS[e.leave_type] || e.leave_type}
+                                {e.half_day_period && <span className="ml-1 font-medium text-ink-soft">· {e.half_day_period.toUpperCase()} only</span>}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Legend */}
+        <div className="flex flex-wrap gap-3 text-xs text-ink-soft">
+          {LEGEND.map((l) => (
+            <span key={l.key} className="flex items-center gap-1.5">
+              <span className={`h-2 w-2 rounded-full ${LEAVE_TYPE_BG[l.key]}`} />
+              {l.label}
+            </span>
           ))}
         </div>
-        <div className="grid grid-cols-7 gap-1">
-          {cells.map((day, idx) => {
-            if (day === null) return <div key={idx} className="min-h-[64px]" />
-            const dateKey = toLocalDateStr(new Date(year, month, day))
-            const isToday = dateKey === todayKey
-            const holidayName = holidaysByDate[dateKey]
-            const entries = entriesByDate[dateKey] || []
-            return (
-              <div
-                key={idx}
-                className={`min-h-[64px] rounded-md border p-1 text-left ${isToday
-                  ? 'border-pine bg-pine-soft ring-1 ring-pine'
-                  : holidayName
-                    ? 'border-gold/40 bg-gold-soft'
-                    : 'border-line'
-                  }`}
-              >
-                <p className={`text-xs ${isToday ? 'font-semibold text-pine-deep' : 'text-ink-faint'}`}>
-                  {day}
-                  {isToday && <span className="ml-1 text-[9px] font-medium uppercase tracking-wide">Today</span>}
-                </p>
-                <div className="mt-0.5 space-y-0.5">
-                  {holidayName && (
-                    <p className="truncate rounded bg-leave-holiday px-1 text-[10px] font-medium text-white">
-                      {holidayName}
-                    </p>
-                  )}
-                  {entries.slice(0, 2).map((e, i) => (
-                    <p
-                      key={i}
-                      title={`${e.full_name} · ${e.leave_type}${e.half_day_period ? ` (${e.half_day_period.toUpperCase()})` : ''}`}
-                      className={`truncate rounded px-1 text-[10px] text-white ${LEAVE_TYPE_BG[e.leave_type] || 'bg-ink-faint'}`}
-                    >
-                      {displayName(e.full_name)}
-                      {e.half_day_period ? ` (${e.half_day_period.toUpperCase()})` : ''}
-                    </p>
-                  ))}
-                  {entries.length > 2 && (
-                    <p
-                      className="text-[10px] text-ink-faint"
-                      title={entries.slice(2).map((e) => e.full_name).join(', ')}
-                    >
-                      +{entries.length - 2} more
-                    </p>
-                  )}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      </div>
 
-      <div className="flex flex-wrap gap-3 text-xs text-ink-soft">
-        {LEGEND.map((l) => (
-          <span key={l.key} className="flex items-center gap-1.5">
-            <span className={`h-2 w-2 rounded-full ${LEAVE_TYPE_BG[l.key]}`} />
-            {l.label}
-          </span>
-        ))}
+        <p className="text-xs text-ink-faint">Showing approved leave and enabled public holidays only.</p>
       </div>
-
-      <p className="text-xs text-ink-faint">Showing approved leave and enabled public holidays only.</p>
-    </div>
-  </ManagerShell>
+    </ManagerShell>
   )
 }
