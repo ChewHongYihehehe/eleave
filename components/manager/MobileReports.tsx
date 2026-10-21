@@ -240,6 +240,24 @@ export default function MobileReports() {
     [year, employees, apps, hours, holidayDates, workWeek]
   )
 
+  // 筛选全职列表 (必须放在所有条件判断与 early return 之前，严格遵循 React Hook 规则，防止 Error #310)
+  const ftFiltered = useMemo(() => {
+    return monthReport.fullTime.filter((r) => {
+      if (filter === 'leave') return r.annual + r.medical + r.unpaid + r.other > 0 || r.lines.length > 0
+      if (filter === 'unpaid') return r.unpaid > 0
+      if (filter === 'mc') return r.medical > 0
+      return true
+    })
+  }, [monthReport.fullTime, filter])
+
+  const ftYearFiltered = useMemo(() => {
+    return yearReport.fullTime.filter((r) => {
+      if (yearFilter === 'overdrawn') return r.alBalance < 0
+      if (yearFilter === 'mc') return r.mcTaken > 0
+      return true
+    })
+  }, [yearReport.fullTime, yearFilter])
+
   if (auth.status !== 'ready') return <AuthStatus state={auth} />
 
   const { ym } = monthBounds(year, month)
@@ -273,24 +291,6 @@ export default function MobileReports() {
       exportCsv(`balances-${year}.csv`, ['Employee No', 'Name', 'Annual entitled', 'B/F', 'Annual taken', 'Annual balance', 'MC taken', 'MC entitled', 'Unpaid days', 'Maternity/Paternity days'], rows)
     }
   }
-
-  // 筛选全职列表
-  const ftFiltered = useMemo(() => {
-    return monthReport.fullTime.filter((r) => {
-      if (filter === 'leave') return r.annual + r.medical + r.unpaid + r.other > 0 || r.lines.length > 0
-      if (filter === 'unpaid') return r.unpaid > 0
-      if (filter === 'mc') return r.medical > 0
-      return true
-    })
-  }, [monthReport.fullTime, filter])
-
-  const ftYearFiltered = useMemo(() => {
-    return yearReport.fullTime.filter((r) => {
-      if (yearFilter === 'overdrawn') return r.alBalance < 0
-      if (yearFilter === 'mc') return r.mcTaken > 0
-      return true
-    })
-  }, [yearReport.fullTime, yearFilter])
 
   const notices: { text: string; href: string }[] = []
   const noticePendingT = t('noticePending') || (lang === 'zh' ? '本月有 {n} 笔申请还在待审批,未计入下方数字' : '{n} application(s) this month are still pending')
