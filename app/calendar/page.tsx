@@ -1,5 +1,6 @@
 'use client'
 
+import MobileCalendar from '@/components/manager/MobileCalendar'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { toLocalDateStr, eachDay } from '@/lib/dateUtils'
@@ -54,7 +55,7 @@ const LEAVE_LABELS: Record<string, string> = {
   paternity: 'Paternity Leave', unpaid: 'Unpaid Leave',
 }
 
-export default function TeamCalendarPage() {
+function DesktopCalendar() {
   const auth = useEmployee({ requireManager: true })
   const [currentDate, setCurrentDate] = useState(new Date())
   const [entriesByDate, setEntriesByDate] = useState<Record<string, CalendarEntry[]>>({})
@@ -331,5 +332,19 @@ export default function TeamCalendarPage() {
         <p className="text-xs text-ink-faint">Showing approved leave and enabled public holidays only.</p>
       </div>
     </ManagerShell>
+  )
+}
+
+// 手机(< md)用钉钉风格的新版页面;电脑(≥ md)保持原来的版面。
+export default function TeamCalendarPage() {
+  return (
+    <>
+      <div className="md:hidden">
+        <MobileCalendar />
+      </div>
+      <div className="hidden md:block">
+        <DesktopCalendar />
+      </div>
+    </>
   )
 }
