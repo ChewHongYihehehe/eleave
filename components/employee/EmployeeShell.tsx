@@ -74,14 +74,14 @@ export function TabPage({ tab, badge, children }: { tab: TabKey; badge?: number;
 }
 
 export function SubPage({
-  title, backHref, footer, children,
-}: { title: string; backHref?: string; footer?: React.ReactNode; children: React.ReactNode }) {
+  title, backHref, footer, right, children,
+}: { title: string; backHref?: string; footer?: React.ReactNode; right?: React.ReactNode; children: React.ReactNode }) {
   const router = useRouter()
   const { lang, t } = useLang()
   return (
     <div translate="no" lang={lang === 'zh' ? 'zh-Hans' : 'en'} className="min-h-[100dvh] bg-app">
       <div className="mx-auto max-w-md">
-        <header className="sticky top-0 z-20 grid h-12 grid-cols-[3rem_1fr_3rem] items-center border-b border-gray-200 bg-white">
+        <header className="sticky top-0 z-20 grid h-12 grid-cols-[4rem_1fr_4rem] items-center border-b border-gray-200 bg-white">
           <button
             onClick={() => (backHref ? router.push(backHref) : router.back())}
             aria-label={t('back')}
@@ -90,7 +90,7 @@ export function SubPage({
             <Icon d={EI.chevronL} size={24} />
           </button>
           <h1 className="truncate text-center text-base font-semibold text-gray-900">{title}</h1>
-          <span />
+          <div className="flex justify-end pr-4">{right}</div>
         </header>
         <div style={{ paddingBottom: footer ? `calc(5rem + ${safeBottom})` : `calc(1.5rem + ${safeBottom})` }}>{children}</div>
       </div>
