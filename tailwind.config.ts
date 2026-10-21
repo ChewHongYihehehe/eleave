@@ -11,6 +11,9 @@ const config: Config = {
         paper: '#F6F4EE',
         surface: '#FFFFFF',
         line: '#E3DFD3',
+        // 员工端(钉钉风格)
+        brand: { DEFAULT: '#1677FF', deep: '#0958D9', soft: '#E6F0FF' },
+        app: '#F5F6F8',
         pine: {
           DEFAULT: '#2F6B5E',
           deep: '#234F45',
