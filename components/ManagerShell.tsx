@@ -95,10 +95,11 @@ export default function ManagerShell({
         .select('full_name')
         .eq('auth_user_id', u.id)
         .maybeSingle()
-      if (data) {
-        const parts = data.full_name.trim().split(' ')
-        const initials = (parts[0]?.[0] ?? '') + (parts[parts.length - 1]?.[0] ?? '')
-        setUser({ name: data.full_name, initials: initials.toUpperCase() })
+      if (data && data.full_name) {
+        const safe = (data.full_name || '').trim()
+        const parts = safe.split(' ')
+        const initials = ((parts[0]?.[0] ?? '') + (parts[parts.length - 1]?.[0] ?? '')).toUpperCase() || 'M'
+        setUser({ name: data.full_name, initials })
       }
     })
   }, [])
