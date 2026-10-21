@@ -87,7 +87,7 @@ export function buildMonthReport(input: {
 
   // 这个月里,每一笔申请各占几天(跨月的假只算落在这个月的那一段)
   const daysByApp = new Map<string, number>()
-  const inMonth = apps.filter((a) => a.start_date <= end && a.end_date >= start)
+  const inMonth = apps.filter((a) => a && a.start_date && a.end_date && a.start_date <= end && a.end_date >= start)
   for (const a of inMonth) {
     daysByApp.set(a.id, splitDaysByMonth(a, holidayDates, workWeek)[ym] || 0)
   }
@@ -105,10 +105,10 @@ export function buildMonthReport(input: {
   }
 
   const fullTime: FullTimeMonthRow[] = employees
-    .filter((e) => e.employment_type === 'full_time' && e.date_of_commencement <= end)
+    .filter((e) => e && e.employment_type === 'full_time' && (!e.date_of_commencement || e.date_of_commencement <= end))
     .map((emp) => {
       const lines: LeaveLine[] = (approvedByEmp.get(emp.id) || [])
-        .sort((a, b) => a.start_date.localeCompare(b.start_date))
+        .sort((a, b) => (a.start_date || '').localeCompare(b.start_date || ''))
         .map((app) => ({ app, days: daysByApp.get(app.id) || 0 }))
       const sum = (types: string[]) =>
         lines.filter((l) => types.includes(l.app.leave_type)).reduce((s, l) => s + l.days, 0)
@@ -126,10 +126,10 @@ export function buildMonthReport(input: {
     .filter((r) => r.emp.is_active || r.lines.length > 0)
 
   const hoursMap = new Map<string, number>()
-  for (const h of hours) if (h.month === month) hoursMap.set(h.employee_id, Number(h.total_hours))
+  for (const h of hours) if (h && h.month === month) hoursMap.set(h.employee_id, Number(h.total_hours || 0))
 
   const partTime: PartTimeMonthRow[] = employees
-    .filter((e) => e.employment_type === 'part_time' && e.date_of_commencement <= end)
+    .filter((e) => e && e.employment_type === 'part_time' && (!e.date_of_commencement || e.date_of_commencement <= end))
     .map((emp) => ({ emp, hours: hoursMap.has(emp.id) ? hoursMap.get(emp.id)! : null }))
     .filter((r) => r.emp.is_active || r.hours !== null)
 
@@ -192,7 +192,7 @@ export function buildYearReport(input: {
   const thisYear = new Date().getFullYear()
 
   const fullTime: YearFullTimeRow[] = employees
-    .filter((e) => e.employment_type === 'full_time' && e.date_of_commencement <= yearEnd)
+    .filter((e) => e && e.employment_type === 'full_time' && (!e.date_of_commencement || e.date_of_commencement <= yearEnd))
     .map((emp) => {
       const mine = appsByEmp.get(emp.id) || []
       const taken = (type: string, status?: 'approved' | 'pending') =>
