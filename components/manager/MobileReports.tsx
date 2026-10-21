@@ -38,36 +38,47 @@ type Filter = 'all' | 'leave' | 'unpaid' | 'mc'
 type YearFilter = 'all' | 'overdrawn' | 'mc'
 
 const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1))
-const fill = (s: string, n: number) => s.replace('{n}', String(n))
+const fill = (s?: string | null, n?: number) => (s || '').replace('{n}', String(n ?? 0))
 
 function monthTitle(year: number, month: number, lang: Lang) {
-  return lang === 'zh' ? `${year}年${month}月` : `${MONTH_EN[month - 1]} ${year}`
+  return lang === 'zh' ? `${year}年${month}月` : `${MONTH_EN[month - 1] || ''} ${year}`
 }
 
-function shortDate(iso: string, lang: Lang) {
-  const [, m, d] = iso.split('-').map(Number)
-  return lang === 'zh' ? `${m}月${d}日` : `${d} ${MONTH_EN[m - 1]}`
+function shortDate(iso?: string | null, lang: Lang = 'zh') {
+  if (!iso || typeof iso !== 'string') return '–'
+  const parts = iso.split('-').map(Number)
+  if (parts.length < 3 || isNaN(parts[1]) || isNaN(parts[2])) return iso
+  const [, m, d] = parts
+  return lang === 'zh' ? `${m}月${d}日` : `${d} ${MONTH_EN[m - 1] || ''}`
 }
 
-function dateRange(a: string, b: string, lang: Lang) {
-  if (a === b) return shortDate(a, lang)
-  const [, am, ad] = a.split('-').map(Number)
-  const [, bm, bd] = b.split('-').map(Number)
-  if (am === bm) return lang === 'zh' ? `${am}月${ad}–${bd}日` : `${ad}–${bd} ${MONTH_EN[bm - 1]}`
+function dateRange(a?: string | null, b?: string | null, lang: Lang = 'zh') {
+  if (!a && !b) return '–'
+  if (!a) return shortDate(b, lang)
+  if (!b || a === b) return shortDate(a, lang)
+  const aParts = a.split('-').map(Number)
+  const bParts = b.split('-').map(Number)
+  if (aParts.length < 3 || bParts.length < 3) return `${a} – ${b}`
+  const [, am, ad] = aParts
+  const [, bm, bd] = bParts
+  if (am === bm) return lang === 'zh' ? `${am}月${ad}–${bd}日` : `${ad}–${bd} ${MONTH_EN[bm - 1] || ''}`
   return `${shortDate(a, lang)} – ${shortDate(b, lang)}`
 }
 
 function lineText(l: LeaveLine, ym: string, lang: Lang, t: ReturnType<typeof useMgrT>['t']): string | null {
-  const a = l.app
-  const label = leaveName(a.leave_type, lang).replace(/ ?\(MC\)/, '')
-  const half = a.is_half_day && a.half_day_period ? ` (${a.half_day_period === 'am' ? t('halfAm') : t('halfPm')})` : ''
-  const days = `${fmt(l.days)}${t('daysUnit')}`
+  const a = l?.app
+  if (!a) return null
+  const label = leaveName(a.leave_type || '', lang).replace(/ ?\(MC\)/, '')
+  const half = a.is_half_day && a.half_day_period ? ` (${a.half_day_period === 'am' ? (t('halfAm') || (lang === 'zh' ? '上午' : 'Morning')) : (t('halfPm') || (lang === 'zh' ? '下午' : 'Afternoon'))})` : ''
+  const days = `${fmt(l.days || 0)}${t('daysUnit') || (lang === 'zh' ? '天' : 'd')}`
   if (a.remarks?.includes('Historical import')) {
     if (a.leave_type === 'annual') return null
     return `${label}${half} · ${days}`
   }
-  const crossMonth = a.start_date.slice(0, 7) !== ym || a.end_date.slice(0, 7) !== ym
-  return `${label} ${dateRange(a.start_date, a.end_date, lang)}${half} · ${days}${crossMonth ? (lang === 'zh' ? '(本月部分)' : ' (this month)') : ''}`
+  const sDate = a.start_date || ''
+  const eDate = a.end_date || ''
+  const crossMonth = sDate.slice(0, 7) !== ym || eDate.slice(0, 7) !== ym
+  return `${label} ${dateRange(sDate, eDate, lang)}${half} · ${days}${crossMonth ? (lang === 'zh' ? '(本月部分)' : ' (this month)') : ''}`
 }
 
 function exportCsv(filename: string, header: string[], rows: (string | number)[][]) {
@@ -209,7 +220,7 @@ export default function MobileReports() {
         setLoading(false)
         return
       }
-      setEmployees(((empRes.data || []) as ReportEmployee[]).filter((e) => e.role !== 'manager' && e.full_name.toUpperCase() !== 'CHEW HONG YI'))
+      setEmployees(((empRes.data || []) as ReportEmployee[]).filter((e) => e && e.role !== 'manager' && (e.full_name || '').toUpperCase() !== 'CHEW HONG YI'))
       setApps((appRes.data || []) as ReportApp[])
       setHolidayDates((holRes.data || []).map((h) => h.holiday_date))
       setHours((hoursRes.data || []) as HoursRow[])
@@ -282,10 +293,14 @@ export default function MobileReports() {
   }, [yearReport.fullTime, yearFilter])
 
   const notices: { text: string; href: string }[] = []
-  if (monthReport.pendingCount > 0) notices.push({ text: fill(t('noticePending'), monthReport.pendingCount), href: '/approve' })
-  if (monthReport.cancellationCount > 0) notices.push({ text: fill(t('noticeCancel'), monthReport.cancellationCount), href: '/approve' })
+  const noticePendingT = t('noticePending') || (lang === 'zh' ? '本月有 {n} 笔申请还在待审批,未计入下方数字' : '{n} application(s) this month are still pending')
+  const noticeCancelT = t('noticeCancel') || (lang === 'zh' ? '有 {n} 笔已批准的假正在申请取消,处理前仍计入下方数字' : '{n} approved leave(s) have cancellation requests')
+  const noticeHoursT = t('noticeHours') || (lang === 'zh' ? '{n} 位兼职员工这个月还没录入工时' : '{n} part-time staff have no hours entered')
+
+  if (monthReport.pendingCount > 0) notices.push({ text: fill(noticePendingT, monthReport.pendingCount), href: '/approve' })
+  if (monthReport.cancellationCount > 0) notices.push({ text: fill(noticeCancelT, monthReport.cancellationCount), href: '/approve' })
   if (monthReport.missingHoursCount > 0 && (scope === 'pt' || scope === 'all')) {
-    notices.push({ text: fill(t('noticeHours'), monthReport.missingHoursCount), href: '/work-hours' })
+    notices.push({ text: fill(noticeHoursT, monthReport.missingHoursCount), href: '/work-hours' })
   }
 
   const ftCount = employees.filter((e) => e.employment_type === 'full_time').length
