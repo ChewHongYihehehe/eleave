@@ -1,5 +1,6 @@
 'use client'
 
+import MobileWorkspace from '@/components/manager/MobileWorkspace'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabaseClient'
@@ -26,7 +27,7 @@ const FEATURES: Feature[] = [
   { href: '/audit-log', key: 'auditLog', icon: 'audit', tone: 'bg-gray-100 text-gray-500' },
 ]
 
-export default function WorkspacePage() {
+function DesktopWorkspace() {
   const auth = useEmployee({ requireManager: true })
   const { lang, t } = useLang()
   const [attention, setAttention] = useState<number | null>(null)
@@ -122,5 +123,19 @@ export default function WorkspacePage() {
         </section>
       </div>
     </ManagerShell>
+  )
+}
+
+// 手机(< md)用钉钉风格的新版页面;电脑(≥ md)保持原来的版面。
+export default function WorkspacePage() {
+  return (
+    <>
+      <div className="md:hidden">
+        <MobileWorkspace />
+      </div>
+      <div className="hidden md:block">
+        <DesktopWorkspace />
+      </div>
+    </>
   )
 }
