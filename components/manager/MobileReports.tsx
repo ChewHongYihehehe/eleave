@@ -334,7 +334,7 @@ export default function MobileReports() {
             scope === 'ft' ? 'bg-brand text-white shadow-xs' : 'text-gray-600 hover:text-gray-900'
           }`}
         >
-          <span>{t('scopeFt')}</span>
+          <span>{lang === 'zh' ? '全职' : 'Full-time'}</span>
           <span className={`rounded-full px-1.5 py-0.2 text-[10px] ${scope === 'ft' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'}`}>
             {ftCount}
           </span>
@@ -345,7 +345,7 @@ export default function MobileReports() {
             scope === 'pt' ? 'bg-brand text-white shadow-xs' : 'text-gray-600 hover:text-gray-900'
           }`}
         >
-          <span>{t('scopePt')}</span>
+          <span>{lang === 'zh' ? '兼职' : 'Part-time'}</span>
           <span className={`rounded-full px-1.5 py-0.2 text-[10px] ${scope === 'pt' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'}`}>
             {ptCount}
           </span>
@@ -356,7 +356,7 @@ export default function MobileReports() {
             scope === 'all' ? 'bg-brand text-white shadow-xs' : 'text-gray-600 hover:text-gray-900'
           }`}
         >
-          {t('scopeAll')}
+          {lang === 'zh' ? '全部' : 'All'}
         </button>
       </div>
 
@@ -377,7 +377,7 @@ export default function MobileReports() {
               <div className="rounded-2xl border border-red-200/80 bg-gradient-to-br from-[#FFF1F0] to-[#FFCCC7]/30 p-3.5 shadow-xs">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium text-red-700">{t('unpaidLeave')}</span>
-                  <span className="rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-600">{t('salaryDeduct')}</span>
+                  <span className="rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-600">{lang === 'zh' ? '涉及扣薪' : 'Deduct pay'}</span>
                 </div>
                 <p className="mt-1.5 text-2xl font-bold tabular-nums text-[#F5222D]">
                   {fmt(tot.unpaid)} <span className="text-xs font-normal text-red-600">{t('daysUnit')}</span>
@@ -401,7 +401,7 @@ export default function MobileReports() {
               <div className="rounded-2xl border border-blue-200/80 bg-gradient-to-br from-[#E6F4FF] to-[#BAE0FF]/30 p-3.5 shadow-xs">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium text-blue-800">{t('legendAnnual')}</span>
-                  <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700">{t('workDays')}</span>
+                  <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700">{lang === 'zh' ? '工作日' : 'Work days'}</span>
                 </div>
                 <p className="mt-1.5 text-2xl font-bold tabular-nums text-blue-800">
                   {fmt(tot.annual)} <span className="text-xs font-normal text-blue-700">{t('daysUnit')}</span>
@@ -496,12 +496,12 @@ export default function MobileReports() {
                 </FilterChip>
                 {tot.unpaid > 0 && (
                   <FilterChip active={filter === 'unpaid'} onClick={() => setFilter('unpaid')} danger>
-                    {t('filterUnpaid')} ({monthReport.fullTime.filter((r) => r.unpaid > 0).length})
+                    {lang === 'zh' ? '有无薪假' : 'Unpaid'} ({monthReport.fullTime.filter((r) => r.unpaid > 0).length})
                   </FilterChip>
                 )}
                 {tot.medical > 0 && (
                   <FilterChip active={filter === 'mc'} onClick={() => setFilter('mc')}>
-                    {t('filterMc')} ({monthReport.fullTime.filter((r) => r.medical > 0).length})
+                    {lang === 'zh' ? '有病假' : 'MC'} ({monthReport.fullTime.filter((r) => r.medical > 0).length})
                   </FilterChip>
                 )}
               </div>
@@ -660,7 +660,7 @@ export default function MobileReports() {
                             {r.emp.full_name}
                           </p>
                           <p className="mt-0.5 text-xs text-gray-400">
-                            {r.emp.employee_no ? `#${r.emp.employee_no} · ` : ''}{t('scopePt')}
+                            {r.emp.employee_no ? `#${r.emp.employee_no} · ` : ''}{lang === 'zh' ? '兼职' : 'Part-time'}
                           </p>
                         </div>
                         {r.hours === null ? (
@@ -705,10 +705,10 @@ export default function MobileReports() {
                   {t('filterAll')} ({yearReport.fullTime.length})
                 </FilterChip>
                 <FilterChip active={yearFilter === 'overdrawn'} onClick={() => setYearFilter('overdrawn')} danger>
-                  {t('overdrawn')} ({yearReport.fullTime.filter((r) => r.alBalance < 0).length})
+                  {lang === 'zh' ? '已透支' : 'Overdrawn'} ({yearReport.fullTime.filter((r) => r.alBalance < 0).length})
                 </FilterChip>
                 <FilterChip active={yearFilter === 'mc'} onClick={() => setYearFilter('mc')}>
-                  {t('filterMc')} ({yearReport.fullTime.filter((r) => r.mcTaken > 0).length})
+                  {lang === 'zh' ? '有病假' : 'With MC'} ({yearReport.fullTime.filter((r) => r.mcTaken > 0).length})
                 </FilterChip>
               </div>
 
