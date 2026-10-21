@@ -1,5 +1,6 @@
 'use client'
 
+import MobileReports from '@/components/manager/MobileReports'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabaseClient'
@@ -90,7 +91,7 @@ function Stat({ label, tone, children }: { label: string; tone?: 'rust'; childre
   )
 }
 
-export default function ReportsPage() {
+function DesktopReports() {
   const auth = useEmployee({ requireManager: true })
 
   const [view, setView] = useState<View>('month')
@@ -620,5 +621,19 @@ export default function ReportsPage() {
         )}
       </div>
     </ManagerShell>
+  )
+}
+
+// 手机(< md)用钉钉风格的新版页面;电脑(≥ md)保持原来的版面。
+export default function ReportsPage() {
+  return (
+    <>
+      <div className="md:hidden">
+        <MobileReports />
+      </div>
+      <div className="hidden md:block">
+        <DesktopReports />
+      </div>
+    </>
   )
 }
