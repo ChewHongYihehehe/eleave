@@ -1,5 +1,6 @@
 'use client'
 
+import MobileEmployees from '@/components/manager/MobileEmployees'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import ManagerShell from '@/components/ManagerShell'
@@ -20,7 +21,7 @@ type Employee = {
 
 type Tab = 'full_time' | 'part_time'
 
-export default function ManageEmployeesPage() {
+function DesktopEmployees() {
   const auth = useEmployee({ requireManager: true })
   const [employees, setEmployees] = useState<Employee[]>([])
   const [loading, setLoading] = useState(true)
@@ -520,6 +521,20 @@ function PartTimeTable({ employees, onToggleActive, onUpdateField }: {
             </div>
           </div>
         ))}
+      </div>
+    </>
+  )
+}
+
+// 手机(< md)用钉钉风格的新版页面;电脑(≥ md)保持原来的版面。
+export default function ManageEmployeesPage() {
+  return (
+    <>
+      <div className="md:hidden">
+        <MobileEmployees />
+      </div>
+      <div className="hidden md:block">
+        <DesktopEmployees />
       </div>
     </>
   )
