@@ -1,5 +1,6 @@
 'use client'
 
+import MobileWorkHoursPage from '@/components/manager/MobileWorkHours'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
@@ -13,7 +14,7 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 const THIS_YEAR = new Date().getFullYear()
 const YEAR_OPTIONS = Array.from({ length: 5 }, (_, i) => THIS_YEAR - 2 + i) // 2 years back → 2 years ahead
 
-export default function WorkHoursPage() {
+function DesktopWorkHours() {
   const router = useRouter()
   const auth = useEmployee({ requireManager: true })
   const [employees, setEmployees] = useState<Employee[]>([])
@@ -386,5 +387,19 @@ function MobileWorkHours({
         </>
       )}
     </div>
+  )
+}
+
+// 手机(< md)用钉钉风格的新版页面;电脑(≥ md)保持原来的版面。
+export default function WorkHoursPage() {
+  return (
+    <>
+      <div className="md:hidden">
+        <MobileWorkHoursPage />
+      </div>
+      <div className="hidden md:block">
+        <DesktopWorkHours />
+      </div>
+    </>
   )
 }
