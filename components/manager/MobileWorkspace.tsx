@@ -13,7 +13,20 @@ import { leaveName, useMgrT } from '@/lib/mgrText'
 import { useApprovals } from '@/lib/useApprovals'
 import { Avatar, ManagerTabPage } from './ManagerTabs'
 
-// 负责人 · 工作台(钉钉工作台):信息卡(待办数 + 今天休假)→ 待办前几条 → 全部功能。
+// 负责人 · 工作台(钉钉工作台):
+//  · 信息卡(待审批 + 今天休假，搭配精致半透毛玻璃图标)
+//  · 待办事项前几条
+//  · 全部功能(带卡片背景的常用应用模块)
+
+function CalendarGridIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+      <rect x="3" y="4" width="18" height="18" rx="3" />
+      <path d="M16 2v4M8 2v4M3 10h18" strokeLinecap="round" />
+      {[8, 12, 16].flatMap((x) => [14, 18].map((y) => <circle key={`${x}-${y}`} cx={x} cy={y} r="1.1" fill="currentColor" stroke="none" />))}
+    </svg>
+  )
+}
 
 const FEATURES: { href: string; key: 'approvals' | 'calendar' | 'employees' | 'reports' | 'workHours' | 'holidays' | 'auditLog'; icon: string; grad: string }[] = [
   { href: '/approve', key: 'approvals', icon: IC.approve, grad: 'linear-gradient(135deg, #1677FF, #4096FF)' },
@@ -61,18 +74,38 @@ export default function MobileWorkspace() {
         <p className="mt-0.5 text-sm text-gray-400">{dateLabel}</p>
       </div>
 
-      {/* 信息卡:待审批 / 今天休假 */}
-      <div className="mx-4 overflow-hidden rounded-2xl" style={{ background: 'linear-gradient(135deg, #1677FF 0%, #4096FF 60%, #69B1FF 100%)' }}>
-        <div className="flex">
-          <Link href="/approve" className="flex-1 border-r border-white/20 px-5 py-4 text-white">
-            <p className="text-xs text-blue-100">{t('pendingCount')}</p>
-            <p className="mt-1 text-3xl font-bold leading-none">{loading ? '–' : attention.length}</p>
+      {/* 信息卡:待审批 / 今天休假 (钉钉设计语言，带半透明毛玻璃质感图标) */}
+      <div
+        className="mx-4 overflow-hidden rounded-2xl shadow-sm"
+        style={{ background: 'linear-gradient(135deg, #1677FF 0%, #4096FF 60%, #69B1FF 100%)' }}
+      >
+        <div className="flex divide-x divide-white/20">
+          <Link href="/approve" className="flex-1 p-4 text-white transition-colors active:bg-white/10">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-medium text-blue-100">{t('pendingCount')}</p>
+                <p className="mt-1.5 text-3xl font-bold leading-none tabular-nums">
+                  {loading ? '–' : attention.length}
+                </p>
+              </div>
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-white backdrop-blur-xs">
+                <Icon d={EI.clock} size={22} />
+              </div>
+            </div>
           </Link>
-          <Link href="/calendar" className="flex-1 px-5 py-4 text-white">
-            <p className="text-xs text-blue-100">{t('onLeaveToday')}</p>
-            <p className="mt-1 text-3xl font-bold leading-none">
-              {onLeave === null ? '–' : onLeave}<span className="ml-1 text-sm font-normal text-blue-100">{t('staffUnit')}</span>
-            </p>
+          <Link href="/calendar" className="flex-1 p-4 text-white transition-colors active:bg-white/10">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-medium text-blue-100">{t('onLeaveToday')}</p>
+                <p className="mt-1.5 text-3xl font-bold leading-none tabular-nums">
+                  {onLeave === null ? '–' : onLeave}
+                  <span className="ml-1 text-sm font-normal text-blue-100">{t('staffUnit')}</span>
+                </p>
+              </div>
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-white backdrop-blur-xs">
+                <CalendarGridIcon className="h-6 w-6 text-white" />
+              </div>
+            </div>
           </Link>
         </div>
       </div>
@@ -82,9 +115,11 @@ export default function MobileWorkspace() {
         <>
           <div className="flex items-center justify-between px-5 pb-2 pt-4">
             <p className="text-sm font-medium text-gray-500">{t('todo')}</p>
-            <Link href="/approve" className="flex items-center text-sm text-brand">{t('viewAll')}<Icon d={EI.chevronR} size={14} /></Link>
+            <Link href="/approve" className="flex items-center text-sm font-medium text-brand">
+              {t('viewAll')}<Icon d={EI.chevronR} size={14} />
+            </Link>
           </div>
-          <Card>
+          <Card className="shadow-xs">
             {top.map((a, i) => (
               <Link key={a.id} href={`/approve/${a.id}`} className={`flex items-center px-4 py-3.5 active:bg-gray-50 ${i ? 'border-t border-gray-100' : ''}`}>
                 <Avatar name={a.person.full_name} size={38} />
@@ -103,21 +138,25 @@ export default function MobileWorkspace() {
         </>
       )}
 
-      {/* 全部功能 */}
+      {/* 全部功能 (增加专属钉钉卡片背景与圆角阴影) */}
       <div className="mx-4 mt-5">
-        <p className="mb-3 text-sm font-semibold text-gray-500">{t('allFeatures')}</p>
-        <div className="grid grid-cols-4 gap-y-5">
-          {FEATURES.map((f) => (
-            <Link key={f.href} href={f.href} className="flex flex-col items-center gap-1.5 active:opacity-60">
-              <span className="relative flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-sm" style={{ background: f.grad }}>
-                <Icon d={f.icon} size={28} />
-                {f.key === 'approvals' && attention.length > 0 && (
-                  <span className="absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#F5222D] px-1 text-[11px] font-semibold leading-none text-white">{attention.length > 99 ? '99+' : attention.length}</span>
-                )}
-              </span>
-              <span className="text-center text-[11px] leading-tight text-gray-600">{t(f.key)}</span>
-            </Link>
-          ))}
+        <p className="mb-2.5 px-1 text-xs font-semibold uppercase tracking-wider text-gray-400">{t('allFeatures')}</p>
+        <div className="overflow-hidden rounded-2xl border border-gray-100/80 bg-white p-4 shadow-xs">
+          <div className="grid grid-cols-4 gap-y-5">
+            {FEATURES.map((f) => (
+              <Link key={f.href} href={f.href} className="flex flex-col items-center gap-1.5 active:opacity-60">
+                <span className="relative flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-xs transition-transform active:scale-95" style={{ background: f.grad }}>
+                  <Icon d={f.icon} size={28} />
+                  {f.key === 'approvals' && attention.length > 0 && (
+                    <span className="absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#F5222D] px-1 text-[11px] font-semibold leading-none text-white shadow-xs">
+                      {attention.length > 99 ? '99+' : attention.length}
+                    </span>
+                  )}
+                </span>
+                <span className="text-center text-[12px] font-medium leading-tight text-gray-700">{t(f.key)}</span>
+              </Link>
+            ))}
+          </div>
         </div>
       </div>
     </ManagerTabPage>
