@@ -1,5 +1,6 @@
 'use client'
 
+import MobileApprove from '@/components/manager/MobileApprove'
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { LEAVE_TYPE_LABELS } from '@/lib/leaveRules'
@@ -159,7 +160,7 @@ function StatusBadge({
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function ApprovePage() {
+function DesktopApprove() {
   const auth = useEmployee({ requireManager: true })
   const approverId = auth.status === 'ready' ? auth.employee.id : null
   const [applications, setApplications] = useState<Application[]>([])
@@ -1051,5 +1052,19 @@ export default function ApprovePage() {
         </div>
       )}
     </ManagerShell>
+  )
+}
+
+// 手机(< md)用钉钉风格的新版页面;电脑(≥ md)保持原来的版面。
+export default function ApprovePage() {
+  return (
+    <>
+      <div className="md:hidden">
+        <MobileApprove />
+      </div>
+      <div className="hidden md:block">
+        <DesktopApprove />
+      </div>
+    </>
   )
 }
