@@ -115,7 +115,7 @@ export type MgrKey = keyof typeof zh
 
 export function useMgrT() {
   const { lang } = useLang()
-  const t = useCallback((k: MgrKey) => (lang === 'zh' ? zh : en)[k], [lang])
+  const t = useCallback((k: MgrKey) => (lang === 'zh' ? zh : en)[k] ?? zh[k] ?? en[k] ?? '', [lang])
   return { t, lang }
 }
 
