@@ -41,31 +41,41 @@ const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1))
 const dash = <span className="text-ink-faint/50">–</span>
 const num = (n: number) => (n > 0 ? fmt(n) : dash)
 
-function shortDate(iso: string) {
-  const [, m, d] = iso.split('-')
-  return `${Number(d)} ${MONTH_SHORT[Number(m) - 1]}`
+function shortDate(iso?: string | null) {
+  if (!iso || typeof iso !== 'string') return '–'
+  const parts = iso.split('-')
+  if (parts.length < 3) return iso
+  const [, m, d] = parts
+  return `${Number(d)} ${MONTH_SHORT[Number(m) - 1] || ''}`
 }
 
-function dateRange(a: string, b: string) {
-  if (a === b) return shortDate(a)
-  if (a.slice(0, 7) === b.slice(0, 7)) return `${Number(a.slice(8))}–${shortDate(b)}`
+function dateRange(a?: string | null, b?: string | null) {
+  if (!a && !b) return '–'
+  if (!a) return shortDate(b)
+  if (!b || a === b) return shortDate(a)
+  if (typeof a === 'string' && typeof b === 'string' && a.length >= 7 && b.length >= 7 && a.slice(0, 7) === b.slice(0, 7)) {
+    return `${Number(a.slice(8))}–${shortDate(b)}`
+  }
   return `${shortDate(a)} – ${shortDate(b)}`
 }
 
 function lineText(l: LeaveLine, ym: string): string | null {
-  const a = l.app
-  const label = TYPE_LABEL[a.leave_type] ?? a.leave_type
+  const a = l?.app
+  if (!a) return null
+  const label = TYPE_LABEL[a.leave_type] ?? a.leave_type ?? 'Leave'
   const isHistorical = a.remarks?.includes('Historical import')
   if (isHistorical) {
     if (a.leave_type === 'annual') return null
-    let t = `${label} · ${fmt(l.days)}d`
-    if (a.is_half_day && a.half_day_period) t += ` (${a.half_day_period.toUpperCase()})`
+    let t = `${label} · ${fmt(l.days || 0)}d`
+    if (a.is_half_day && a.half_day_period) t += ` (${String(a.half_day_period).toUpperCase()})`
     return t
   }
   let t = `${label} ${dateRange(a.start_date, a.end_date)}`
-  if (a.is_half_day && a.half_day_period) t += ` (${a.half_day_period.toUpperCase()})`
-  t += ` · ${fmt(l.days)}d`
-  if (a.start_date.slice(0, 7) !== ym || a.end_date.slice(0, 7) !== ym) t += ' (this month)'
+  if (a.is_half_day && a.half_day_period) t += ` (${String(a.half_day_period).toUpperCase()})`
+  t += ` · ${fmt(l.days || 0)}d`
+  const sDate = a.start_date || ''
+  const eDate = a.end_date || ''
+  if (sDate.slice(0, 7) !== ym || eDate.slice(0, 7) !== ym) t += ' (this month)'
   return t
 }
 
@@ -138,7 +148,7 @@ function DesktopReports() {
       return
     }
     const staffOnly = ((empRes.data || []) as ReportEmployee[]).filter(
-      (e) => e.role !== 'manager' && e.full_name.toUpperCase() !== 'CHEW HONG YI'
+      (e) => e && e.role !== 'manager' && (e.full_name || '').toUpperCase() !== 'CHEW HONG YI'
     )
     setEmployees(staffOnly)
     setApps((appRes.data || []) as ReportApp[])
