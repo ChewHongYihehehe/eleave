@@ -1,5 +1,6 @@
 'use client'
 
+import MobileMe from '@/components/manager/MobileMe'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -11,7 +12,7 @@ import { useLang } from '@/lib/lang'
 
 // 我的(手机版底部栏第 4 个):账号、语言、更改密码、Telegram 通知、退出登录。
 
-export default function MePage() {
+function DesktopMe() {
   const auth = useEmployee({ requireManager: true })
   const router = useRouter()
   const { lang, setLang, t } = useLang()
@@ -100,5 +101,19 @@ export default function MePage() {
         </button>
       </div>
     </ManagerShell>
+  )
+}
+
+// 手机(< md)用钉钉风格的新版页面;电脑(≥ md)保持原来的版面。
+export default function MePage() {
+  return (
+    <>
+      <div className="md:hidden">
+        <MobileMe />
+      </div>
+      <div className="hidden md:block">
+        <DesktopMe />
+      </div>
+    </>
   )
 }
