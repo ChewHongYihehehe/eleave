@@ -95,9 +95,11 @@ function DesktopReports() {
   const auth = useEmployee({ requireManager: true })
 
   const [view, setView] = useState<View>('month')
+  const [scope, setScope] = useState<'ft' | 'pt' | 'all'>('ft')
   const [year, setYear] = useState(THIS_YEAR)
   const [month, setMonth] = useState(new Date().getMonth() + 1)
-  const [onlyWithLeave, setOnlyWithLeave] = useState(false)
+  const [filter, setFilter] = useState<'all' | 'leave' | 'unpaid' | 'mc'>('all')
+  const [yearFilter, setYearFilter] = useState<'all' | 'overdrawn' | 'mc'>('all')
 
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
@@ -107,7 +109,6 @@ function DesktopReports() {
   const [holidayDates, setHolidayDates] = useState<string[]>([])
   const [workWeek, setWorkWeek] = useState<WorkWeek>(DEFAULT_WORK_WEEK)
 
-  // 一次抓"整年"的资料;在同一年里切换月份不用重新抓
   useEffect(() => {
     if (auth.status === 'ready') loadData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -179,14 +180,18 @@ function DesktopReports() {
   function handleExport() {
     if (view === 'month') {
       const rows: (string | number)[][] = []
-      for (const r of monthReport.fullTime) {
-        rows.push([r.emp.employee_no ?? '', r.emp.full_name, 'Full-time', r.annual, r.medical, r.unpaid, r.other, '', r.lines.map((l) => lineText(l, ym)).filter(Boolean).join('; ')])
+      if (scope === 'ft' || scope === 'all') {
+        for (const r of monthReport.fullTime) {
+          rows.push([r.emp.employee_no ?? '', r.emp.full_name, 'Full-time', r.annual, r.medical, r.unpaid, r.other, '', r.lines.map((l) => lineText(l, ym)).filter(Boolean).join('; ')])
+        }
       }
-      for (const r of monthReport.partTime) {
-        rows.push([r.emp.employee_no ?? '', r.emp.full_name, 'Part-time', '', '', '', '', r.hours ?? 'Not entered', ''])
+      if (scope === 'pt' || scope === 'all') {
+        for (const r of monthReport.partTime) {
+          rows.push([r.emp.employee_no ?? '', r.emp.full_name, 'Part-time', '', '', '', '', r.hours ?? 'Not entered', ''])
+        }
       }
       exportCsv(
-        `report-${ym}.csv`,
+        `report-${ym}-${scope}.csv`,
         ['Employee No', 'Name', 'Type', 'Annual days', 'MC days', 'Unpaid days', 'Maternity/Paternity days', 'Hours', 'Details'],
         rows
       )
@@ -202,237 +207,394 @@ function DesktopReports() {
     }
   }
 
+  const ftRows = useMemo(() => {
+    return monthReport.fullTime.filter((r) => {
+      if (filter === 'leave') return r.annual + r.medical + r.unpaid + r.other > 0 || r.lines.length > 0
+      if (filter === 'unpaid') return r.unpaid > 0
+      if (filter === 'mc') return r.medical > 0
+      return true
+    })
+  }, [monthReport.fullTime, filter])
+
+  const ftYearRows = useMemo(() => {
+    return yearReport.fullTime.filter((r) => {
+      if (yearFilter === 'overdrawn') return r.alBalance < 0
+      if (yearFilter === 'mc') return r.mcTaken > 0
+      return true
+    })
+  }, [yearReport.fullTime, yearFilter])
+
   if (auth.status !== 'ready') return <AuthStatus state={auth} />
 
-  const th = 'px-3 py-2.5 text-xs font-medium uppercase tracking-wide text-ink-faint whitespace-nowrap'
-  const tdNum = 'px-3 py-2.5 text-center tabular-nums text-sm text-ink-soft align-top'
-  const card = 'rounded-lg border border-line bg-surface p-3'
-  const emptyBox = 'rounded-lg border border-line py-8 text-center text-sm text-ink-faint'
-  const notice = 'rounded-md bg-amber-50 p-3 text-sm text-amber-800 print:border print:border-amber-300'
+  const th = 'px-3.5 py-3 text-xs font-semibold uppercase tracking-wider text-ink-faint whitespace-nowrap bg-paper border-b border-line'
+  const tdNum = 'px-3.5 py-3 text-center tabular-nums text-sm text-ink-soft align-middle'
+  const emptyBox = 'rounded-xl border border-line py-10 text-center text-sm text-ink-faint bg-surface'
+  const notice = 'rounded-xl border border-amber-200 bg-amber-50/80 p-3.5 text-sm text-amber-800'
 
   const name = (e: ReportEmployee) => (
-    <>
-      {e.full_name}
-      {!e.is_active && <span className="ml-2 rounded bg-paper px-1.5 py-0.5 text-xs font-normal text-ink-faint ring-1 ring-line">inactive</span>}
-    </>
+    <div className="flex items-center gap-2">
+      <span className="font-semibold text-ink">{e.full_name}</span>
+      {e.employee_no && (
+        <span className="text-xs text-ink-faint font-normal">#{e.employee_no}</span>
+      )}
+      {!e.is_active && (
+        <span className="rounded bg-paper px-1.5 py-0.5 text-[11px] font-normal text-ink-faint ring-1 ring-line">inactive</span>
+      )}
+    </div>
   )
 
   const detailsOf = (r: FtRow) => r.lines.map((l) => lineText(l, ym)).filter((x): x is string => Boolean(x))
-
-  const ftRows = onlyWithLeave ? monthReport.fullTime.filter((r) => r.lines.length > 0) : monthReport.fullTime
   const t = monthReport.totals
+
+  const ftCount = employees.filter((e) => e.employment_type === 'full_time').length
+  const ptCount = employees.filter((e) => e.employment_type === 'part_time').length
 
   return (
     <ManagerShell>
-      <div className="space-y-5 pb-10">
-        {/* ── 标题 + 按钮 ── */}
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
+      <div className="space-y-6 pb-12">
+        {/* ── 标题 + 导出操作 ── */}
+        <div className="flex items-start justify-between gap-4">
+          <div>
             <h1 className="font-display text-2xl font-semibold text-ink">Reports</h1>
             <p className="mt-0.5 text-sm text-ink-soft">
-              {view === 'month' ? `Leave & hours · ${monthLabel}` : `Leave balances · ${year}`}
+              {view === 'month' ? `Monthly leave & work hours breakdown · ${monthLabel}` : `Annual leave balance ledger · ${year}`}
             </p>
           </div>
           <div className="flex shrink-0 gap-2 print:hidden">
-            <button onClick={handleExport} disabled={loading} className="btn-ghost">Export CSV</button>
-            {/* 手机上打印没用,只在电脑显示 */}
-            <button onClick={() => window.print()} disabled={loading} className="btn-ghost hidden sm:inline-flex">Print</button>
+            <button onClick={handleExport} disabled={loading} className="btn-ghost shadow-xs">Export CSV</button>
+            <button onClick={() => window.print()} disabled={loading} className="btn-ghost hidden sm:inline-flex shadow-xs">Print</button>
           </div>
         </div>
 
-        {/* ── 控制列:手机上分两行,电脑上一行 ── */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center print:hidden">
-          <div className="flex w-full rounded-lg border border-line p-0.5 sm:w-auto">
-            {([['month', 'Month'], ['year', 'Year balances']] as [View, string][]).map(([key, label]) => (
-              <button
-                key={key}
-                onClick={() => setView(key)}
-                className={`flex-1 rounded-md px-3.5 py-2 text-sm font-medium transition-colors sm:flex-none sm:py-1.5 ${view === key ? 'bg-pine text-white' : 'text-ink-soft hover:text-ink'}`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+        {/* ── 控制列 (钉钉企业排版: 日期控制 + 全职兼职分离) ── */}
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between print:hidden">
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* 月度 / 年度 视图切换 */}
+            <div className="flex rounded-xl border border-line bg-paper p-0.5 shadow-2xs">
+              {([['month', 'Month View'], ['year', 'Year Balances']] as [View, string][]).map(([key, label]) => (
+                <button
+                  key={key}
+                  onClick={() => setView(key)}
+                  className={`rounded-lg px-3.5 py-1.5 text-sm font-semibold transition-all ${
+                    view === key ? 'bg-pine text-white shadow-xs' : 'text-ink-soft hover:text-ink'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
 
-          {view === 'month' ? (
-            <div className="flex w-full items-center gap-1.5 sm:w-auto">
-              <button onClick={() => shiftMonth(-1)} className="btn-ghost px-3" aria-label="Previous month">‹</button>
-              <select value={month} onChange={(e) => setMonth(Number(e.target.value))} className="field-input min-w-0 flex-1 sm:w-auto sm:flex-none">
-                {MONTH_NAMES.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
-              </select>
-              <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="field-input w-24 sm:w-auto">
+            {/* 日期选择器 */}
+            {view === 'month' ? (
+              <div className="flex items-center gap-1.5">
+                <button onClick={() => shiftMonth(-1)} className="btn-ghost px-2.5 py-1.5" aria-label="Previous month">‹</button>
+                <select value={month} onChange={(e) => setMonth(Number(e.target.value))} className="field-input py-1.5 text-sm font-medium">
+                  {MONTH_NAMES.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+                </select>
+                <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="field-input py-1.5 w-24 text-sm font-medium">
+                  {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
+                </select>
+                <button onClick={() => shiftMonth(1)} className="btn-ghost px-2.5 py-1.5" aria-label="Next month">›</button>
+                {!isCurrentMonth && (
+                  <button onClick={goToday} className="btn-ghost py-1.5 text-xs font-medium">This month</button>
+                )}
+              </div>
+            ) : (
+              <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="field-input py-1.5 w-32 text-sm font-medium">
                 {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
               </select>
-              <button onClick={() => shiftMonth(1)} className="btn-ghost px-3" aria-label="Next month">›</button>
-              {/* 已经在本月就不显示,少一个按钮更清爽 */}
-              {!isCurrentMonth && <button onClick={goToday} className="btn-ghost hidden sm:inline-flex">This month</button>}
-            </div>
-          ) : (
-            <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="field-input w-full sm:w-auto">
-              {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
-            </select>
-          )}
+            )}
+          </div>
 
-          {view === 'month' && !isCurrentMonth && (
-            <button onClick={goToday} className="btn-ghost w-full sm:hidden">Back to this month</button>
-          )}
+          {/* 全职 / 兼职 分离控件 (满足用户强烈要求的分类切换) */}
+          <div className="flex rounded-xl border border-line bg-paper p-0.5 shadow-2xs">
+            <button
+              onClick={() => setScope('ft')}
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+                scope === 'ft' ? 'bg-white text-ink shadow-xs border border-line' : 'text-ink-soft hover:text-ink'
+              }`}
+            >
+              <span>Full-time</span>
+              <span className={`rounded-full px-1.5 py-0.2 text-[10px] ${scope === 'ft' ? 'bg-pine/10 text-pine' : 'bg-gray-200/70 text-gray-500'}`}>
+                {ftCount}
+              </span>
+            </button>
+            <button
+              onClick={() => setScope('pt')}
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+                scope === 'pt' ? 'bg-white text-ink shadow-xs border border-line' : 'text-ink-soft hover:text-ink'
+              }`}
+            >
+              <span>Part-time</span>
+              <span className={`rounded-full px-1.5 py-0.2 text-[10px] ${scope === 'pt' ? 'bg-pine/10 text-pine' : 'bg-gray-200/70 text-gray-500'}`}>
+                {ptCount}
+              </span>
+            </button>
+            <button
+              onClick={() => setScope('all')}
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+                scope === 'all' ? 'bg-white text-ink shadow-xs border border-line' : 'text-ink-soft hover:text-ink'
+              }`}
+            >
+              All staff
+            </button>
+          </div>
         </div>
 
-        {loadError && <p className="rounded-md bg-rust-soft p-3 text-sm text-rust">{loadError}</p>}
+        {loadError && <p className="rounded-xl bg-rust-soft p-4 text-sm text-rust">{loadError}</p>}
 
         {loading ? (
-          <p className="py-10 text-center text-sm text-ink-soft">Loading...</p>
+          <p className="py-16 text-center text-sm text-ink-soft">Loading report data...</p>
         ) : view === 'month' ? (
           <>
-            {/* ── 摘要:算薪水最关心的三个数字。手机上排成一排,标签用短名 ── */}
-            <div className="grid grid-cols-3 gap-2 sm:gap-3">
-              <div className="panel border-rust/30 bg-rust-soft/30 px-3 py-3">
-                <p className="text-xs text-ink-soft">
-                  <span className="sm:hidden">Unpaid</span>
-                  <span className="hidden sm:inline">Unpaid leave (deduct from pay)</span>
-                </p>
-                <p className="mt-0.5 text-xl font-semibold text-rust sm:text-2xl">
-                  {fmt(t.unpaid)} <span className="text-sm font-normal">days</span>
-                </p>
-                <p className="text-xs text-ink-faint">{t.unpaidStaff} staff</p>
-              </div>
-              <div className="panel px-3 py-3">
-                <p className="text-xs text-ink-soft">
-                  <span className="sm:hidden">MC (paid)</span>
-                  <span className="hidden sm:inline">Medical leave (MC, paid)</span>
-                </p>
-                <p className="mt-0.5 text-xl font-semibold text-ink sm:text-2xl">{fmt(t.medical)} <span className="text-sm font-normal text-ink-faint">days</span></p>
-              </div>
-              <div className="panel px-3 py-3">
-                <p className="text-xs text-ink-soft">
-                  <span className="sm:hidden">Part-time</span>
-                  <span className="hidden sm:inline">Part-time hours</span>
-                </p>
-                <p className="mt-0.5 text-xl font-semibold text-ink sm:text-2xl">{fmt(t.hours)} <span className="text-sm font-normal text-ink-faint">hrs</span></p>
-              </div>
-            </div>
+            {/* ── 核心指标摘要面板 (钉钉高对比度卡片) ── */}
+            {scope === 'ft' && (
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+                {/* 无薪假: 扣薪重点，红底强调 */}
+                <div className="rounded-2xl border border-red-200 bg-gradient-to-br from-[#FFF1F0] to-white p-4 shadow-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-red-700">Unpaid Leave</span>
+                    <span className="rounded-md bg-red-100 px-2 py-0.5 text-[11px] font-bold text-red-700">Deduct pay</span>
+                  </div>
+                  <p className="mt-2 text-2xl font-bold tabular-nums text-rust">
+                    {fmt(t.unpaid)} <span className="text-sm font-normal text-red-600">days</span>
+                  </p>
+                  <p className="mt-1 text-xs text-red-600/80">{t.unpaidStaff} staff affected</p>
+                </div>
 
-            {/* ── 提醒:有哪些东西"还没算进去 / 还没处理" ── */}
+                {/* 带薪病假 */}
+                <div className="rounded-2xl border border-amber-200 bg-gradient-to-br from-[#FFFBE6] to-white p-4 shadow-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-amber-800">Medical Leave (MC)</span>
+                    <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700">Paid</span>
+                  </div>
+                  <p className="mt-2 text-2xl font-bold tabular-nums text-amber-800">
+                    {fmt(t.medical)} <span className="text-sm font-normal text-amber-700">days</span>
+                  </p>
+                  <p className="mt-1 text-xs text-amber-700/80">{monthReport.fullTime.filter((r) => r.medical > 0).length} staff</p>
+                </div>
+
+                {/* 年假 */}
+                <div className="rounded-2xl border border-blue-200 bg-gradient-to-br from-[#E6F4FF] to-white p-4 shadow-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-blue-800">Annual Leave</span>
+                    <span className="rounded-md bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-700">Working days</span>
+                  </div>
+                  <p className="mt-2 text-2xl font-bold tabular-nums text-blue-800">
+                    {fmt(t.annual)} <span className="text-sm font-normal text-blue-700">days</span>
+                  </p>
+                  <p className="mt-1 text-xs text-blue-700/80">{monthReport.fullTime.filter((r) => r.annual > 0).length} staff</p>
+                </div>
+
+                {/* 产假 / 陪产假 */}
+                <div className="rounded-2xl border border-purple-200 bg-gradient-to-br from-[#F9F0FF] to-white p-4 shadow-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-purple-800">Maternity / Paternity</span>
+                  </div>
+                  <p className="mt-2 text-2xl font-bold tabular-nums text-purple-800">
+                    {fmt(t.other)} <span className="text-sm font-normal text-purple-700">days</span>
+                  </p>
+                  <p className="mt-1 text-xs text-purple-700/80">{monthReport.fullTime.filter((r) => r.other > 0).length} staff</p>
+                </div>
+              </div>
+            )}
+
+            {scope === 'pt' && (
+              <div className="grid grid-cols-2 gap-3.5">
+                <div className="rounded-2xl border border-blue-200 bg-gradient-to-br from-[#E6F4FF] to-white p-5 shadow-xs">
+                  <p className="text-xs font-semibold text-blue-800">Total Part-time Hours</p>
+                  <p className="mt-2 text-3xl font-bold tabular-nums text-ink">
+                    {fmt(t.hours)} <span className="text-base font-normal text-ink-soft">hours</span>
+                  </p>
+                  <p className="mt-1 text-xs text-ink-faint">{monthReport.partTime.length} staff enrolled</p>
+                </div>
+                <div className="rounded-2xl border border-amber-200 bg-[#FFFBE6] p-5 shadow-xs">
+                  <p className="text-xs font-semibold text-amber-800">Missing Hours Warning</p>
+                  <p className="mt-2 text-3xl font-bold tabular-nums text-amber-700">
+                    {monthReport.missingHoursCount} <span className="text-base font-normal text-amber-600">staff</span>
+                  </p>
+                  <Link href="/work-hours" className="mt-1 inline-flex items-center text-xs font-semibold text-brand hover:underline">
+                    Enter hours in Work Hours &rarr;
+                  </Link>
+                </div>
+              </div>
+            )}
+
+            {scope === 'all' && (
+              <div className="grid grid-cols-3 gap-3.5">
+                <div className="rounded-2xl border border-red-200 bg-[#FFF1F0] p-4 shadow-xs">
+                  <p className="text-xs font-semibold text-red-700">Unpaid Leave</p>
+                  <p className="mt-1.5 text-2xl font-bold tabular-nums text-rust">{fmt(t.unpaid)} <span className="text-xs font-normal">days</span></p>
+                  <p className="text-xs text-red-600/80">{t.unpaidStaff} staff</p>
+                </div>
+                <div className="rounded-2xl border border-blue-200 bg-[#E6F4FF] p-4 shadow-xs">
+                  <p className="text-xs font-semibold text-blue-800">Medical Leave (MC)</p>
+                  <p className="mt-1.5 text-2xl font-bold tabular-nums text-blue-900">{fmt(t.medical)} <span className="text-xs font-normal">days</span></p>
+                  <p className="text-xs text-blue-700/80">Paid leave</p>
+                </div>
+                <div className="rounded-2xl border border-purple-200 bg-[#F9F0FF] p-4 shadow-xs">
+                  <p className="text-xs font-semibold text-purple-800">Part-time Hours</p>
+                  <p className="mt-1.5 text-2xl font-bold tabular-nums text-purple-900">{fmt(t.hours)} <span className="text-xs font-normal">hrs</span></p>
+                  <p className="text-xs text-purple-700/80">{monthReport.partTime.length} staff</p>
+                </div>
+              </div>
+            )}
+
+            {/* ── 待办提醒通知 ── */}
             {monthReport.pendingCount > 0 && (
               <p className={notice}>
                 <strong>{monthReport.pendingCount}</strong> leave application{monthReport.pendingCount > 1 ? 's' : ''} in {monthLabel} {monthReport.pendingCount > 1 ? 'are' : 'is'} still
                 pending approval and <strong>not counted</strong> below.{' '}
-                <Link href="/approve" className="font-medium underline print:hidden">Review in Approvals</Link>
+                <Link href="/approve" className="font-semibold underline print:hidden">Review in Approvals</Link>
               </p>
             )}
             {monthReport.cancellationCount > 0 && (
               <p className={notice}>
                 <strong>{monthReport.cancellationCount}</strong> approved leave {monthReport.cancellationCount > 1 ? 'have' : 'has'} a cancellation request waiting for a decision.
                 {monthReport.cancellationCount > 1 ? ' They are' : ' It is'} still counted below until decided.{' '}
-                <Link href="/approve" className="font-medium underline print:hidden">Review in Approvals</Link>
+                <Link href="/approve" className="font-semibold underline print:hidden">Review in Approvals</Link>
               </p>
             )}
-            {monthReport.missingHoursCount > 0 && (
+            {monthReport.missingHoursCount > 0 && (scope === 'pt' || scope === 'all') && (
               <p className={notice}>
                 <strong>{monthReport.missingHoursCount}</strong> part-time staff have no hours entered for {monthLabel}.{' '}
-                <Link href="/work-hours" className="font-medium underline print:hidden">Enter hours</Link>
+                <Link href="/work-hours" className="font-semibold underline print:hidden">Enter hours</Link>
               </p>
             )}
 
-            {/* ── 全职 ── */}
-            <div className="space-y-2">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="font-display text-base font-semibold text-ink">Full-time staff</h2>
-                <label className="flex items-center gap-2 py-1 text-sm text-ink-soft print:hidden">
-                  <input
-                    type="checkbox"
-                    checked={onlyWithLeave}
-                    onChange={(e) => setOnlyWithLeave(e.target.checked)}
-                    className="h-4 w-4 rounded border-line text-pine focus:ring-pine"
-                  />
-                  Only staff with leave
-                </label>
-              </div>
-
-              {ftRows.length === 0 ? (
-                <p className={emptyBox}>
-                  {onlyWithLeave ? 'No staff took leave this month.' : 'No full-time staff.'}
-                </p>
-              ) : (
-                <>
-                  {/* 手机:一人一张卡片 */}
-                  <div className="space-y-2 md:hidden">
-                    {ftRows.map((r) => {
-                      const details = detailsOf(r)
-                      const hasLeave = r.annual + r.medical + r.unpaid + r.other > 0 || details.length > 0
-
-                      // 这个月没请假的人:只占一行,不占一整张卡片
-                      if (!hasLeave) {
-                        return (
-                          <div key={r.emp.id} className="flex items-center justify-between gap-3 rounded-lg border border-line bg-surface px-3 py-2.5">
-                            <p className="min-w-0 text-sm font-medium text-ink-soft">{name(r.emp)}</p>
-                            <p className="shrink-0 text-xs text-ink-faint">No leave</p>
-                          </div>
-                        )
-                      }
-
-                      return (
-                        <div key={r.emp.id} className={card}>
-                          <div className="flex items-start justify-between gap-2">
-                            <p className="min-w-0 text-base font-semibold text-ink">{name(r.emp)}</p>
-                            {r.cancellationRequested && (
-                              <span className="shrink-0 rounded bg-amber-50 px-1.5 py-0.5 text-xs text-amber-700 ring-1 ring-amber-200">Cancellation requested</span>
-                            )}
-                          </div>
-                          <div className="mt-2 grid grid-cols-4 gap-1.5">
-                            <Stat label="Annual">{num(r.annual)}</Stat>
-                            <Stat label="MC">{num(r.medical)}</Stat>
-                            <Stat label="Unpaid" tone={r.unpaid > 0 ? 'rust' : undefined}>{num(r.unpaid)}</Stat>
-                            <Stat label="Mat/Pat">{num(r.other)}</Stat>
-                          </div>
-                          {details.length > 0 && (
-                            <ul className="mt-2.5 space-y-1 border-t border-line pt-2.5 text-sm text-ink-soft">
-                              {details.map((d, i) => <li key={i}>{d}</li>)}
-                            </ul>
-                          )}
-                        </div>
-                      )
-                    })}
-
-                    {/* 合计 */}
-                    <div className="rounded-lg bg-paper p-3">
-                      <p className="text-sm font-semibold text-ink">Total</p>
-                      <div className="mt-2 grid grid-cols-4 gap-1.5">
-                        <Stat label="Annual">{fmt(t.annual)}</Stat>
-                        <Stat label="MC">{fmt(t.medical)}</Stat>
-                        <Stat label="Unpaid" tone="rust">{fmt(t.unpaid)}</Stat>
-                        <Stat label="Mat/Pat">{fmt(t.other)}</Stat>
-                      </div>
-                    </div>
+            {/* ── 全职员工表格 ── */}
+            {(scope === 'ft' || scope === 'all') && (
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <h2 className="font-display text-base font-semibold text-ink">Full-time staff</h2>
+                    <span className="text-xs text-ink-faint">({ftRows.length})</span>
                   </div>
 
-                  {/* 电脑:表格 */}
-                  <div className="hidden overflow-x-auto rounded-lg border border-line bg-surface md:block">
+                  {/* 快捷过滤芯片按钮组 */}
+                  <div className="flex items-center gap-1.5 print:hidden">
+                    <button
+                      onClick={() => setFilter('all')}
+                      className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
+                        filter === 'all' ? 'bg-ink text-white shadow-xs' : 'bg-paper text-ink-soft hover:bg-gray-200'
+                      }`}
+                    >
+                      All ({monthReport.fullTime.length})
+                    </button>
+                    <button
+                      onClick={() => setFilter('leave')}
+                      className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
+                        filter === 'leave' ? 'bg-pine text-white shadow-xs' : 'bg-paper text-ink-soft hover:bg-gray-200'
+                      }`}
+                    >
+                      With leave ({monthReport.fullTime.filter((r) => r.annual + r.medical + r.unpaid + r.other > 0 || r.lines.length > 0).length})
+                    </button>
+                    {t.unpaid > 0 && (
+                      <button
+                        onClick={() => setFilter('unpaid')}
+                        className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
+                          filter === 'unpaid' ? 'bg-rust text-white shadow-xs' : 'border border-rust/30 bg-rust-soft/40 text-rust hover:bg-rust-soft'
+                        }`}
+                      >
+                        Unpaid ({monthReport.fullTime.filter((r) => r.unpaid > 0).length})
+                      </button>
+                    )}
+                    {t.medical > 0 && (
+                      <button
+                        onClick={() => setFilter('mc')}
+                        className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
+                          filter === 'mc' ? 'bg-amber-600 text-white shadow-xs' : 'border border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100'
+                        }`}
+                      >
+                        MC ({monthReport.fullTime.filter((r) => r.medical > 0).length})
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {ftRows.length === 0 ? (
+                  <p className={emptyBox}>
+                    {filter === 'all' ? 'No full-time staff.' : 'No staff matched the selected filter.'}
+                  </p>
+                ) : (
+                  <div className="overflow-hidden rounded-xl border border-line bg-surface shadow-xs">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="border-b border-line bg-paper">
+                        <tr>
                           <th className={`text-left ${th}`}>Employee</th>
                           <th className={`text-center ${th}`}>Annual</th>
                           <th className={`text-center ${th}`}>MC</th>
                           <th className={`text-center ${th} text-rust`}>Unpaid</th>
                           <th className={`text-center ${th}`}>Mat. / Pat.</th>
-                          <th className={`text-left ${th}`}>Details</th>
+                          <th className={`text-left ${th}`}>Details & Dates</th>
                         </tr>
                       </thead>
-                      <tbody>
+                      <tbody className="divide-y divide-line">
                         {ftRows.map((r) => {
                           const details = detailsOf(r)
+                          const hasLeave = r.lines.length > 0 || r.annual + r.medical + r.unpaid + r.other > 0
+
                           return (
-                            <tr key={r.emp.id} className={`border-b border-line align-top ${r.lines.length === 0 ? 'text-ink-faint' : ''}`}>
-                              <td className="px-3 py-2.5 font-medium text-ink whitespace-nowrap">{name(r.emp)}</td>
-                              <td className={tdNum}>{num(r.annual)}</td>
-                              <td className={tdNum}>{num(r.medical)}</td>
-                              <td className={`${tdNum} ${r.unpaid > 0 ? 'bg-rust-soft/40 font-semibold text-rust' : ''}`}>{num(r.unpaid)}</td>
-                              <td className={tdNum}>{num(r.other)}</td>
-                              <td className="px-3 py-2.5 text-sm text-ink-soft">
-                                {details.length === 0 ? dash : details.map((d, i) => <div key={i}>{d}</div>)}
+                            <tr
+                              key={r.emp.id}
+                              className={`transition-colors hover:bg-paper/40 ${!hasLeave ? 'opacity-70 hover:opacity-100' : ''}`}
+                            >
+                              <td className="px-3.5 py-3.5 whitespace-nowrap align-middle">
+                                {name(r.emp)}
+                              </td>
+                              <td className={tdNum}>
+                                {r.annual > 0 ? (
+                                  <span className="inline-flex items-center rounded-md border border-blue-100 bg-blue-50 px-2.5 py-0.5 font-bold text-blue-800">
+                                    {fmt(r.annual)}
+                                  </span>
+                                ) : (
+                                  dash
+                                )}
+                              </td>
+                              <td className={tdNum}>
+                                {r.medical > 0 ? (
+                                  <span className="inline-flex items-center rounded-md border border-amber-200 bg-amber-50 px-2.5 py-0.5 font-bold text-amber-800">
+                                    {fmt(r.medical)}
+                                  </span>
+                                ) : (
+                                  dash
+                                )}
+                              </td>
+                              <td className={tdNum}>
+                                {r.unpaid > 0 ? (
+                                  <span className="inline-flex items-center rounded-md border border-red-200 bg-red-50 px-2.5 py-0.5 font-bold text-rust">
+                                    {fmt(r.unpaid)}
+                                  </span>
+                                ) : (
+                                  dash
+                                )}
+                              </td>
+                              <td className={tdNum}>
+                                {r.other > 0 ? (
+                                  <span className="inline-flex items-center rounded-md border border-purple-200 bg-purple-50 px-2.5 py-0.5 font-bold text-purple-800">
+                                    {fmt(r.other)}
+                                  </span>
+                                ) : (
+                                  dash
+                                )}
+                              </td>
+                              <td className="px-3.5 py-3.5 text-xs text-ink-soft align-middle">
+                                {details.length === 0 ? (
+                                  <span className="text-ink-faint">No leave taken</span>
+                                ) : (
+                                  <ul className="space-y-1">
+                                    {details.map((d, i) => (
+                                      <li key={i} className="flex items-center gap-1.5 font-medium text-ink">
+                                        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-pine" />
+                                        <span>{d}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
                                 {r.cancellationRequested && (
-                                  <span className="mt-1 inline-block rounded bg-amber-50 px-1.5 py-0.5 text-xs text-amber-700 ring-1 ring-amber-200">Cancellation requested</span>
+                                  <span className="mt-1 inline-block rounded-md bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700 ring-1 ring-amber-200">
+                                    Cancellation requested
+                                  </span>
                                 )}
                               </td>
                             </tr>
@@ -440,129 +602,141 @@ function DesktopReports() {
                         })}
                       </tbody>
                       <tfoot>
-                        <tr className="bg-paper font-semibold text-ink">
-                          <td className="px-3 py-2.5">Total</td>
+                        <tr className="bg-paper font-semibold text-ink border-t-2 border-line">
+                          <td className="px-3.5 py-3.5">Total ({ftRows.length})</td>
                           <td className={tdNum}>{fmt(t.annual)}</td>
                           <td className={tdNum}>{fmt(t.medical)}</td>
-                          <td className={`${tdNum} text-rust`}>{fmt(t.unpaid)}</td>
+                          <td className={`${tdNum} text-rust font-bold`}>{fmt(t.unpaid)}</td>
                           <td className={tdNum}>{fmt(t.other)}</td>
                           <td />
                         </tr>
                       </tfoot>
                     </table>
                   </div>
-                </>
-              )}
-              <p className="text-xs leading-relaxed text-ink-faint">
-                Approved leave only. Annual leave counts working days (weekends and public holidays excluded); MC, unpaid, maternity and paternity count calendar days.
-                A leave that runs across two months is split — only the days inside {MONTH_NAMES[month - 1]} are counted.
-              </p>
-            </div>
+                )}
+                <p className="text-xs leading-relaxed text-ink-faint">
+                  Approved leave only. Annual leave counts working days (weekends and public holidays excluded); MC, unpaid, maternity and paternity count calendar days.
+                </p>
+              </div>
+            )}
 
-            {/* ── 兼职(只有 2 栏,手机上也放得下,直接用表格) ── */}
-            <div className="space-y-2">
-              <h2 className="font-display text-base font-semibold text-ink">Part-time staff</h2>
-              {monthReport.partTime.length === 0 ? (
-                <p className={emptyBox}>No part-time staff.</p>
-              ) : (
-                <div className="overflow-hidden rounded-lg border border-line bg-surface">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-line bg-paper">
-                        <th className={`text-left ${th}`}>Employee</th>
-                        <th className={`text-right ${th}`}>Hours worked</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {monthReport.partTime.map((r) => (
-                        <tr key={r.emp.id} className="border-b border-line">
-                          <td className="px-3 py-3 font-medium text-ink">{name(r.emp)}</td>
-                          <td className="px-3 py-3 text-right tabular-nums">
-                            {r.hours === null ? (
-                              <span className="rounded bg-amber-50 px-2 py-0.5 text-xs text-amber-700 ring-1 ring-amber-200">Not entered</span>
-                            ) : (
-                              <span className="font-medium text-ink">{fmt(r.hours)} h</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    <tfoot>
-                      <tr className="bg-paper font-semibold text-ink">
-                        <td className="px-3 py-3">Total</td>
-                        <td className="px-3 py-3 text-right tabular-nums">{fmt(t.hours)} h</td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
-              )}
-            </div>
-          </>
-        ) : (
-          <>
-            {/* ── 年度余额 ── */}
-            <div className="space-y-2">
-              <h2 className="font-display text-base font-semibold text-ink">Full-time staff</h2>
-              {yearReport.fullTime.length === 0 ? (
-                <p className={emptyBox}>No full-time staff.</p>
-              ) : (
-                <>
-                  {/* 手机:一人一张卡片,Balance 放最醒目的位置 */}
-                  <div className="space-y-2 md:hidden">
-                    {yearReport.fullTime.map((r) => {
-                      const negative = r.alBalance < 0
-                      return (
-                        <div key={r.emp.id} className={`${card} ${negative ? 'border-rust/40 bg-rust-soft/20' : ''}`}>
-                          <div className="flex items-start justify-between gap-3">
-                            <p className="min-w-0 text-base font-semibold text-ink">{name(r.emp)}</p>
-                            <div className="shrink-0 text-right">
-                              <p className="text-xs text-ink-faint">Annual balance</p>
-                              <p className={`text-2xl font-semibold leading-tight tabular-nums ${negative ? 'text-rust' : 'text-pine'}`}>{fmt(r.alBalance)}</p>
-                            </div>
-                          </div>
-                          <div className="mt-2.5 grid grid-cols-3 gap-1.5">
-                            <Stat label="Entitled">
-                              {fmt(r.alEntitled)}
-                              {r.emp.annual_leave_entitlement_override != null && <span className="ml-0.5 text-xs font-normal text-ink-faint">*</span>}
-                            </Stat>
-                            <Stat label="B/F">{fmt(r.bf)}</Stat>
-                            <Stat label="Taken">{fmt(r.alTaken)}</Stat>
-                            <Stat label="MC taken">
-                              {fmt(r.mcTaken)} <span className="text-sm font-normal text-ink-faint">/ {fmt(r.mcEntitled)}</span>
-                            </Stat>
-                            <Stat label="Unpaid" tone={r.unpaid > 0 ? 'rust' : undefined}>{num(r.unpaid)}</Stat>
-                            <Stat label="Mat/Pat">{num(r.other)}</Stat>
-                          </div>
-                          {r.alPending > 0 && (
-                            <p className="mt-2 text-xs text-amber-700">{fmt(r.alPending)} day{r.alPending > 1 ? 's' : ''} of annual leave pending (included in Taken)</p>
-                          )}
-                        </div>
-                      )
-                    })}
+            {/* ── 兼职员工表格 ── */}
+            {(scope === 'pt' || scope === 'all') && (
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <h2 className="font-display text-base font-semibold text-ink">Part-time staff</h2>
+                    <span className="text-xs text-ink-faint">({monthReport.partTime.length})</span>
                   </div>
+                  <Link href="/work-hours" className="text-xs font-semibold text-brand hover:underline">
+                    Enter hours in Work Hours &rarr;
+                  </Link>
+                </div>
 
-                  {/* 电脑:表格 */}
-                  <div className="hidden overflow-x-auto rounded-lg border border-line bg-surface md:block">
+                {monthReport.partTime.length === 0 ? (
+                  <p className={emptyBox}>No part-time staff.</p>
+                ) : (
+                  <div className="overflow-hidden rounded-xl border border-line bg-surface shadow-xs">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="border-b border-line bg-paper">
+                        <tr>
+                          <th className={`text-left ${th}`}>Employee</th>
+                          <th className={`text-right ${th}`}>Hours Worked</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-line">
+                        {monthReport.partTime.map((r) => (
+                          <tr key={r.emp.id} className="transition-colors hover:bg-paper/40">
+                            <td className="px-3.5 py-3 font-medium text-ink">{name(r.emp)}</td>
+                            <td className="px-3.5 py-3 text-right tabular-nums">
+                              {r.hours === null ? (
+                                <span className="rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700">
+                                  Not entered
+                                </span>
+                              ) : (
+                                <span className="rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-sm font-bold text-emerald-800">
+                                  {fmt(r.hours)} h
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr className="bg-paper font-semibold text-ink border-t-2 border-line">
+                          <td className="px-3.5 py-3">Total</td>
+                          <td className="px-3.5 py-3 text-right tabular-nums text-base font-bold text-ink">{fmt(t.hours)} h</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        ) : (
+          /* ── 年度余额视图 ── */
+          <>
+            {(scope === 'ft' || scope === 'all') && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <h2 className="font-display text-base font-semibold text-ink">Full-time staff · Annual Ledger</h2>
+                    <span className="text-xs text-ink-faint">({ftYearRows.length})</span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 print:hidden">
+                    <button
+                      onClick={() => setYearFilter('all')}
+                      className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
+                        yearFilter === 'all' ? 'bg-ink text-white shadow-xs' : 'bg-paper text-ink-soft hover:bg-gray-200'
+                      }`}
+                    >
+                      All ({yearReport.fullTime.length})
+                    </button>
+                    <button
+                      onClick={() => setYearFilter('overdrawn')}
+                      className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
+                        yearFilter === 'overdrawn' ? 'bg-rust text-white shadow-xs' : 'border border-rust/30 bg-rust-soft/40 text-rust hover:bg-rust-soft'
+                      }`}
+                    >
+                      Overdrawn ({yearReport.fullTime.filter((r) => r.alBalance < 0).length})
+                    </button>
+                    <button
+                      onClick={() => setYearFilter('mc')}
+                      className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
+                        yearFilter === 'mc' ? 'bg-amber-600 text-white shadow-xs' : 'border border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100'
+                      }`}
+                    >
+                      With MC ({yearReport.fullTime.filter((r) => r.mcTaken > 0).length})
+                    </button>
+                  </div>
+                </div>
+
+                {ftYearRows.length === 0 ? (
+                  <p className={emptyBox}>No staff matched the selected filter.</p>
+                ) : (
+                  <div className="overflow-hidden rounded-xl border border-line bg-surface shadow-xs">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr>
                           <th className={`text-left ${th}`}>Employee</th>
                           <th className={`text-center ${th}`}>Entitled</th>
                           <th className={`text-center ${th}`}>B/F</th>
                           <th className={`text-center ${th}`}>Taken</th>
-                          <th className={`text-center ${th}`}>Balance</th>
-                          <th className={`text-center ${th}`}>MC taken</th>
+                          <th className={`text-center ${th}`}>Annual Balance</th>
+                          <th className={`text-center ${th}`}>MC Taken</th>
                           <th className={`text-center ${th}`}>Unpaid</th>
                           <th className={`text-center ${th}`}>Mat. / Pat.</th>
                         </tr>
                       </thead>
-                      <tbody>
-                        {yearReport.fullTime.map((r) => (
-                          <tr key={r.emp.id} className={`border-b border-line ${r.alBalance < 0 ? 'bg-rust-soft/30' : ''}`}>
-                            <td className="px-3 py-2.5 font-medium text-ink whitespace-nowrap">{name(r.emp)}</td>
+                      <tbody className="divide-y divide-line">
+                        {ftYearRows.map((r) => (
+                          <tr key={r.emp.id} className={`transition-colors hover:bg-paper/40 ${r.alBalance < 0 ? 'bg-red-50/40' : ''}`}>
+                            <td className="px-3.5 py-3 font-medium text-ink whitespace-nowrap">{name(r.emp)}</td>
                             <td className={tdNum}>
                               {fmt(r.alEntitled)}
-                              {r.emp.annual_leave_entitlement_override != null && <span className="ml-1 text-xs text-ink-faint" title="Entitlement set manually">*</span>}
+                              {r.emp.annual_leave_entitlement_override != null && <span className="ml-1 text-xs text-ink-faint font-normal" title="Entitlement set manually">*</span>}
                             </td>
                             <td className={tdNum}>{fmt(r.bf)}</td>
                             <td className={tdNum}>
@@ -573,7 +747,17 @@ function DesktopReports() {
                                 </span>
                               )}
                             </td>
-                            <td className={`${tdNum} font-semibold ${r.alBalance < 0 ? 'text-rust' : 'text-ink'}`}>{fmt(r.alBalance)}</td>
+                            <td className={tdNum}>
+                              {r.alBalance < 0 ? (
+                                <span className="inline-flex items-center rounded-md border border-red-200 bg-red-100 px-2 py-0.5 font-bold text-rust">
+                                  {fmt(r.alBalance)} (Overdrawn)
+                                </span>
+                              ) : (
+                                <span className="font-bold text-pine">
+                                  {fmt(r.alBalance)}
+                                </span>
+                              )}
+                            </td>
                             <td className={tdNum}>{fmt(r.mcTaken)} <span className="text-ink-faint">/ {fmt(r.mcEntitled)}</span></td>
                             <td className={tdNum}>{num(r.unpaid)}</td>
                             <td className={tdNum}>{num(r.other)}</td>
@@ -582,41 +766,48 @@ function DesktopReports() {
                       </tbody>
                     </table>
                   </div>
-                </>
-              )}
-              <p className="text-xs leading-relaxed text-ink-faint">
-                Annual balance = Entitled + B/F − Taken. Includes pending applications (same as what staff see on their dashboard).
-                B/F only applies to the current year. * = entitlement set manually in Manage.
-              </p>
-            </div>
+                )}
+                <p className="text-xs leading-relaxed text-ink-faint">
+                  Annual balance = Entitled + B/F − Taken. Includes pending applications (same as what staff see on their dashboard).
+                </p>
+              </div>
+            )}
 
-            <div className="space-y-2">
-              <h2 className="font-display text-base font-semibold text-ink">Part-time staff</h2>
-              {yearReport.partTime.length === 0 ? (
-                <p className={emptyBox}>No part-time staff.</p>
-              ) : (
-                <div className="overflow-hidden rounded-lg border border-line bg-surface">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-line bg-paper">
-                        <th className={`text-left ${th}`}>Employee</th>
-                        <th className={`text-center ${th}`}>Months</th>
-                        <th className={`text-right ${th}`}>Total hours</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {yearReport.partTime.map((r) => (
-                        <tr key={r.emp.id} className="border-b border-line">
-                          <td className="px-3 py-3 font-medium text-ink">{name(r.emp)}</td>
-                          <td className={tdNum}>{r.monthsEntered}</td>
-                          <td className="px-3 py-3 text-right tabular-nums font-medium text-ink">{fmt(r.totalHours)} h</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+            {(scope === 'pt' || scope === 'all') && (
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <h2 className="font-display text-base font-semibold text-ink">Part-time staff · Annual Summary</h2>
+                    <span className="text-xs text-ink-faint">({yearReport.partTime.length})</span>
+                  </div>
                 </div>
-              )}
-            </div>
+
+                {yearReport.partTime.length === 0 ? (
+                  <p className={emptyBox}>No part-time staff.</p>
+                ) : (
+                  <div className="overflow-hidden rounded-xl border border-line bg-surface shadow-xs">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr>
+                          <th className={`text-left ${th}`}>Employee</th>
+                          <th className={`text-center ${th}`}>Months Entered</th>
+                          <th className={`text-right ${th}`}>Total Hours</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-line">
+                        {yearReport.partTime.map((r) => (
+                          <tr key={r.emp.id} className="transition-colors hover:bg-paper/40">
+                            <td className="px-3.5 py-3 font-medium text-ink">{name(r.emp)}</td>
+                            <td className={tdNum}>{r.monthsEntered}</td>
+                            <td className="px-3.5 py-3 text-right tabular-nums font-bold text-ink">{fmt(r.totalHours)} h</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
           </>
         )}
       </div>
