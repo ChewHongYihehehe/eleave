@@ -14,7 +14,8 @@ export default function EmployeeMe() {
   const router = useRouter()
   const { auth, employee, unseenCount } = useLeaveData()
   const { lang, setLang, t } = useLang()
-  if (auth.status !== 'ready' || !employee) return <AuthStatus state={auth} />
+  if (auth.status !== 'ready') return <AuthStatus state={auth} />
+  if (!employee) return null
 
   const initials = employee.full_name.trim().split(/\s+/).map((p, i, a) => (i === 0 || i === a.length - 1 ? p[0] : '')).join('').toUpperCase()
   const item = 'flex items-center gap-3 px-4 py-3.5 text-[15px] text-gray-900 active:bg-gray-50'
