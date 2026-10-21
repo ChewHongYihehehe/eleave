@@ -53,13 +53,19 @@ export function ManagerTabPage({ tab, badge, children }: { tab: (typeof TABS)[nu
 
 // ── 头像:按名字取固定颜色 ──
 const PALETTE = ['#1677FF', '#13C2C2', '#FA8C16', '#722ED1', '#EB2F96', '#52C41A', '#2F54EB', '#FA541C']
-export function Avatar({ name, size = 40 }: { name: string; size?: number }) {
-  const parts = name.trim().split(/\s+/)
-  const initials = (parts.length === 1 ? parts[0].slice(0, 2) : parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+export function Avatar({ name, size = 40 }: { name?: string | null; size?: number }) {
+  const safe = (name || '').trim()
+  const parts = safe ? safe.split(/\s+/) : []
+  let initials = '?'
+  if (parts.length === 1 && parts[0]) {
+    initials = parts[0].slice(0, 2).toUpperCase()
+  } else if (parts.length > 1) {
+    initials = ((parts[0][0] || '') + (parts[parts.length - 1][0] || '')).toUpperCase() || '?'
+  }
   let h = 0
-  for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) >>> 0
+  for (let i = 0; i < safe.length; i++) h = (h * 31 + safe.charCodeAt(i)) >>> 0
   return (
-    <span className="flex shrink-0 items-center justify-center rounded-full font-semibold text-white" style={{ width: size, height: size, background: PALETTE[h % PALETTE.length], fontSize: size * 0.36 }}>
+    <span className="flex shrink-0 items-center justify-center rounded-full font-semibold text-white shadow-2xs" style={{ width: size, height: size, background: PALETTE[h % PALETTE.length], fontSize: Math.max(10, Math.round(size * 0.36)) }}>
       {initials}
     </span>
   )
