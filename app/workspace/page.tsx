@@ -71,9 +71,9 @@ function DesktopWorkspace() {
     month: 'long', day: 'numeric', weekday: 'long',
   })
 
-  const rows: { href: string; label: string; count: number | null; hot: boolean; unit: string }[] = [
-    { href: '/approve', label: t('pendingApprovals'), count: attention, hot: (attention ?? 0) > 0, unit: '' },
-    { href: '/calendar', label: t('onLeaveToday'), count: onLeaveToday, hot: false, unit: ` ${t('staffUnit')}` },
+  const rows: { href: string; label: string; count: number | null; hot: boolean; unit: string; icon: keyof typeof IC; iconTone: string }[] = [
+    { href: '/approve', label: t('pendingApprovals'), count: attention, hot: (attention ?? 0) > 0, unit: '', icon: 'approve', iconTone: 'bg-rust-soft text-rust' },
+    { href: '/calendar', label: t('onLeaveToday'), count: onLeaveToday, hot: false, unit: ` ${t('staffUnit')}`, icon: 'calendar', iconTone: 'bg-pine-soft text-pine-deep' },
   ]
 
   return (
@@ -87,16 +87,30 @@ function DesktopWorkspace() {
         {/* 需要处理 */}
         <section>
           <h2 className="mb-2 text-sm font-medium text-ink-soft">{t('needsAttention')}</h2>
-          <div className="divide-y divide-line rounded-xl border border-line bg-surface">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {rows.map((r) => (
-              <Link key={r.href + r.label} href={r.href} className="flex items-center justify-between gap-3 px-4 py-3.5">
-                <span className="text-sm text-ink">{r.label}</span>
-                <span className="flex items-center gap-1.5">
-                  <span className={`text-base font-semibold tabular-nums ${r.hot ? 'text-rust' : 'text-ink'}`}>
+              <Link
+                key={r.href + r.label}
+                href={r.href}
+                className="flex items-center justify-between gap-3 p-4 rounded-xl border border-line bg-surface hover:border-gray-300 transition-all shadow-xs"
+              >
+                <div className="flex items-center gap-3">
+                  <span className={`flex h-11 w-11 items-center justify-center rounded-xl ${r.iconTone}`}>
+                    <SvgIcon d={IC[r.icon]} size={22} />
+                  </span>
+                  <div>
+                    <p className="text-sm font-medium text-ink">{r.label}</p>
+                    <p className="text-xs text-ink-faint">
+                      {r.hot ? (lang === 'zh' ? '需要尽快处理' : 'Action needed') : (lang === 'zh' ? '点击查看详情' : 'Click to view')}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`text-2xl font-bold tabular-nums ${r.hot ? 'text-rust' : 'text-ink'}`}>
                     {r.count === null ? '–' : `${r.count}${r.unit}`}
                   </span>
                   <span className="text-ink-faint"><SvgIcon d={IC.chevronR} size={16} /></span>
-                </span>
+                </div>
               </Link>
             ))}
           </div>
@@ -105,20 +119,26 @@ function DesktopWorkspace() {
         {/* 全部功能 */}
         <section>
           <h2 className="mb-3 text-sm font-medium text-ink-soft">{t('allFeatures')}</h2>
-          <div className="grid grid-cols-4 gap-y-6 rounded-xl border border-line bg-surface px-2 py-5">
-            {FEATURES.map((f) => (
-              <Link key={f.href} href={f.href} className="flex flex-col items-center gap-2 px-1 text-center active:opacity-60">
-                <span className={`relative flex h-12 w-12 items-center justify-center rounded-xl ${f.tone}`}>
-                  <SvgIcon d={IC[f.icon]} size={24} />
-                  {f.badge === 'attention' && !!attention && (
-                    <span className="absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-rust px-1 text-[11px] font-semibold leading-none text-white">
-                      {attention > 99 ? '99+' : attention}
-                    </span>
-                  )}
-                </span>
-                <span className="text-xs leading-tight text-ink">{t(f.key)}</span>
-              </Link>
-            ))}
+          <div className="rounded-2xl border border-line bg-surface p-6 shadow-xs">
+            <div className="grid grid-cols-4 sm:grid-cols-7 gap-y-6 gap-x-2">
+              {FEATURES.map((f) => (
+                <Link
+                  key={f.href}
+                  href={f.href}
+                  className="flex flex-col items-center gap-2.5 px-1 text-center group transition-transform active:scale-95"
+                >
+                  <span className={`relative flex h-13 w-13 items-center justify-center rounded-2xl shadow-xs transition-shadow group-hover:shadow-md ${f.tone}`}>
+                    <SvgIcon d={IC[f.icon]} size={24} />
+                    {f.badge === 'attention' && !!attention && (
+                      <span className="absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-rust px-1 text-[11px] font-semibold leading-none text-white shadow-xs">
+                        {attention > 99 ? '99+' : attention}
+                      </span>
+                    )}
+                  </span>
+                  <span className="text-xs font-medium leading-tight text-ink group-hover:text-brand transition-colors">{t(f.key)}</span>
+                </Link>
+              ))}
+            </div>
           </div>
         </section>
       </div>
