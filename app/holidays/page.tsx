@@ -1,5 +1,6 @@
 'use client'
 
+import MobileHolidays from '@/components/manager/MobileHolidays'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import ManagerShell from '@/components/ManagerShell'
@@ -86,7 +87,7 @@ const WEEKDAYS = [
   { day: 4, label: 'Thu' }, { day: 5, label: 'Fri' }, { day: 6, label: 'Sat' }, { day: 0, label: 'Sun' },
 ]
 
-export default function HolidaysPage() {
+function DesktopHolidays() {
   const auth = useEmployee({ requireManager: true })
   const [holidays, setHolidays] = useState<Holiday[]>([])
   const [date, setDate] = useState('')
@@ -298,5 +299,19 @@ export default function HolidaysPage() {
       )}
     </div>
   </ManagerShell>
+  )
+}
+
+// 手机(< md)用钉钉风格的新版页面;电脑(≥ md)保持原来的版面。
+export default function HolidaysPage() {
+  return (
+    <>
+      <div className="md:hidden">
+        <MobileHolidays />
+      </div>
+      <div className="hidden md:block">
+        <DesktopHolidays />
+      </div>
+    </>
   )
 }
