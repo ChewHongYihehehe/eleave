@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import AuthStatus from '@/components/AuthStatus'
-import { Card, ConfirmSheet, SubPage, useToast } from '@/components/employee/EmployeeShell'
+import { Card, ConfirmSheet, ListSkeleton, SubPage, useToast } from '@/components/employee/EmployeeShell'
 import { Avatar, ReasonSheet } from '@/components/manager/ManagerTabs'
 import { statusOf } from '@/components/manager/MobileApprove'
 import { fmtNum, TYPE_COLOR } from '@/lib/useLeaveData'
@@ -21,7 +21,7 @@ type Sheet = null | 'approve' | 'reject' | 'confirmCancel' | 'keep' | 'managerCa
 export default function ApprovalDetail() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
-  const { auth, apps, loading, send, balanceFor } = useApprovals()
+  const { auth, apps, loading, error, send, balanceFor } = useApprovals()
   const { t, lang } = useMgrT()
   const toast = useToast()
   const [sheet, setSheet] = useState<Sheet>(null)
@@ -32,7 +32,7 @@ export default function ApprovalDetail() {
   if (!app) {
     return (
       <SubPage title={t('details')} backHref="/approve">
-        <p className="py-20 text-center text-sm text-gray-400">{loading ? t('loading') : t('notFound')}</p>
+        {loading ? <ListSkeleton rows={3} /> : <p className="py-20 text-center text-sm text-gray-500">{error ? t('loadFail') : t('notFound')}</p>}
       </SubPage>
     )
   }
@@ -42,7 +42,7 @@ export default function ApprovalDetail() {
   const isPending = app.status === 'pending'
   const isCancelReq = app.status === 'approved' && app.cancellation_status === 'requested'
   const isApproved = app.status === 'approved' && app.cancellation_status !== 'requested'
-  const bal = balanceFor(app.employee_id, app.leave_type)
+  const bal = balanceFor(app.employee_id, app.leave_type, Number(app.start_date.slice(0, 4))) // 按申请所属年份算余额,跨年申请不会拿错
 
   // 同期休假的同事(已批准、日期有重叠、不含历史导入)
   const overlap = Array.from(new Set(
@@ -60,7 +60,7 @@ export default function ApprovalDetail() {
     if (app.cancellation_status === 'none' && app.cancellation_decision_reason) steps.push({ title: t('cancelDeclined'), sub: app.cancellation_decision_reason, tone: 'bad' })
   }
   if (app.status === 'cancelled') steps.push({ title: t('tlCancelled'), time: app.last_decision_at, sub: app.cancellation_decision_reason, tone: 'muted' })
-  const dot = { done: 'bg-[#52C41A]', active: 'bg-[#FA8C16]', bad: 'bg-[#F5222D]', muted: 'bg-gray-300' }
+  const dot = { done: 'bg-st-approved', active: 'bg-st-pending', bad: 'bg-st-rejected', muted: 'bg-gray-300' }
 
   async function run(action: Action, reason?: string) {
     setBusy(true)
@@ -81,19 +81,21 @@ export default function ApprovalDetail() {
   ]
   if (app.reason && !imported) rows.push([t('reason'), app.reason])
 
-  const big = 'flex-1 rounded-xl py-3 text-base font-semibold'
+  // 确认面板里写清楚"谁 / 什么 / 几天 / 哪天",不再是只有一行标题的形式确认
+  const summary = `${app.person.full_name} · ${leaveName(app.leave_type, lang)} ${fmtNum(Number(app.total_days))} ${t('daysUnit')} · ${fmtRange(app, lang, t('imported'))}`
+  const big = 'rounded-xl py-3 text-base font-semibold'
   const footer = isPending ? (
     <div className="flex gap-3">
-      <button onClick={() => setSheet('reject')} className={`${big} border border-[#F5222D]/40 text-[#F5222D]`}>{t('reject')}</button>
-      <button onClick={() => setSheet('approve')} className={`${big} bg-brand text-white`}>{t('approve')}</button>
+      <button onClick={() => setSheet('reject')} className={`${big} flex-[2] border border-st-rejected/40 text-st-rejected-text`}>{t('reject')}</button>
+      <button onClick={() => setSheet('approve')} className={`${big} flex-[3] bg-brand text-white`}>{t('approve')}</button>
     </div>
   ) : isCancelReq ? (
     <div className="flex gap-3">
-      <button onClick={() => setSheet('keep')} className={`${big} border border-gray-300 text-gray-700`}>{t('keepLeave')}</button>
-      <button onClick={() => setSheet('confirmCancel')} className={`${big} bg-brand text-white`}>{t('confirmCancellation')}</button>
+      <button onClick={() => setSheet('keep')} className={`${big} flex-[2] border border-gray-300 text-gray-700`}>{t('keepLeave')}</button>
+      <button onClick={() => setSheet('confirmCancel')} className={`${big} flex-[3] bg-brand text-white`}>{t('confirmCancellation')}</button>
     </div>
   ) : isApproved ? (
-    <button onClick={() => setSheet('managerCancel')} className={`${big} w-full border border-[#F5222D]/40 text-[#F5222D]`}>{t('managerCancel')}</button>
+    <button onClick={() => setSheet('managerCancel')} className={`${big} w-full border border-st-rejected/40 text-st-rejected-text`}>{t('managerCancel')}</button>
   ) : undefined
 
   return (
@@ -103,10 +105,47 @@ export default function ApprovalDetail() {
         <Avatar name={app.person.full_name} size={48} />
         <div className="min-w-0 flex-1">
           <p className="truncate text-lg font-semibold text-gray-900">{app.person.full_name}</p>
-          <p className="text-sm text-gray-400">{app.person.employee_no ? `#${app.person.employee_no}` : ''}</p>
+          <p className="text-sm text-gray-500">{app.person.employee_no ? `#${app.person.employee_no}` : ''}</p>
         </div>
         <span className="text-base font-semibold" style={{ color: st.color }}>{isCancelReq ? t('cancelReq') : st.label}</span>
       </div>
+
+      {/* 决策参考:批准后余额 + 同期休假(待处理时放在最上面:先看,再点底部按钮) */}
+      {!imported && (isPending || isCancelReq) && (
+        <Card className="mb-3">
+          {bal && (
+            <div className="px-4 py-3.5">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="flex items-center gap-2 text-[15px] text-gray-600">
+                  <span className="h-2 w-2 rounded-full" style={{ background: TYPE_COLOR[app.leave_type] ?? '#8C8C8C' }} />
+                  {isPending ? t('afterApprove') : t('remainingDays')}
+                </span>
+                {/* 待审批时 remaining 已经扣掉了本次申请,所以它就是"批准后剩余" */}
+                <span className={`text-xl font-semibold tabular-nums ${bal.remaining < 0 ? 'text-st-rejected-text' : 'text-gray-900'}`}>
+                  {fmtNum(bal.remaining)}<span className="ml-1 text-sm font-normal text-gray-500">{t('daysUnit')}</span>
+                </span>
+              </div>
+              {isPending && bal.remaining < 0 && (
+                <p className="mt-2 rounded-lg bg-st-rejected-soft px-3 py-2 text-[13px] leading-snug text-st-rejected-text">{t('overdrawWarn')}</p>
+              )}
+              <p className="mt-1.5 text-xs text-gray-500">
+                {t('quota')} {fmtNum(bal.total)} · {t('usedDays')} {fmtNum(bal.used)} · {t('pendingDays')} {fmtNum(bal.pending)}
+              </p>
+            </div>
+          )}
+          <div className={`px-4 py-3.5 ${bal ? 'border-t border-gray-100' : ''}`}>
+            <div className="flex items-start justify-between gap-6">
+              <span className="shrink-0 text-[15px] text-gray-500">{t('sameTime')}</span>
+              {overlap.length === 0 && <span className="text-right text-[15px] text-gray-500">{t('noneSame')}</span>}
+            </div>
+            {overlap.length > 0 && (
+              <p className="mt-2 rounded-lg bg-st-pending-soft px-3 py-2 text-[13px] leading-snug text-st-pending-text">
+                {overlap.length} {t('peopleUnit')} · {overlap.join(lang === 'zh' ? '、' : ', ')}
+              </p>
+            )}
+          </div>
+        </Card>
+      )}
 
       <Card>
         {rows.map(([k, v], i) => (
@@ -123,33 +162,10 @@ export default function ApprovalDetail() {
                 onClick={async () => { const u = await getMcSignedUrl(app.mc_attachment_path as string); if (u) window.open(u, '_blank', 'noopener,noreferrer'); else toast.show(t('toastFail')) }}
                 className="text-[15px] text-brand"
               >{t('viewMc')}</button>
-            ) : <span className="text-[15px] text-gray-300">{t('mcMissing')}</span>}
+            ) : <span className="text-[15px] font-medium text-st-pending-text">{t('mcMissing')}</span>}
           </div>
         )}
       </Card>
-
-      {/* 决策参考:余额 + 同期休假 */}
-      {!imported && (isPending || isCancelReq) && (
-        <Card className="mt-3">
-          {bal && (
-            <div className="px-4 py-3.5">
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-2 text-[15px] text-gray-500">
-                  <span className="h-2 w-2 rounded-full" style={{ background: TYPE_COLOR[app.leave_type] ?? '#8C8C8C' }} />{t('balance')}
-                </span>
-                <span className={`text-[15px] font-semibold ${bal.remaining < 0 ? 'text-[#F5222D]' : 'text-gray-900'}`}>{t('remainingDays')} {fmtNum(bal.remaining)} {t('daysUnit')}</span>
-              </div>
-              <p className="mt-1 text-xs text-gray-400">
-                {t('quota')} {fmtNum(bal.total)} · {t('usedDays')} {fmtNum(bal.used)} · {t('pendingDays')} {fmtNum(bal.pending)}
-              </p>
-            </div>
-          )}
-          <div className={`flex items-start justify-between gap-6 px-4 py-3.5 ${bal ? 'border-t border-gray-100' : ''}`}>
-            <span className="shrink-0 text-[15px] text-gray-500">{t('sameTime')}</span>
-            <span className="text-right text-[15px] text-gray-900">{overlap.length ? overlap.join('、') : t('noneSame')}</span>
-          </div>
-        </Card>
-      )}
 
       {/* 进度 */}
       {!imported && (
@@ -161,7 +177,7 @@ export default function ApprovalDetail() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline justify-between gap-3">
                   <p className="text-[15px] font-medium text-gray-900">{s.title}</p>
-                  {s.time && <span className="shrink-0 text-xs text-gray-400">{fmtDateTime(s.time, lang)}</span>}
+                  {s.time && <span className="shrink-0 text-xs text-gray-500">{fmtDateTime(s.time, lang)}</span>}
                 </div>
                 {s.sub && <p className="mt-1 text-sm text-gray-500">{s.sub}</p>}
               </div>
@@ -170,8 +186,8 @@ export default function ApprovalDetail() {
         </Card>
       )}
 
-      <ConfirmSheet open={sheet === 'approve'} busy={busy} title={t('confirmApprove')} confirmLabel={t('approve')} onClose={() => setSheet(null)} onConfirm={() => run('approve')} />
-      <ConfirmSheet open={sheet === 'confirmCancel'} busy={busy} title={t('confirmCancelTitle')} confirmLabel={t('confirmCancellation')} onClose={() => setSheet(null)} onConfirm={() => run('confirm_cancellation')} />
+      <ConfirmSheet open={sheet === 'approve'} busy={busy} message={summary} title={t('confirmApprove')} confirmLabel={t('approve')} onClose={() => setSheet(null)} onConfirm={() => run('approve')} />
+      <ConfirmSheet open={sheet === 'confirmCancel'} busy={busy} message={summary} title={t('confirmCancelTitle')} confirmLabel={t('confirmCancellation')} onClose={() => setSheet(null)} onConfirm={() => run('confirm_cancellation')} />
       <ReasonSheet key={`rj${sheet === 'reject'}`} open={sheet === 'reject'} required danger busy={busy} title={t('rejectTitle')} hint={t('rejectHint')} chips={[t('q1'), t('q2'), t('q3')]} confirmLabel={t('reject')} onClose={() => setSheet(null)} onConfirm={(r) => run('reject', r)} />
       <ReasonSheet key={`kp${sheet === 'keep'}`} open={sheet === 'keep'} required busy={busy} title={t('declineTitle')} hint={t('declineHint')} confirmLabel={t('keepLeave')} onClose={() => setSheet(null)} onConfirm={(r) => run('decline_cancellation', r)} />
       <ReasonSheet key={`mc${sheet === 'managerCancel'}`} open={sheet === 'managerCancel'} danger busy={busy} title={t('managerCancelTitle')} hint={t('managerCancelHint')} confirmLabel={t('confirm')} onClose={() => setSheet(null)} onConfirm={(r) => run('cancel', r)} />
