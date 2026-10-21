@@ -171,12 +171,15 @@ export function splitDaysByMonth(
   workWeek: WorkWeek = DEFAULT_WORK_WEEK
 ): Record<string, number> {
   const out: Record<string, number> = {}
-  const totalDays = Number(app.total_days)
+  if (!app || !app.start_date || !app.end_date) return out
+  const totalDays = Number(app.total_days || 0)
+  const startYm = app.start_date.slice(0, 7)
+  const endYm = app.end_date.slice(0, 7)
 
   // 半天假,或整笔假都在同一个月份里:直接以记录的 total_days 为准
   // (避免历史导入的占位日期、或公假/工作周规则变动导致已批准的天数被错误重算)
-  if (app.is_half_day || app.start_date.slice(0, 7) === app.end_date.slice(0, 7)) {
-    out[app.start_date.slice(0, 7)] = totalDays
+  if (app.is_half_day || startYm === endYm) {
+    out[startYm] = totalDays
     return out
   }
 
@@ -202,7 +205,7 @@ export function splitDaysByMonth(
   } else if (rawTotal > 0) {
     Object.assign(out, raw)
   } else {
-    out[app.start_date.slice(0, 7)] = totalDays
+    out[startYm] = totalDays
   }
 
   return out
@@ -215,12 +218,13 @@ export function daysInYear(
   publicHolidayDates: string[],
   workWeek: WorkWeek = DEFAULT_WORK_WEEK
 ): number {
+  if (!app || !app.start_date || !app.end_date) return 0
   const startYear = Number(app.start_date.slice(0, 4))
   const endYear = Number(app.end_date.slice(0, 4))
 
   // 整笔假都在同一年内:直接以记录的 total_days 为准
   if (startYear === year && endYear === year) {
-    return Number(app.total_days)
+    return Number(app.total_days || 0)
   }
 
   // 跨年度的假:通过 splitDaysByMonth 汇总结算落入该年份的天数
