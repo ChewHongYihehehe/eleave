@@ -22,6 +22,8 @@ export const EI = {
   key: 'M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z',
   logout: 'M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75',
   clip: 'M18.5 11.5l-6.4 6.4a4 4 0 01-5.7-5.7l7-7a2.7 2.7 0 013.8 3.8l-7 7a1.3 1.3 0 01-1.9-1.9l6.4-6.4',
+  check: 'M5 12.5l4.5 4.5L19 7.5',
+  alert: 'M12 9v4m0 4h.01M10.3 3.9L2.4 18a2 2 0 001.7 3h15.8a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z',
 }
 
 export function Icon({ d, size = 22, className }: { d: string; size?: number; className?: string }) {
@@ -54,11 +56,11 @@ export function TabPage({ tab, badge, children }: { tab: TabKey; badge?: number;
           {TABS.map((x) => {
             const active = x.key === tab
             return (
-              <Link key={x.key} href={x.href} replace={!active} className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-xs ${active ? 'font-semibold text-brand' : 'text-gray-400'}`}>
+              <Link key={x.key} href={x.href} replace={!active} className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-xs ${active ? 'font-semibold text-brand' : 'text-gray-500'}`}>
                 <span className="relative">
                   <Icon d={x.icon} size={24} />
                   {x.key === 'records' && !!badge && (
-                    <span className="absolute -right-2.5 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#F5222D] px-1 text-[10px] font-bold leading-none text-white">
+                    <span className="absolute -right-2.5 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-st-rejected px-1 text-[10px] font-bold leading-none text-white">
                       {badge > 99 ? '99+' : badge}
                     </span>
                   )}
@@ -121,7 +123,28 @@ export function useToast() {
   return { show, node }
 }
 
+// ── 通用底部面板:带遮罩淡入 + 面板滑入 + 顶部拖拽条,所有底部抽屉都用它 ──
+export function BottomSheet({
+  onClose, children, className = '', pb = '1rem',
+}: { onClose: () => void; children: React.ReactNode; className?: string; pb?: string }) {
+  return (
+    <div className="fixed inset-0 z-50 flex animate-fade items-end bg-black/45 motion-reduce:animate-none" onClick={onClose}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        className={`mx-auto w-full max-w-md animate-sheet-up rounded-t-2xl bg-white motion-reduce:animate-none ${className}`}
+        style={{ paddingBottom: `calc(${pb} + ${safeBottom})` }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mx-auto mt-2 h-1 w-9 shrink-0 rounded-full bg-gray-200" />
+        {children}
+      </div>
+    </div>
+  )
+}
+
 // ── 底部确认面板(取代手机上很突兀的 window.confirm)──
+// message 建议写清楚"谁 / 什么 / 几天",让确认有内容。
 export function ConfirmSheet({
   open, title, message, confirmLabel, danger, busy, onConfirm, onClose,
 }: {
@@ -131,24 +154,54 @@ export function ConfirmSheet({
   const { t } = useLang()
   if (!open) return null
   return (
-    <div className="fixed inset-0 z-50 flex items-end bg-black/45" onClick={onClose}>
-      <div className="mx-auto w-full max-w-md rounded-t-2xl bg-white px-4 pt-5" style={{ paddingBottom: `calc(1rem + ${safeBottom})` }} onClick={(e) => e.stopPropagation()}>
+    <BottomSheet onClose={() => !busy && onClose()}>
+      <div className="px-4 pt-3">
         <p className="text-center text-base font-semibold text-gray-900">{title}</p>
-        {message && <p className="mt-2 text-center text-sm text-gray-500">{message}</p>}
+        {message && <p className="mt-2 text-center text-sm text-gray-600">{message}</p>}
         <button
           onClick={onConfirm}
           disabled={busy}
-          className={`mt-5 w-full rounded-xl py-3 text-base font-semibold text-white disabled:opacity-50 ${danger ? 'bg-[#F5222D]' : 'bg-brand'}`}
+          className={`mt-5 w-full rounded-xl py-3 text-base font-semibold text-white disabled:opacity-50 ${danger ? 'bg-st-rejected-text' : 'bg-brand'}`}
         >
           {confirmLabel}
         </button>
-        <button onClick={onClose} className="mt-2 w-full rounded-xl bg-gray-100 py-3 text-base text-gray-700">{t('cancel')}</button>
+        <button onClick={onClose} disabled={busy} className="mt-2 w-full rounded-xl bg-gray-100 py-3 text-base text-gray-700 disabled:opacity-50">{t('cancel')}</button>
       </div>
-    </div>
+    </BottomSheet>
   )
 }
 
 // 白色卡片 + 行(钉钉的列表样式)
 export function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return <div className={`mx-4 overflow-hidden rounded-xl bg-white ${className}`}>{children}</div>
+}
+
+// ── 加载骨架:代替一行"加载中…" ──(bare = 不带外层白卡片,放在已有 Card 里用)
+export function ListSkeleton({ rows = 4, bare = false }: { rows?: number; bare?: boolean }) {
+  const body = Array.from({ length: rows }, (_, i) => (
+    <div key={i} className={`flex animate-pulse items-center gap-3 px-4 py-3.5 motion-reduce:animate-none ${i ? 'border-t border-gray-100' : ''}`}>
+      <span className="h-10 w-10 shrink-0 rounded-full bg-gray-100" />
+      <div className="flex-1 space-y-2">
+        <div className="h-3.5 w-1/3 rounded bg-gray-100" />
+        <div className="h-3 w-3/4 rounded bg-gray-100" />
+      </div>
+    </div>
+  ))
+  return bare ? <div aria-busy="true">{body}</div> : <div aria-busy="true" className="mx-4 mt-2 overflow-hidden rounded-xl bg-white">{body}</div>
+}
+
+// ── 空状态 / 错误状态:图标 + 一句话 + 可选的下一步 ──
+export function EmptyState({
+  icon, title, hint, tone = 'brand', children,
+}: { icon: string; title: string; hint?: string; tone?: 'brand' | 'warn'; children?: React.ReactNode }) {
+  return (
+    <div className="flex flex-col items-center px-8 py-16 text-center">
+      <span className={`flex h-16 w-16 items-center justify-center rounded-full ${tone === 'warn' ? 'bg-st-pending-soft text-st-pending-text' : 'bg-brand-soft text-brand'}`}>
+        <Icon d={icon} size={28} />
+      </span>
+      <p className="mt-4 text-[15px] font-medium text-gray-900">{title}</p>
+      {hint && <p className="mt-1 text-sm text-gray-500">{hint}</p>}
+      {children}
+    </div>
+  )
 }
