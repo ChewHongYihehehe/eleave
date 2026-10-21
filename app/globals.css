@@ -63,3 +63,8 @@ body {
   .badge-rejected { @apply bg-rust-soft text-rust; }
   .badge-cancelled { @apply bg-paper text-ink-faint; }
 }
+
+@layer utilities {
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+}
