@@ -8,7 +8,7 @@ import { useLang, leaveTypeName } from '@/lib/lang'
 import { useLeaveData, TYPE_COLOR, fmtNum } from '@/lib/useLeaveData'
 import { fmtRange, monthLabel, statusInfo } from '@/lib/employeeFmt'
 import { markNoticesSeen } from '@/lib/employeeActions'
-import { EI, Icon, TabPage, useToast } from '@/components/employee/EmployeeShell'
+import { EI, EmptyState, Icon, KV, ListSkeleton, NavButton, TabHeader, TabPage, UnderlineTabs, useToast } from '@/components/employee/EmployeeShell'
 
 const TABS = ['all', 'pending', 'approved', 'rejected', 'cancelled'] as const
 type Tab = (typeof TABS)[number]
@@ -62,50 +62,43 @@ function Records() {
 
   return (
     <TabPage tab="records" badge={unseenCount}>
-      <div className="sticky top-0 z-10 bg-app px-4 pb-2 pt-5">
-        <div className="flex items-end justify-between">
-          <h1 className="text-xl font-semibold text-gray-900">{t('myRecords')}</h1>
-          <Link href="/dashboard/apply" className="flex items-center gap-1 rounded-full bg-brand px-3.5 py-1.5 text-sm font-medium text-white">
-            <Icon d={EI.plus} size={16} />{t('applyLeave')}
-          </Link>
-        </div>
-        <div className="no-scrollbar -mx-4 mt-3 flex gap-2 overflow-x-auto px-4">
-          {TABS.map((k) => (
-            <button key={k} onClick={() => { setTab(k); setVisible(PAGE) }} className={`shrink-0 rounded-full px-4 py-1.5 text-sm ${tab === k ? 'bg-brand font-medium text-white' : 'bg-white text-gray-600'}`}>
-              {label(k)}
-            </button>
-          ))}
-        </div>
-      </div>
+      <TabHeader
+        title={t('myRecords')}
+        right={<NavButton href="/dashboard/apply" strong><Icon d={EI.plus} size={18} />{t('applyLeave')}</NavButton>}
+      >
+        <UnderlineTabs scroll items={TABS.map((k) => ({ key: k, label: label(k) }))} value={tab} onChange={(k) => { setTab(k); setVisible(PAGE) }} />
+      </TabHeader>
 
       {loading ? (
-        <p className="py-16 text-center text-sm text-gray-400">{t('loading')}</p>
+        <ListSkeleton />
       ) : filtered.length === 0 ? (
-        <p className="py-16 text-center text-sm text-gray-400">{t('noRecords')}</p>
+        <EmptyState icon={EI.records} title={t('noRecords')} />
       ) : (
         <>
           {groups.map((g) => (
             <section key={g.ym}>
-              <p className="px-5 pb-2 pt-3 text-sm text-gray-500">{monthLabel(g.ym, lang)}</p>
-              <div className="mx-4 overflow-hidden rounded-xl bg-white">
-                {g.items.map((a, i) => {
+              <p className="px-5 pb-2 pt-4 text-[13px] text-gray-500">{monthLabel(g.ym, lang)}</p>
+              <div className="space-y-2.5">
+                {g.items.map((a) => {
                   const st = statusInfo(a, t)
                   return (
-                    <Link key={a.id} href={`/dashboard/records/${a.id}`} className={`block px-4 py-3.5 active:bg-gray-50 ${i ? 'border-t border-gray-100' : ''}`}>
+                    <Link key={a.id} href={`/dashboard/records/${a.id}`} className="mx-4 block rounded-xl bg-white px-4 py-3.5 active:bg-gray-50">
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex min-w-0 items-center gap-2">
                           <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: TYPE_COLOR[a.leave_type] ?? '#8C8C8C' }} />
-                          <span className="truncate text-[15px] font-medium text-gray-900">
+                          <span className="truncate text-base font-semibold text-gray-900">
                             {leaveTypeName(a.leave_type, lang)}
                             {a.is_half_day && a.half_day_period && <span className="ml-1 text-xs font-normal text-gray-400">({a.half_day_period === 'am' ? t('am') : t('pm')})</span>}
                           </span>
-                          {isUnseen(a) && <span className="h-2 w-2 shrink-0 rounded-full bg-[#F5222D]" />}
+                          {isUnseen(a) && <span className="h-2 w-2 shrink-0 rounded-full bg-st-rejected" />}
                         </div>
-                        <span className="shrink-0 text-sm font-medium" style={{ color: st.color }}>{st.label}</span>
+                        <span className="flex shrink-0 items-center gap-0.5 text-sm font-medium" style={{ color: st.color }}>
+                          {st.label}<Icon d={EI.chevronR} size={14} className="text-gray-300" />
+                        </span>
                       </div>
-                      <div className="mt-1.5 flex items-center justify-between pl-[18px] text-xs text-gray-400">
-                        <span>{fmtRange(a, lang, t('imported'))}</span>
-                        <span>{fmtNum(Number(a.total_days))} {t('daysUnit')}</span>
+                      <div className="mt-2.5 space-y-0.5">
+                        <KV k={t('dates')} v={fmtRange(a, lang, t('imported'))} />
+                        <KV k={t('duration')} v={`${fmtNum(Number(a.total_days))} ${t('daysUnit')}`} />
                       </div>
                     </Link>
                   )
