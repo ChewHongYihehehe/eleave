@@ -15,7 +15,7 @@ type Tab = (typeof TABS)[number]
 const PAGE = 10
 
 function Records() {
-  const { auth, apps, unseenCount, isUnseen, loading } = useLeaveData()
+  const { auth, apps, unseenCount, isUnseen, loading, error, reload } = useLeaveData()
   const { lang, t } = useLang()
   const params = useSearchParams()
   const initial = params.get('tab') as Tab | null
@@ -71,6 +71,10 @@ function Records() {
 
       {loading ? (
         <ListSkeleton />
+      ) : error && apps.length === 0 ? (
+        <EmptyState tone="warn" icon={EI.alert} title={t('loadFail')}>
+          <button onClick={reload} className="mt-5 rounded-full bg-brand px-6 py-2.5 text-sm font-medium text-white active:bg-brand-deep">{t('retry')}</button>
+        </EmptyState>
       ) : filtered.length === 0 ? (
         <EmptyState icon={EI.records} title={t('noRecords')} />
       ) : (
