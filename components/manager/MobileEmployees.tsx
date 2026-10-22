@@ -3,10 +3,9 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import AuthStatus from '@/components/AuthStatus'
-import { Card, EI, Icon, ListSkeleton, SubPage } from '@/components/employee/EmployeeShell'
+import { Avatar, Card, EI, Icon, ListSkeleton, SubPage, UnderlineTabs } from '@/components/employee/EmployeeShell'
 import { useMgrT } from '@/lib/mgrText'
 import { useStaff } from '@/lib/useStaff'
-import { Avatar } from './ManagerTabs'
 
 // 员工管理 · 列表:只显示关键信息,点进去才是详情(不再在列表里直接改资料)。
 export default function MobileEmployees() {
@@ -21,14 +20,12 @@ export default function MobileEmployees() {
 
   return (
     <SubPage title={t('employees')} backHref="/workspace">
-      <div className="px-4 pt-3">
-        <div className="flex rounded-lg bg-gray-200/70 p-0.5">
-          {([['full_time', t('fullTime'), full.length], ['part_time', t('partTime'), part.length]] as const).map(([k, label, n]) => (
-            <button key={k} onClick={() => setTab(k)} className={`flex-1 rounded-md py-1.5 text-sm ${tab === k ? 'bg-white font-semibold text-gray-900 shadow-sm' : 'text-gray-500'}`}>
-              {label} ({n})
-            </button>
-          ))}
-        </div>
+      <div className="border-b border-gray-100">
+        <UnderlineTabs
+          items={[{ key: 'full_time' as const, label: `${t('fullTime')} (${full.length})` }, { key: 'part_time' as const, label: `${t('partTime')} (${part.length})` }]}
+          value={tab}
+          onChange={setTab}
+        />
       </div>
 
       <Card className="mt-3">

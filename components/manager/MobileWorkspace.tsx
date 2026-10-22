@@ -4,29 +4,19 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import AuthStatus from '@/components/AuthStatus'
 import { IC } from '@/components/ManagerShell'
-import { Card, EI, Icon } from '@/components/employee/EmployeeShell'
+import { Avatar, Card, EI, Hero, Icon } from '@/components/employee/EmployeeShell'
 import { supabase } from '@/lib/supabaseClient'
 import { toLocalDateStr } from '@/lib/dateUtils'
 import { TYPE_COLOR, fmtNum } from '@/lib/useLeaveData'
 import { fmtRange } from '@/lib/employeeFmt'
 import { leaveName, useMgrT } from '@/lib/mgrText'
 import { useApprovals } from '@/lib/useApprovals'
-import { Avatar, ManagerTabPage } from './ManagerTabs'
+import { ManagerTabPage } from './ManagerTabs'
 
 // 负责人 · 工作台(钉钉工作台):
 //  · 信息卡(待审批 + 今天休假，搭配精致半透毛玻璃图标)
 //  · 待办事项前几条
 //  · 全部功能(带卡片背景的常用应用模块)
-
-function CalendarGridIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
-      <rect x="3" y="4" width="18" height="18" rx="3" />
-      <path d="M16 2v4M8 2v4M3 10h18" strokeLinecap="round" />
-      {[8, 12, 16].flatMap((x) => [14, 18].map((y) => <circle key={`${x}-${y}`} cx={x} cy={y} r="1.1" fill="currentColor" stroke="none" />))}
-    </svg>
-  )
-}
 
 const FEATURES: { href: string; key: 'approvals' | 'calendar' | 'employees' | 'reports' | 'workHours' | 'holidays' | 'auditLog'; icon: string; grad: string }[] = [
   { href: '/approve', key: 'approvals', icon: IC.approve, grad: 'linear-gradient(135deg, #1677FF, #4096FF)' },
@@ -69,43 +59,32 @@ export default function MobileWorkspace() {
 
   return (
     <ManagerTabPage tab="workspace" badge={attention.length}>
-      <div className="px-4 pb-3 pt-5">
-        <h1 className="text-xl font-semibold text-gray-900">{t('hello')}, {me?.full_name.split(' ')[0]}</h1>
-        <p className="mt-0.5 text-sm text-gray-500">{dateLabel}</p>
-      </div>
+      {/* 蓝色头部:问候 + 日期 */}
+      <Hero>
+        <div className="flex items-center gap-3">
+          <span className="rounded-full ring-2 ring-white/40"><Avatar name={me?.full_name} size={46} /></span>
+          <div className="min-w-0">
+            <p className="truncate text-lg font-semibold">{t('hello')}, {me?.full_name.split(' ')[0]}</p>
+            <p className="mt-0.5 text-xs text-blue-100">{dateLabel}</p>
+          </div>
+        </div>
+      </Hero>
 
-      {/* 信息卡:待审批 / 今天休假 (钉钉设计语言，带半透明毛玻璃质感图标) */}
-      <div
-        className="mx-4 overflow-hidden rounded-2xl shadow-sm"
-        style={{ background: 'linear-gradient(135deg, #1677FF 0%, #4096FF 60%, #69B1FF 100%)' }}
-      >
-        <div className="flex divide-x divide-white/20">
-          <Link href="/approve" className="flex-1 p-4 text-white transition-colors active:bg-white/10">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-medium text-blue-100">{t('pendingCount')}</p>
-                <p className="mt-1.5 text-3xl font-bold leading-none tabular-nums">
-                  {loading ? '–' : attention.length}
-                </p>
-              </div>
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-white backdrop-blur-xs">
-                <Icon d={EI.clock} size={22} />
-              </div>
-            </div>
+      {/* 信息卡:白底盖在头部上面,左边待审批(蓝色大数字),右边今天休假 */}
+      <div className="relative z-[1] -mt-10 mx-4 overflow-hidden rounded-2xl bg-white shadow-sm">
+        <div className="flex divide-x divide-gray-100">
+          <Link href="/approve" className="flex-1 px-4 py-4 active:bg-gray-50">
+            <p className="flex items-center gap-1 text-[13px] text-gray-500"><Icon d={EI.clock} size={14} />{t('pendingCount')}</p>
+            <p className={`mt-2 text-[34px] font-bold leading-none tabular-nums ${attention.length > 0 ? 'text-brand' : 'text-gray-900'}`}>
+              {loading ? '–' : attention.length}
+            </p>
           </Link>
-          <Link href="/calendar" className="flex-1 p-4 text-white transition-colors active:bg-white/10">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs font-medium text-blue-100">{t('onLeaveToday')}</p>
-                <p className="mt-1.5 text-3xl font-bold leading-none tabular-nums">
-                  {onLeave === null ? '–' : onLeave}
-                  <span className="ml-1 text-sm font-normal text-blue-100">{t('staffUnit')}</span>
-                </p>
-              </div>
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-white backdrop-blur-xs">
-                <CalendarGridIcon className="h-6 w-6 text-white" />
-              </div>
-            </div>
+          <Link href="/calendar" className="flex-1 px-4 py-4 active:bg-gray-50">
+            <p className="flex items-center gap-1 text-[13px] text-gray-500"><Icon d={IC.calendar} size={14} />{t('onLeaveToday')}</p>
+            <p className="mt-2 flex items-baseline text-[34px] font-bold leading-none tabular-nums text-gray-900">
+              {onLeave === null ? '–' : onLeave}
+              <span className="ml-1 text-sm font-normal text-gray-500">{t('staffUnit')}</span>
+            </p>
           </Link>
         </div>
       </div>

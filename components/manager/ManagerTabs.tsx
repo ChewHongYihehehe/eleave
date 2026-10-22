@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { IC } from '@/components/ManagerShell'
-import { BottomSheet, EI, Icon } from '@/components/employee/EmployeeShell'
+import { Avatar, BottomSheet, EI, Icon } from '@/components/employee/EmployeeShell'
 import { useMgrT, type MgrKey } from '@/lib/mgrText'
 import { useAttentionCount } from '@/lib/useApprovals'
 
@@ -32,9 +32,9 @@ export function ManagerTabPage({ tab, badge, children }: { tab: (typeof TABS)[nu
           {TABS.map((x) => {
             const active = x.key === tab
             return (
-              <Link key={x.key} href={x.href} replace={!active} className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-xs ${active ? 'font-semibold text-brand' : 'text-gray-500'}`}>
+              <Link key={x.key} href={x.href} replace={!active} className={`flex flex-1 flex-col items-center gap-0.5 py-1.5 text-[11px] ${active ? 'font-semibold text-brand' : 'text-gray-500'}`}>
                 <span className="relative">
-                  <Icon d={x.icon} size={24} />
+                  <Icon d={x.icon} size={24} filled={active} />
                   {x.key === 'approve' && !!count && (
                     <span className="absolute -right-2.5 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-st-rejected px-1 text-[10px] font-bold leading-none text-white">
                       {count > 99 ? '99+' : count}
@@ -51,25 +51,8 @@ export function ManagerTabPage({ tab, badge, children }: { tab: (typeof TABS)[nu
   )
 }
 
-// ── 头像:按名字取固定颜色 ──
-const PALETTE = ['#1677FF', '#13C2C2', '#FA8C16', '#722ED1', '#EB2F96', '#52C41A', '#2F54EB', '#FA541C']
-export function Avatar({ name, size = 40 }: { name?: string | null; size?: number }) {
-  const safe = (name || '').trim()
-  const parts = safe ? safe.split(/\s+/) : []
-  let initials = '?'
-  if (parts.length === 1 && parts[0]) {
-    initials = parts[0].slice(0, 2).toUpperCase()
-  } else if (parts.length > 1) {
-    initials = ((parts[0][0] || '') + (parts[parts.length - 1][0] || '')).toUpperCase() || '?'
-  }
-  let h = 0
-  for (let i = 0; i < safe.length; i++) h = (h * 31 + safe.charCodeAt(i)) >>> 0
-  return (
-    <span className="flex shrink-0 items-center justify-center rounded-full font-semibold text-white shadow-2xs" style={{ width: size, height: size, background: PALETTE[h % PALETTE.length], fontSize: Math.max(10, Math.round(size * 0.36)) }}>
-      {initials}
-    </span>
-  )
-}
+// 头像已经移到 EmployeeShell(两端共用),这里再导出一次,旧的 import 路径照常能用
+export { Avatar }
 
 // ── 填写原因的底部面板:取消 | 标题 | 确认 放在顶部一行,键盘弹出来也不会挡住 ──
 // 快捷理由放在输入框上方(键盘弹出后仍然看得到),输入框自动聚焦。

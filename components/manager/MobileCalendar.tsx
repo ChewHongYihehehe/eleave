@@ -2,13 +2,13 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import AuthStatus from '@/components/AuthStatus'
-import { EI, Icon } from '@/components/employee/EmployeeShell'
+import { Avatar, EI, Icon, NavButton, TabHeader } from '@/components/employee/EmployeeShell'
 import { supabase } from '@/lib/supabaseClient'
 import { eachDay, toLocalDateStr } from '@/lib/dateUtils'
 import { useEmployee } from '@/lib/useEmployee'
 import { TYPE_COLOR } from '@/lib/useLeaveData'
 import { leaveName, useMgrT } from '@/lib/mgrText'
-import { Avatar, ManagerTabPage } from './ManagerTabs'
+import { ManagerTabPage } from './ManagerTabs'
 
 // 团队日历(手机):月历格子里用小圆点,点日期在下面看"谁休假"。数据规则和电脑版一致
 // (已批准 + 启用的公假;历史导入记录不画)。
@@ -87,13 +87,12 @@ export default function MobileCalendar() {
 
   return (
     <ManagerTabPage tab="calendar">
-      <div className="flex items-center justify-between px-4 pb-3 pt-5">
-        <h1 className="text-xl font-semibold text-gray-900">{title}</h1>
-        <div className="flex gap-2">
-          <button onClick={() => go(-1)} aria-label="prev" className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-gray-600"><Icon d={EI.chevronL} size={18} /></button>
-          <button onClick={() => go(1)} aria-label="next" className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-gray-600"><Icon d={EI.chevronR} size={18} /></button>
-        </div>
-      </div>
+      <TabHeader
+        title={title}
+        left={<NavButton onClick={() => go(-1)}><Icon d={EI.chevronL} size={20} /></NavButton>}
+        right={<NavButton onClick={() => go(1)}><Icon d={EI.chevronR} size={20} /></NavButton>}
+      />
+      <div className="h-3" />
 
       <div className="mx-4 rounded-xl bg-white p-2">
         <div className="grid grid-cols-7 text-center text-xs text-gray-500">

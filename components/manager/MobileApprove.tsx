@@ -4,9 +4,9 @@ import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import AuthStatus from '@/components/AuthStatus'
 import RecordLeaveModal from '@/components/RecordLeaveModal'
-import { ConfirmSheet, EI, EmptyState, Icon, ListSkeleton, useToast } from '@/components/employee/EmployeeShell'
+import { ConfirmSheet, EI, EmptyState, Icon, KV, ListSkeleton, NavButton, TabHeader, UnderlineTabs, useToast } from '@/components/employee/EmployeeShell'
 import { TYPE_COLOR, fmtNum } from '@/lib/useLeaveData'
-import { fmtRange } from '@/lib/employeeFmt'
+import { fmtDateTime, fmtRange } from '@/lib/employeeFmt'
 import { leaveName, useMgrT } from '@/lib/mgrText'
 import { isImported, useApprovals, type Application } from '@/lib/useApprovals'
 import { Avatar, ManagerTabPage, PickerSheet, ReasonSheet } from './ManagerTabs'
@@ -85,42 +85,28 @@ export default function MobileApprove() {
 
   return (
     <ManagerTabPage tab="approve" badge={attention.length}>
-      <div className="sticky top-0 z-10 bg-app px-4 pb-2 pt-5">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold text-gray-900">{t('approvals')}</h1>
-          <div className="flex items-center gap-2">
-            {seg === 'todo' && list.some(canPick) && (
-              <button onClick={() => (selecting ? exitSelect() : setSelecting(true))} className="rounded-full bg-white px-3.5 py-1.5 text-sm text-gray-700">
-                {selecting ? t('done') : t('batch')}
-              </button>
-            )}
-            <button onClick={() => setRecordOpen(true)} className="flex items-center gap-1 rounded-full bg-brand px-3.5 py-1.5 text-sm font-medium text-white">
-              <Icon d={EI.plus} size={16} />{t('recordLeave')}
-            </button>
-          </div>
-        </div>
-
-        {/* 分段:待我审批 / 已处理 */}
-        <div className="mt-3 flex rounded-lg bg-gray-200/70 p-0.5">
-          {(['todo', 'done'] as const).map((k) => (
-            <button key={k} onClick={() => { setSeg(k); setVisible(PAGE); exitSelect() }} className={`flex-1 rounded-md py-1.5 text-sm ${seg === k ? 'bg-white font-semibold text-gray-900 shadow-sm' : 'text-gray-500'}`}>
-              {k === 'todo' ? `${t('toApprove')}${attention.length ? ` (${attention.length})` : ''}` : t('processed')}
-            </button>
-          ))}
-        </div>
-
-        {/* 筛选:员工 + (已处理时)状态 */}
-        <div className="no-scrollbar -mx-4 mt-3 flex gap-2 overflow-x-auto px-4">
-          <button onClick={() => setPicker(true)} className={`flex shrink-0 items-center gap-1 rounded-full px-3.5 py-1.5 text-sm ${staff ? 'bg-brand-soft font-medium text-brand' : 'bg-white text-gray-600'}`}>
+      {/* 顶部:居中标题 + 左「批量」右「代录入」,下面是下划线标签页和筛选 */}
+      <TabHeader
+        title={t('approvals')}
+        left={seg === 'todo' && list.some(canPick) ? <NavButton onClick={() => (selecting ? exitSelect() : setSelecting(true))}>{selecting ? t('done') : t('batch')}</NavButton> : undefined}
+        right={<NavButton onClick={() => setRecordOpen(true)} strong><Icon d={EI.plus} size={18} />{t('recordLeave')}</NavButton>}
+      >
+        <UnderlineTabs
+          items={[{ key: 'todo' as Seg, label: t('toApprove'), count: attention.length }, { key: 'done' as Seg, label: t('processed') }]}
+          value={seg}
+          onChange={(k) => { setSeg(k); setVisible(PAGE); exitSelect() }}
+        />
+        <div className="no-scrollbar flex gap-2 overflow-x-auto bg-white px-4 pb-2.5 pt-1">
+          <button onClick={() => setPicker(true)} className={`flex shrink-0 items-center gap-1 rounded-full px-3.5 py-1.5 text-[13px] ${staff ? 'bg-brand-soft font-medium text-brand' : 'bg-gray-100 text-gray-700'}`}>
             {staffLabel}<Icon d="M6 9l6 6 6-6" size={14} />
           </button>
           {seg === 'done' && (['all', 'approved', 'rejected', 'cancelled'] as const).map((k) => (
-            <button key={k} onClick={() => { setSub(k); setVisible(PAGE) }} className={`shrink-0 rounded-full px-3.5 py-1.5 text-sm ${sub === k ? 'bg-brand font-medium text-white' : 'bg-white text-gray-600'}`}>
+            <button key={k} onClick={() => { setSub(k); setVisible(PAGE) }} className={`shrink-0 rounded-full px-3.5 py-1.5 text-[13px] ${sub === k ? 'bg-brand-soft font-medium text-brand' : 'bg-gray-100 text-gray-700'}`}>
               {t(k)}
             </button>
           ))}
         </div>
-      </div>
+      </TabHeader>
 
       {loading ? (
         <ListSkeleton />
@@ -131,11 +117,13 @@ export default function MobileApprove() {
       ) : list.length === 0 ? (
         <EmptyState icon={EI.check} title={seg === 'todo' ? t('emptyTodo') : t('noItems')} hint={seg === 'todo' ? t('emptyTodoHint') : undefined} />
       ) : (
-        <div className="mx-4 mt-2 overflow-hidden rounded-xl bg-white">
-          {shown.map((a, i) => {
+        // 每一条是一张审批卡片:申请人 + 提交时间 / 状态,下面几行「标签 值」(钉钉审批列表的样子)
+        <div className="space-y-2.5 px-4 pt-3">
+          {shown.map((a) => {
             const st = statusOf(a, t)
             const isCancelReq = a.status === 'approved' && a.cancellation_status === 'requested'
             const pick = selecting && canPick(a)
+            const half = a.is_half_day && a.half_day_period ? ` · ${a.half_day_period === 'am' ? t('halfAm') : t('halfPm')}` : ''
             const row = (
               <>
                 {selecting && (
@@ -143,33 +131,32 @@ export default function MobileApprove() {
                     {picked.has(a.id) && <Icon d="M5 12.5l4.5 4.5L19 7.5" size={13} className="text-white" />}
                   </span>
                 )}
-                <Avatar name={a.person.full_name} size={40} />
-                <div className="ml-3 min-w-0 flex-1">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <p className="truncate text-[15px] font-medium text-gray-900">{a.person.full_name}</p>
-                    {seg === 'todo' && !isCancelReq ? (
-                      // 待我审批里每一行都是"待审批",写出来没有信息量;右边改放天数(决策最需要的数字)
-                      <span className="shrink-0 text-[15px] font-semibold tabular-nums text-gray-900">
-                        {fmtNum(Number(a.total_days))}<span className="ml-0.5 text-xs font-normal text-gray-500">{t('daysUnit')}</span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-3">
+                    <Avatar name={a.person.full_name} size={36} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[15px] font-semibold text-gray-900">{a.person.full_name}</p>
+                      <p className="text-xs text-gray-400">{fmtDateTime(a.created_at, lang)}</p>
+                    </div>
+                    {/* 待我审批里每一行都是待审批,不用再写状态;取消申请和已处理才显示彩色状态 */}
+                    {(seg === 'done' || isCancelReq) && (
+                      <span className="flex shrink-0 items-center gap-0.5 text-sm font-medium" style={{ color: st.color }}>
+                        {isCancelReq ? t('cancelReq') : st.label}
+                        {!selecting && <Icon d={EI.chevronR} size={14} className="text-gray-300" />}
                       </span>
-                    ) : (
-                      <span className="shrink-0 text-sm font-medium" style={{ color: st.color }}>{isCancelReq ? t('cancelReq') : st.label}</span>
                     )}
+                    {seg === 'todo' && !isCancelReq && !selecting && <Icon d={EI.chevronR} size={16} className="shrink-0 text-gray-300" />}
                   </div>
-                  <p className="mt-0.5 flex items-center gap-1.5 text-[13px] text-gray-700">
-                    <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: TYPE_COLOR[a.leave_type] ?? '#8C8C8C' }} />
-                    <span className="truncate">
-                      {leaveName(a.leave_type, lang)}
-                      {a.is_half_day && a.half_day_period ? ` · ${a.half_day_period === 'am' ? t('halfAm') : t('halfPm')}` : ''}
-                      {' · '}{fmtRange(a, lang, t('imported'))}
-                      {seg === 'done' || isCancelReq ? ` · ${fmtNum(Number(a.total_days))} ${t('daysUnit')}` : ''}
-                    </span>
-                  </p>
-                  {a.reason && !isImported(a) && <p className="mt-0.5 truncate text-xs text-gray-500">{a.reason}</p>}
+                  <div className="mt-3 space-y-0.5 border-t border-gray-100 pt-3">
+                    <KV k={t('leaveType')} v={<span className="flex items-center gap-1.5"><span className="h-2 w-2 shrink-0 rounded-full" style={{ background: TYPE_COLOR[a.leave_type] ?? '#8C8C8C' }} />{leaveName(a.leave_type, lang)}{half}</span>} />
+                    <KV k={t('dates')} v={fmtRange(a, lang, t('imported'))} />
+                    <KV k={t('duration')} v={<span className="font-semibold">{fmtNum(Number(a.total_days))} {t('daysUnit')}</span>} />
+                    {a.reason && !isImported(a) && <KV k={t('reason')} v={<span className="line-clamp-2 text-gray-600">{a.reason}</span>} />}
+                  </div>
                 </div>
               </>
             )
-            const cls = `flex items-center px-4 py-3.5 ${i ? 'border-t border-gray-100' : ''}`
+            const cls = 'flex items-start rounded-xl bg-white px-4 py-3.5'
             return selecting ? (
               <button key={a.id} type="button" onClick={() => pick && toggle(a.id)} className={`${cls} w-full text-left ${canPick(a) ? '' : 'opacity-40'}`}>{row}</button>
             ) : (
