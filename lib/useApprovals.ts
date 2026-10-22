@@ -76,7 +76,9 @@ export function useApprovals() {
       supabase.from('public_holidays').select('holiday_date').eq('is_enabled', true),
       loadWorkWeek(),
     ])
-    if (e1) setError('Could not load requests.')
+    // 失败就保留上一次的数据,不要用空列表覆盖(否则会被误当成"没有待办")
+    if (e1) { setError('Could not load requests.'); setLoading(false); return }
+    setError('')
     // 关联查询在某些版本会回传数组,两种都接受
     const list: Application[] = ((rows || []) as unknown as (Omit<Application, 'person'> & { employees: Person | Person[] | null })[]).map((r) => {
       const { employees, ...rest } = r
@@ -111,10 +113,9 @@ export function useApprovals() {
   const attention = useMemo(() => apps.filter(isAttention), [apps])
 
   // 某员工今年某假种的额度 / 已用 / 待审批 / 剩余(帮负责人判断要不要批)
-  function balanceFor(employeeId: string, type: string) {
+  function balanceFor(employeeId: string, type: string, year: number = new Date().getFullYear()) {
     const emp = staff.find((s) => s.id === employeeId)
     if (!emp) return null
-    const year = new Date().getFullYear()
     const base = getEntitlementForYear(emp, type, year)
     if (base == null) return null
     const total = base + (type === 'annual' ? Number(emp.annual_leave_carry_forward) || 0 : 0)

@@ -7,6 +7,7 @@ import { useLang } from '@/lib/lang'
 // 想改哪个词,直接改下面 zh / en 里对应那一行。
 
 const zh = {
+  afterApprove: '批准后剩余', overdrawWarn: '额度不足,批准后将超出额度', retry: '重试', emptyTodoHint: '所有申请都已处理',
   workspace: '工作台', approvals: '审批', calendar: '日历', me: '我的', back: '返回',
   toApprove: '待我审批', processed: '已处理', all: '全部', approved: '已通过', rejected: '已拒绝', cancelled: '已取消',
   allStaff: '全部员工', selectStaff: '选择员工', batch: '批量', done: '完成', selected: '已选',
@@ -59,6 +60,7 @@ const zh = {
   recalcFailed: '已保存,但重算年假天数失败:', close: '关闭', yearSuffix: '年', holidayOn: '已开启', holidayOff: '已关闭',
 }
 const en: typeof zh = {
+  afterApprove: 'Remaining after approval', overdrawWarn: 'Over quota: approving will exceed the entitlement', retry: 'Retry', emptyTodoHint: 'All caught up',
   workspace: 'Workspace', approvals: 'Approvals', calendar: 'Calendar', me: 'Me', back: 'Back',
   toApprove: 'To approve', processed: 'Processed', all: 'All', approved: 'Approved', rejected: 'Rejected', cancelled: 'Cancelled',
   allStaff: 'All staff', selectStaff: 'Select employee', batch: 'Select', done: 'Done', selected: 'Selected',
