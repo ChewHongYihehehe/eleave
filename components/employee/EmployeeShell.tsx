@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useLang } from '@/lib/lang'
+import { useLang, type Lang } from '@/lib/lang'
+import { toLocalDateStr } from '@/lib/dateUtils'
 
 // 员工端手机版的外壳(和负责人端的 ManagerShell 同一个思路):
 //  · TabPage:三个主页面(工作台 / 记录 / 我的),有底部栏
@@ -360,4 +361,72 @@ export function KV({ k, v }: { k: string; v: React.ReactNode }) {
       <span className="min-w-0 flex-1 text-gray-900">{v}</span>
     </div>
   )
+}
+
+// ── 单选底部面板(选假种 / 选员工等)──
+export function PickerSheet({
+  open, title, options, value, onPick, onClose,
+}: { open: boolean; title: string; options: { value: string; label: string }[]; value: string; onPick: (v: string) => void; onClose: () => void }) {
+  if (!open) return null
+  return (
+    <BottomSheet onClose={onClose} className="flex max-h-[70dvh] flex-col" pb="0px">
+      <p className="border-b border-gray-100 py-3.5 text-center text-base font-semibold text-gray-900">{title}</p>
+      <div className="overflow-y-auto">
+        {options.map((o) => (
+          <button key={o.value} onClick={() => { onPick(o.value); onClose() }} className="flex w-full items-center justify-between border-b border-gray-50 px-5 py-3.5 text-left text-[15px] text-gray-900 active:bg-gray-50">
+            <span className={o.value === value ? 'font-semibold text-brand' : ''}>{o.label}</span>
+            {o.value === value && <Icon d="M5 12.5l4.5 4.5L19 7.5" size={18} className="text-brand" />}
+          </button>
+        ))}
+      </div>
+    </BottomSheet>
+  )
+}
+
+// ── 日期选择底部面板(钉钉式月历):点一天就选中并关闭;min 之前的日子灰掉不能点 ──
+function DateSheetBody({ title, value, min, lang, onPick, onClose }: { title: string; value: string; min?: string; lang: Lang; onPick: (v: string) => void; onClose: () => void }) {
+  const base = value || min || toLocalDateStr(new Date())
+  const [cur, setCur] = useState(() => new Date(Number(base.slice(0, 4)), Number(base.slice(5, 7)) - 1, 1))
+  const y = cur.getFullYear(), m = cur.getMonth()
+  const todayKey = toLocalDateStr(new Date())
+  const cells: (number | null)[] = Array(new Date(y, m, 1).getDay()).fill(null)
+  for (let d = 1; d <= new Date(y, m + 1, 0).getDate(); d++) cells.push(d)
+  const weekdays = lang === 'zh' ? ['日', '一', '二', '三', '四', '五', '六'] : ['S', 'M', 'T', 'W', 'T', 'F', 'S']
+  const heading = lang === 'zh' ? `${y}年${m + 1}月` : cur.toLocaleDateString('en-MY', { month: 'long', year: 'numeric' })
+  // 不让翻到 min 所在月份之前
+  const canPrev = !min || new Date(y, m, 0) >= new Date(Number(min.slice(0, 4)), Number(min.slice(5, 7)) - 1, 1)
+  return (
+    <BottomSheet onClose={onClose}>
+      <p className="pb-1 pt-3 text-center text-base font-semibold text-gray-900">{title}</p>
+      <div className="flex items-center justify-between px-3 py-1">
+        <button onClick={() => setCur(new Date(y, m - 1, 1))} disabled={!canPrev} aria-label="prev" className="flex h-10 w-10 items-center justify-center text-gray-700 disabled:opacity-25"><Icon d={EI.chevronL} size={20} /></button>
+        <span className="text-[15px] font-medium text-gray-900">{heading}</span>
+        <button onClick={() => setCur(new Date(y, m + 1, 1))} aria-label="next" className="flex h-10 w-10 items-center justify-center text-gray-700"><Icon d={EI.chevronR} size={20} /></button>
+      </div>
+      <div className="grid grid-cols-7 px-3 text-center text-xs text-gray-500">
+        {weekdays.map((d, i) => <div key={i} className="py-1.5">{d}</div>)}
+      </div>
+      <div className="grid grid-cols-7 gap-y-1 px-3 pb-2">
+        {cells.map((day, i) => {
+          if (day === null) return <div key={i} className="h-11" />
+          const key = toLocalDateStr(new Date(y, m, day))
+          const disabled = !!min && key < min
+          const sel = key === value
+          return (
+            <button
+              key={i} disabled={disabled} onClick={() => { onPick(key); onClose() }}
+              className="flex h-11 items-center justify-center"
+            >
+              <span className={`flex h-9 w-9 items-center justify-center rounded-full text-[15px] ${sel ? 'bg-brand font-semibold text-white' : disabled ? 'text-gray-300' : key === todayKey ? 'font-bold text-brand' : 'text-gray-900'}`}>{day}</span>
+            </button>
+          )
+        })}
+      </div>
+    </BottomSheet>
+  )
+}
+
+export function DatePickerSheet({ open, ...rest }: { open: boolean; title: string; value: string; min?: string; lang: Lang; onPick: (v: string) => void; onClose: () => void }) {
+  if (!open) return null
+  return <DateSheetBody {...rest} />
 }
