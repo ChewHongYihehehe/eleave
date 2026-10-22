@@ -71,7 +71,7 @@ export default function MobileWorkspace() {
     <ManagerTabPage tab="workspace" badge={attention.length}>
       <div className="px-4 pb-3 pt-5">
         <h1 className="text-xl font-semibold text-gray-900">{t('hello')}, {me?.full_name.split(' ')[0]}</h1>
-        <p className="mt-0.5 text-sm text-gray-400">{dateLabel}</p>
+        <p className="mt-0.5 text-sm text-gray-500">{dateLabel}</p>
       </div>
 
       {/* 信息卡:待审批 / 今天休假 (钉钉设计语言，带半透明毛玻璃质感图标) */}
@@ -130,7 +130,7 @@ export default function MobileWorkspace() {
                     {leaveName(a.leave_type, lang)} · {fmtNum(Number(a.total_days))} {t('daysUnit')} · {fmtRange(a, lang, t('imported'))}
                   </p>
                 </div>
-                {a.status === 'approved' && <span className="ml-2 shrink-0 text-xs font-medium text-[#FA8C16]">{t('cancelReq')}</span>}
+                {a.status === 'approved' && <span className="ml-2 shrink-0 text-xs font-medium text-st-pending-text">{t('cancelReq')}</span>}
                 <Icon d={EI.chevronR} size={16} className="ml-1 shrink-0 text-gray-300" />
               </Link>
             ))}
@@ -140,7 +140,7 @@ export default function MobileWorkspace() {
 
       {/* 全部功能 (增加专属钉钉卡片背景与圆角阴影) */}
       <div className="mx-4 mt-5">
-        <p className="mb-2.5 px-1 text-xs font-semibold uppercase tracking-wider text-gray-400">{t('allFeatures')}</p>
+        <p className="mb-2.5 px-1 text-xs font-semibold uppercase tracking-wider text-gray-500">{t('allFeatures')}</p>
         <div className="overflow-hidden rounded-2xl border border-gray-100/80 bg-white p-4 shadow-xs">
           <div className="grid grid-cols-4 gap-y-5">
             {FEATURES.map((f) => (
@@ -148,7 +148,7 @@ export default function MobileWorkspace() {
                 <span className="relative flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-xs transition-transform active:scale-95" style={{ background: f.grad }}>
                   <Icon d={f.icon} size={28} />
                   {f.key === 'approvals' && attention.length > 0 && (
-                    <span className="absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#F5222D] px-1 text-[11px] font-semibold leading-none text-white shadow-xs">
+                    <span className="absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-st-rejected px-1 text-[11px] font-semibold leading-none text-white shadow-xs">
                       {attention.length > 99 ? '99+' : attention.length}
                     </span>
                   )}

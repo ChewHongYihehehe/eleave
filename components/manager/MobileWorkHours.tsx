@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import AuthStatus from '@/components/AuthStatus'
-import { Card, EI, Icon, SubPage, useToast } from '@/components/employee/EmployeeShell'
+import { BottomSheet, Card, EI, Icon, ListSkeleton, SubPage, useToast } from '@/components/employee/EmployeeShell'
 import { supabase } from '@/lib/supabaseClient'
 import { useEmployee } from '@/lib/useEmployee'
 import { useMgrT } from '@/lib/mgrText'
@@ -17,7 +17,6 @@ import { Avatar } from './ManagerTabs'
 const THIS_YEAR = new Date().getFullYear()
 const MONTH_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const GRADIENT = 'linear-gradient(135deg, #1677FF 0%, #4096FF 60%, #69B1FF 100%)'
-const safeBottom = 'env(safe-area-inset-bottom, 0px)'
 
 type Emp = { id: string; full_name: string }
 type Target = { empId: string; month: number }
@@ -32,8 +31,7 @@ function HoursSheet({
   const { t } = useMgrT()
   const [value, setValue] = useState(initial)
   return (
-    <div className="fixed inset-0 z-50 flex items-end bg-black/45" onClick={() => !busy && onClose()}>
-      <div className="mx-auto w-full max-w-md rounded-t-2xl bg-white" style={{ paddingBottom: `calc(1.25rem + ${safeBottom})` }} onClick={(e) => e.stopPropagation()}>
+    <BottomSheet onClose={() => !busy && onClose()} pb="1.25rem">
         <div className="grid h-12 grid-cols-[4rem_1fr_4rem] items-center border-b border-gray-100 px-2">
           <button onClick={onClose} disabled={busy} className="text-[15px] text-gray-500">{t('cancel')}</button>
           <p className="truncate text-center text-base font-semibold text-gray-900">{title}</p>
@@ -53,12 +51,11 @@ function HoursSheet({
               placeholder="0"
               className="w-40 bg-transparent text-center text-4xl font-semibold tabular-nums text-gray-900 placeholder:text-gray-300 focus:outline-none"
             />
-            <span className="pb-1.5 text-sm text-gray-400">{t('hoursUnit')}</span>
+            <span className="pb-1.5 text-sm text-gray-500">{t('hoursUnit')}</span>
           </div>
-          <p className="mt-3 text-xs text-gray-400">{t('hoursHint')}</p>
+          <p className="mt-3 text-xs text-gray-500">{t('hoursHint')}</p>
         </div>
-      </div>
-    </div>
+    </BottomSheet>
   )
 }
 
@@ -159,11 +156,11 @@ export default function MobileWorkHours() {
       right={emps.length > 0 ? <button onClick={handleExport} className="text-[15px] text-brand">{t('exportCsv')}</button> : undefined}
     >
       {employees === null ? (
-        <p className="py-16 text-center text-sm text-gray-400">{t('loading')}</p>
+        <ListSkeleton />
       ) : emps.length === 0 ? (
         <Card className="mt-3">
           <div className="px-4 py-10 text-center">
-            <p className="text-sm text-gray-400">{t('noPartActive')}</p>
+            <p className="text-sm text-gray-500">{t('noPartActive')}</p>
             <Link href="/manage" className="mt-3 inline-block text-sm text-brand">{t('goAddPart')} ›</Link>
           </div>
         </Card>
@@ -214,9 +211,9 @@ export default function MobileWorkHours() {
                     <Avatar name={e.full_name} size={40} />
                     <p className="min-w-0 flex-1 truncate text-[15px] font-medium text-gray-900">{e.full_name}</p>
                     {v ? (
-                      <span className="text-[17px] font-semibold tabular-nums text-gray-900">{fmt(v)} <span className="text-xs font-normal text-gray-400">h</span></span>
+                      <span className="text-[17px] font-semibold tabular-nums text-gray-900">{fmt(v)} <span className="text-xs font-normal text-gray-500">h</span></span>
                     ) : (
-                      <span className="rounded-full bg-[#FFF7E6] px-2 py-0.5 text-xs font-medium text-[#FA8C16]">{t('notEntered')}</span>
+                      <span className="rounded-full bg-st-pending-soft px-2 py-0.5 text-xs font-medium text-st-pending-text">{t('notEntered')}</span>
                     )}
                     <Icon d={EI.chevronR} size={16} className="shrink-0 text-gray-300" />
                   </button>
@@ -230,8 +227,8 @@ export default function MobileWorkHours() {
                   <Avatar name={e.full_name} size={40} />
                   <p className="min-w-0 flex-1 truncate text-[15px] font-medium text-gray-900">{e.full_name}</p>
                   <div className="text-right">
-                    <p className="text-[17px] font-semibold leading-none tabular-nums text-gray-900">{fmt(rowTotal(e.id))} <span className="text-xs font-normal text-gray-400">h</span></p>
-                    <p className="mt-1 text-[11px] text-gray-400">{t('yearTotal')}</p>
+                    <p className="text-[17px] font-semibold leading-none tabular-nums text-gray-900">{fmt(rowTotal(e.id))} <span className="text-xs font-normal text-gray-500">h</span></p>
+                    <p className="mt-1 text-[11px] text-gray-500">{t('yearTotal')}</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-4 gap-2 border-t border-gray-100 p-3">
@@ -239,7 +236,7 @@ export default function MobileWorkHours() {
                     const v = hours[keyOf(e.id, m)]
                     return (
                       <button key={m} onClick={() => setTarget({ empId: e.id, month: m })} className={`rounded-lg py-2 text-center active:opacity-60 ${v ? 'bg-brand-soft' : 'bg-gray-50'}`}>
-                        <p className="text-[11px] text-gray-400">{monthLabel(m)}</p>
+                        <p className="text-[11px] text-gray-500">{monthLabel(m)}</p>
                         <p className={`mt-0.5 text-[15px] font-semibold tabular-nums ${v ? 'text-brand' : 'text-gray-300'}`}>{v ? fmt(v) : '–'}</p>
                       </button>
                     )

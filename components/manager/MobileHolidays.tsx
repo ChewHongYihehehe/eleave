@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import AuthStatus from '@/components/AuthStatus'
-import { Card, ConfirmSheet, SubPage, useToast } from '@/components/employee/EmployeeShell'
+import { BottomSheet, Card, ConfirmSheet, ListSkeleton, SubPage, useToast } from '@/components/employee/EmployeeShell'
 import { supabase } from '@/lib/supabaseClient'
 import { useEmployee } from '@/lib/useEmployee'
 import { recalcAnnualLeave } from '@/lib/recalcLeave'
@@ -20,7 +20,6 @@ import { useMgrT } from '@/lib/mgrText'
 type Holiday = { id: string; holiday_date: string; name: string; is_enabled: boolean }
 
 const MONTH_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-const safeBottom = 'env(safe-area-inset-bottom, 0px)'
 const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0] // 周一排最前面,周日最后(getDay: 0 = 周日)
 const NEXT_WEIGHT: Record<number, number> = { 1: 0.5, 0.5: 0, 0: 1 }
 
@@ -140,7 +139,7 @@ export default function MobileHolidays() {
   const dayNames = t('weekdays').split(',')
   const dayLabel = (d: number) => `${t('weekPrefix')}${dayNames[d]}`
   const weightLabel = (w: number) => (w === 1 ? t('dayFull') : w === 0.5 ? t('dayHalf') : t('dayOff'))
-  const weightClass = (w: number) => (w === 1 ? 'bg-brand text-white' : w === 0.5 ? 'bg-brand-soft text-brand' : 'bg-gray-100 text-gray-400')
+  const weightClass = (w: number) => (w === 1 ? 'bg-brand text-white' : w === 0.5 ? 'bg-brand-soft text-brand' : 'bg-gray-100 text-gray-500')
 
   const years = Array.from(new Set([new Date().getFullYear(), ...holidays.map((h) => parseDate(h.holiday_date).y)])).sort()
   const inYear = holidays.filter((h) => parseDate(h.holiday_date).y === year)
@@ -160,7 +159,7 @@ export default function MobileHolidays() {
       }
     >
       {banner && (
-        <button onClick={() => setBanner(null)} className={`mx-4 mt-3 block w-[calc(100%-2rem)] rounded-lg p-3 text-left text-[13px] leading-snug ${banner.kind === 'ok' ? 'bg-brand-soft text-brand-deep' : 'bg-[#FFF1F0] text-[#F5222D]'}`}>
+        <button onClick={() => setBanner(null)} className={`mx-4 mt-3 block w-[calc(100%-2rem)] rounded-lg p-3 text-left text-[13px] leading-snug ${banner.kind === 'ok' ? 'bg-brand-soft text-brand-deep' : 'bg-st-rejected-soft text-st-rejected-text'}`}>
           {banner.text}
         </button>
       )}
@@ -169,7 +168,7 @@ export default function MobileHolidays() {
       <Card className="mt-3">
         <div className="px-4 pb-4 pt-4">
           <p className="text-[15px] font-semibold text-gray-900">{t('workWeek')}</p>
-          <p className="mt-1 text-xs leading-relaxed text-gray-400">{t('workWeekHint')}</p>
+          <p className="mt-1 text-xs leading-relaxed text-gray-500">{t('workWeekHint')}</p>
           <div className="mt-3 grid grid-cols-7 gap-1.5">
             {WEEK_ORDER.map((d) => (
               <button key={d} onClick={() => setWorkWeek((prev) => ({ ...prev, [d]: NEXT_WEIGHT[prev[d]] ?? 1 }))} className={`rounded-xl py-2.5 text-center active:opacity-70 ${weightClass(workWeek[d])}`}>
@@ -197,9 +196,9 @@ export default function MobileHolidays() {
 
       {/* 列表 */}
       {!loaded ? (
-        <p className="py-12 text-center text-sm text-gray-400">{t('loading')}</p>
+        <ListSkeleton rows={3} />
       ) : inYear.length === 0 ? (
-        <Card className="mt-3"><p className="py-10 text-center text-sm text-gray-400">{t('noHolidays')}</p></Card>
+        <Card className="mt-3"><p className="py-10 text-center text-sm text-gray-500">{t('noHolidays')}</p></Card>
       ) : (
         Array.from(byMonth.entries()).map(([m, list]) => (
           <div key={m}>
@@ -210,13 +209,13 @@ export default function MobileHolidays() {
                 return (
                   <div key={h.id} className={`flex items-center gap-3 px-4 py-3 ${i ? 'border-t border-gray-100' : ''}`}>
                     <button onClick={() => setMenuFor(h)} className="flex min-w-0 flex-1 items-center gap-3 text-left active:opacity-60">
-                      <span className={`flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl ${h.is_enabled ? 'bg-brand-soft text-brand' : 'bg-gray-100 text-gray-400'}`}>
+                      <span className={`flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl ${h.is_enabled ? 'bg-brand-soft text-brand' : 'bg-gray-100 text-gray-500'}`}>
                         <span className="text-[10px] leading-none">{monthLabel(p.m)}</span>
                         <span className="mt-0.5 text-lg font-semibold leading-none tabular-nums">{p.d}</span>
                       </span>
                       <span className="min-w-0">
-                        <span className={`block truncate text-[15px] font-medium ${h.is_enabled ? 'text-gray-900' : 'text-gray-400'}`}>{h.name}</span>
-                        <span className="mt-0.5 block text-xs text-gray-400">{dayLabel(p.dow)} · {h.is_enabled ? t('holidayOn') : t('holidayOff')}</span>
+                        <span className={`block truncate text-[15px] font-medium ${h.is_enabled ? 'text-gray-900' : 'text-gray-500'}`}>{h.name}</span>
+                        <span className="mt-0.5 block text-xs text-gray-500">{dayLabel(p.dow)} · {h.is_enabled ? t('holidayOn') : t('holidayOff')}</span>
                       </span>
                     </button>
                     <Switch on={h.is_enabled} onClick={() => toggle(h)} label={h.name} />
@@ -227,12 +226,11 @@ export default function MobileHolidays() {
           </div>
         ))
       )}
-      <p className="mx-5 mt-3 text-xs leading-relaxed text-gray-400">{t('holidayNote')}</p>
+      <p className="mx-5 mt-3 text-xs leading-relaxed text-gray-500">{t('holidayNote')}</p>
 
       {/* 新增公假 */}
       {adding && (
-        <div className="fixed inset-0 z-50 flex items-end bg-black/45" onClick={() => !busy && setAdding(false)}>
-          <div className="mx-auto w-full max-w-md rounded-t-2xl bg-white" style={{ paddingBottom: `calc(1.25rem + ${safeBottom})` }} onClick={(e) => e.stopPropagation()}>
+        <BottomSheet onClose={() => !busy && setAdding(false)} pb="1.25rem">
             <div className="grid h-12 grid-cols-[4rem_1fr_4rem] items-center border-b border-gray-100 px-2">
               <button onClick={() => setAdding(false)} disabled={busy} className="text-[15px] text-gray-500">{t('cancel')}</button>
               <p className="truncate text-center text-base font-semibold text-gray-900">{t('addHoliday')}</p>
@@ -240,28 +238,27 @@ export default function MobileHolidays() {
             </div>
             <div className="space-y-3 px-4 pt-4">
               <div>
-                <label className="mb-1 block text-xs text-gray-400">{t('holidayDate')}</label>
+                <label className="mb-1 block text-xs text-gray-500">{t('holidayDate')}</label>
                 <input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} className="w-full rounded-lg bg-gray-50 p-3 text-[15px] text-gray-800 focus:outline-none" />
               </div>
               <div>
-                <label className="mb-1 block text-xs text-gray-400">{t('holidayName')}</label>
+                <label className="mb-1 block text-xs text-gray-500">{t('holidayName')}</label>
                 <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder={t('holidayNamePh')} maxLength={60} className="w-full rounded-lg bg-gray-50 p-3 text-[15px] text-gray-800 placeholder:text-gray-400 focus:outline-none" />
               </div>
             </div>
-          </div>
-        </div>
+        </BottomSheet>
       )}
 
       {/* 点某一行:底部菜单 */}
       {menuFor && (
-        <div className="fixed inset-0 z-50 flex items-end bg-black/45" onClick={() => setMenuFor(null)}>
-          <div className="mx-auto w-full max-w-md rounded-t-2xl bg-white px-4 pt-4" style={{ paddingBottom: `calc(1rem + ${safeBottom})` }} onClick={(e) => e.stopPropagation()}>
+        <BottomSheet onClose={() => setMenuFor(null)}>
+          <div className="px-4 pt-3">
             <p className="text-center text-base font-semibold text-gray-900">{menuFor.name}</p>
-            <p className="mt-1 text-center text-xs text-gray-400">{menuFor.holiday_date}</p>
-            <button onClick={() => { setConfirmDel(menuFor); setMenuFor(null) }} className="mt-4 w-full rounded-xl bg-[#FFF1F0] py-3 text-base font-semibold text-[#F5222D]">{t('deleteHoliday')}</button>
+            <p className="mt-1 text-center text-xs text-gray-500">{menuFor.holiday_date}</p>
+            <button onClick={() => { setConfirmDel(menuFor); setMenuFor(null) }} className="mt-4 w-full rounded-xl bg-st-rejected-soft py-3 text-base font-semibold text-st-rejected-text">{t('deleteHoliday')}</button>
             <button onClick={() => setMenuFor(null)} className="mt-2 w-full rounded-xl bg-gray-100 py-3 text-base text-gray-700">{t('close')}</button>
           </div>
-        </div>
+        </BottomSheet>
       )}
 
       <ConfirmSheet

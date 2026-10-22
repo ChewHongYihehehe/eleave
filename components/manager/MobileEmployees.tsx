@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import AuthStatus from '@/components/AuthStatus'
-import { Card, EI, Icon, SubPage } from '@/components/employee/EmployeeShell'
+import { Card, EI, Icon, ListSkeleton, SubPage } from '@/components/employee/EmployeeShell'
 import { useMgrT } from '@/lib/mgrText'
 import { useStaff } from '@/lib/useStaff'
 import { Avatar } from './ManagerTabs'
@@ -37,16 +37,16 @@ export default function MobileEmployees() {
           {t('addEmployee')}
         </Link>
         {loading ? (
-          <p className="border-t border-gray-100 py-10 text-center text-sm text-gray-400">{t('loading')}</p>
+          <div className="border-t border-gray-100"><ListSkeleton rows={3} bare /></div>
         ) : list.length === 0 ? (
-          <p className="border-t border-gray-100 py-10 text-center text-sm text-gray-400">{t('noEmployees')}</p>
+          <p className="border-t border-gray-100 py-10 text-center text-sm text-gray-500">{t('noEmployees')}</p>
         ) : (
           list.map((s) => (
             <Link key={s.id} href={`/manage/${s.id}`} className={`flex items-center gap-3 border-t border-gray-100 px-4 py-3 active:bg-gray-50 ${s.is_active ? '' : 'opacity-60'}`}>
               <Avatar name={s.full_name} size={40} />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[15px] font-medium text-gray-900">{s.full_name}</p>
-                <p className="text-xs text-gray-400">{s.employee_no ? `#${s.employee_no} · ` : ''}{s.role === 'manager' ? t('roleManager') : t('roleStaff')}</p>
+                <p className="text-xs text-gray-500">{s.employee_no ? `#${s.employee_no} · ` : ''}{s.role === 'manager' ? t('roleManager') : t('roleStaff')}</p>
               </div>
               {!s.is_active && <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">{t('inactive')}</span>}
               <Icon d={EI.chevronR} size={16} className="text-gray-300" />

@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import AuthStatus from '@/components/AuthStatus'
 import RecordLeaveModal from '@/components/RecordLeaveModal'
-import { ConfirmSheet, EI, Icon, useToast } from '@/components/employee/EmployeeShell'
+import { ConfirmSheet, EI, EmptyState, Icon, ListSkeleton, useToast } from '@/components/employee/EmployeeShell'
 import { TYPE_COLOR, fmtNum } from '@/lib/useLeaveData'
 import { fmtRange } from '@/lib/employeeFmt'
 import { leaveName, useMgrT } from '@/lib/mgrText'
@@ -18,16 +18,16 @@ type Sub = 'all' | 'approved' | 'rejected' | 'cancelled'
 const PAGE = 15
 
 export function statusOf(a: Pick<Application, 'status' | 'cancellation_status'>, t: ReturnType<typeof useMgrT>['t']) {
-  if (a.status === 'approved' && a.cancellation_status === 'requested') return { label: t('sCancelReq'), color: '#FA8C16' }
-  if (a.status === 'approved') return { label: t('sApproved'), color: '#52C41A' }
-  if (a.status === 'pending') return { label: t('sPending'), color: '#FA8C16' }
-  if (a.status === 'rejected') return { label: t('sRejected'), color: '#F5222D' }
-  if (a.status === 'cancelled') return { label: t('sCancelled'), color: '#8C8C8C' }
+  if (a.status === 'approved' && a.cancellation_status === 'requested') return { label: t('sCancelReq'), color: '#0958D9' }
+  if (a.status === 'approved') return { label: t('sApproved'), color: '#237804' }
+  if (a.status === 'pending') return { label: t('sPending'), color: '#AD4E00' }
+  if (a.status === 'rejected') return { label: t('sRejected'), color: '#CF1322' }
+  if (a.status === 'cancelled') return { label: t('sCancelled'), color: '#595959' }
   return { label: a.status, color: '#8C8C8C' }
 }
 
 export default function MobileApprove() {
-  const { auth, me, apps, attention, loading, send, reload } = useApprovals()
+  const { auth, me, apps, attention, loading, error, send, reload } = useApprovals()
   const { t, lang } = useMgrT()
   const toast = useToast()
   const [seg, setSeg] = useState<Seg>('todo')
@@ -123,9 +123,13 @@ export default function MobileApprove() {
       </div>
 
       {loading ? (
-        <p className="py-16 text-center text-sm text-gray-400">{t('loading')}</p>
+        <ListSkeleton />
+      ) : error && apps.length === 0 ? (
+        <EmptyState tone="warn" icon={EI.alert} title={t('loadFail')}>
+          <button onClick={reload} className="mt-5 rounded-full bg-brand px-6 py-2.5 text-sm font-medium text-white active:bg-brand-deep">{t('retry')}</button>
+        </EmptyState>
       ) : list.length === 0 ? (
-        <p className="py-16 text-center text-sm text-gray-400">{seg === 'todo' ? t('emptyTodo') : t('noItems')}</p>
+        <EmptyState icon={EI.check} title={seg === 'todo' ? t('emptyTodo') : t('noItems')} hint={seg === 'todo' ? t('emptyTodoHint') : undefined} />
       ) : (
         <div className="mx-4 mt-2 overflow-hidden rounded-xl bg-white">
           {shown.map((a, i) => {
@@ -141,21 +145,27 @@ export default function MobileApprove() {
                 )}
                 <Avatar name={a.person.full_name} size={40} />
                 <div className="ml-3 min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-baseline justify-between gap-2">
                     <p className="truncate text-[15px] font-medium text-gray-900">{a.person.full_name}</p>
-                    <span className="shrink-0 text-sm font-medium" style={{ color: st.color }}>{isCancelReq ? t('cancelReq') : st.label}</span>
+                    {seg === 'todo' && !isCancelReq ? (
+                      // 待我审批里每一行都是"待审批",写出来没有信息量;右边改放天数(决策最需要的数字)
+                      <span className="shrink-0 text-[15px] font-semibold tabular-nums text-gray-900">
+                        {fmtNum(Number(a.total_days))}<span className="ml-0.5 text-xs font-normal text-gray-500">{t('daysUnit')}</span>
+                      </span>
+                    ) : (
+                      <span className="shrink-0 text-sm font-medium" style={{ color: st.color }}>{isCancelReq ? t('cancelReq') : st.label}</span>
+                    )}
                   </div>
-                  <p className="mt-0.5 flex items-center gap-1.5 text-xs text-gray-500">
+                  <p className="mt-0.5 flex items-center gap-1.5 text-[13px] text-gray-700">
                     <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: TYPE_COLOR[a.leave_type] ?? '#8C8C8C' }} />
                     <span className="truncate">
                       {leaveName(a.leave_type, lang)}
                       {a.is_half_day && a.half_day_period ? ` · ${a.half_day_period === 'am' ? t('halfAm') : t('halfPm')}` : ''}
-                      {' · '}{fmtNum(Number(a.total_days))} {t('daysUnit')}
+                      {' · '}{fmtRange(a, lang, t('imported'))}
+                      {seg === 'done' || isCancelReq ? ` · ${fmtNum(Number(a.total_days))} ${t('daysUnit')}` : ''}
                     </span>
                   </p>
-                  <p className="mt-0.5 truncate text-xs text-gray-400">
-                    {fmtRange(a, lang, t('imported'))}{a.reason && !isImported(a) ? ` · ${a.reason}` : ''}
-                  </p>
+                  {a.reason && !isImported(a) && <p className="mt-0.5 truncate text-xs text-gray-500">{a.reason}</p>}
                 </div>
               </>
             )
@@ -186,7 +196,7 @@ export default function MobileApprove() {
               {t('all')}
             </button>
             <span className="flex-1 text-sm text-gray-500">{t('selected')} {picked.size}</span>
-            <button disabled={picked.size === 0} onClick={() => setReject(true)} className="rounded-lg border border-[#F5222D]/40 px-5 py-2.5 text-[15px] font-medium text-[#F5222D] disabled:opacity-40">{t('reject')}</button>
+            <button disabled={picked.size === 0} onClick={() => setReject(true)} className="rounded-lg border border-st-rejected/40 px-5 py-2.5 text-[15px] font-medium text-st-rejected-text disabled:opacity-40">{t('reject')}</button>
             <button disabled={picked.size === 0} onClick={() => setConfirm(true)} className="rounded-lg bg-brand px-5 py-2.5 text-[15px] font-semibold text-white disabled:opacity-40">{t('approve')}</button>
           </div>
         </div>

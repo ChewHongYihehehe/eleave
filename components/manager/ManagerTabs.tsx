@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { IC } from '@/components/ManagerShell'
-import { EI, Icon } from '@/components/employee/EmployeeShell'
+import { BottomSheet, EI, Icon } from '@/components/employee/EmployeeShell'
 import { useMgrT, type MgrKey } from '@/lib/mgrText'
 import { useAttentionCount } from '@/lib/useApprovals'
 
@@ -32,11 +32,11 @@ export function ManagerTabPage({ tab, badge, children }: { tab: (typeof TABS)[nu
           {TABS.map((x) => {
             const active = x.key === tab
             return (
-              <Link key={x.key} href={x.href} replace={!active} className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-xs ${active ? 'font-semibold text-brand' : 'text-gray-400'}`}>
+              <Link key={x.key} href={x.href} replace={!active} className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-xs ${active ? 'font-semibold text-brand' : 'text-gray-500'}`}>
                 <span className="relative">
                   <Icon d={x.icon} size={24} />
                   {x.key === 'approve' && !!count && (
-                    <span className="absolute -right-2.5 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#F5222D] px-1 text-[10px] font-bold leading-none text-white">
+                    <span className="absolute -right-2.5 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-st-rejected px-1 text-[10px] font-bold leading-none text-white">
                       {count > 99 ? '99+' : count}
                     </span>
                   )}
@@ -71,7 +71,8 @@ export function Avatar({ name, size = 40 }: { name?: string | null; size?: numbe
   )
 }
 
-// ── 填写原因的底部面板:按钮放在顶部一行(取消 | 标题 | 确认),键盘弹出来也不会挡住 ──
+// ── 填写原因的底部面板:取消 | 标题 | 确认 放在顶部一行,键盘弹出来也不会挡住 ──
+// 快捷理由放在输入框上方(键盘弹出后仍然看得到),输入框自动聚焦。
 export function ReasonSheet({
   open, title, hint, required, chips, confirmLabel, danger, busy, onConfirm, onClose,
 }: {
@@ -83,32 +84,31 @@ export function ReasonSheet({
   if (!open) return null
   const disabled = busy || (required && !text.trim())
   return (
-    <div className="fixed inset-0 z-50 flex items-end bg-black/45" onClick={() => !busy && onClose()}>
-      <div className="mx-auto w-full max-w-md rounded-t-2xl bg-white" style={{ paddingBottom: `calc(1rem + ${safeBottom})` }} onClick={(e) => e.stopPropagation()}>
-        <div className="grid h-12 grid-cols-[4rem_1fr_4rem] items-center border-b border-gray-100 px-2">
-          <button onClick={onClose} disabled={busy} className="text-[15px] text-gray-500">{t('cancel')}</button>
-          <p className="truncate text-center text-base font-semibold text-gray-900">{title}</p>
-          <button onClick={() => onConfirm(text.trim())} disabled={disabled} className={`text-right text-[15px] font-semibold disabled:opacity-40 ${danger ? 'text-[#F5222D]' : 'text-brand'}`}>
-            {confirmLabel}
-          </button>
-        </div>
-        <div className="px-4 pt-3">
-          {hint && <p className="mb-2 text-sm text-gray-500">{hint}</p>}
-          <textarea
-            value={text} onChange={(e) => setText(e.target.value)} rows={3} maxLength={300}
-            placeholder={required ? `${t('reasonPh')} (${t('required')})` : t('reasonPh')}
-            className="w-full resize-none rounded-lg bg-gray-50 p-3 text-[15px] text-gray-800 placeholder:text-gray-400 focus:outline-none"
-          />
-          {chips && chips.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-2">
-              {chips.map((c) => (
-                <button key={c} type="button" onClick={() => setText(c)} className="rounded-full bg-brand-soft px-3 py-1.5 text-xs text-brand">{c}</button>
-              ))}
-            </div>
-          )}
-        </div>
+    <BottomSheet onClose={() => !busy && onClose()}>
+      <div className="grid h-12 grid-cols-[6rem_1fr_6rem] items-center border-b border-gray-100 px-2">
+        <button onClick={onClose} disabled={busy} className="h-12 whitespace-nowrap px-2 text-left text-[15px] text-gray-600">{t('cancel')}</button>
+        <p className="truncate text-center text-base font-semibold text-gray-900">{title}</p>
+        <button onClick={() => onConfirm(text.trim())} disabled={disabled} className={`h-12 whitespace-nowrap px-2 text-right text-[15px] font-semibold disabled:opacity-40 ${danger ? 'text-st-rejected-text' : 'text-brand'}`}>
+          {confirmLabel}
+        </button>
       </div>
-    </div>
+      <div className="px-4 pt-3">
+        {hint && <p className="mb-2 text-sm text-gray-600">{hint}</p>}
+        {chips && chips.length > 0 && (
+          <div className="mb-2 flex flex-wrap gap-2">
+            {chips.map((c) => (
+              <button key={c} type="button" onClick={() => setText(c)} className="rounded-full bg-brand-soft px-3 py-2 text-[13px] text-brand-deep active:opacity-70">{c}</button>
+            ))}
+          </div>
+        )}
+        <textarea
+          autoFocus
+          value={text} onChange={(e) => setText(e.target.value)} rows={3} maxLength={300}
+          placeholder={required ? `${t('reasonPh')} (${t('required')})` : t('reasonPh')}
+          className="w-full resize-none rounded-lg bg-gray-50 p-3 text-[15px] text-gray-800 placeholder:text-gray-400 focus:outline-none"
+        />
+      </div>
+    </BottomSheet>
   )
 }
 
@@ -118,19 +118,17 @@ export function PickerSheet({
 }: { open: boolean; title: string; options: { value: string; label: string }[]; value: string; onPick: (v: string) => void; onClose: () => void }) {
   if (!open) return null
   return (
-    <div className="fixed inset-0 z-50 flex items-end bg-black/45" onClick={onClose}>
-      <div className="mx-auto flex max-h-[70dvh] w-full max-w-md flex-col rounded-t-2xl bg-white" style={{ paddingBottom: safeBottom }} onClick={(e) => e.stopPropagation()}>
-        <p className="border-b border-gray-100 py-3.5 text-center text-base font-semibold text-gray-900">{title}</p>
-        <div className="overflow-y-auto">
-          {options.map((o) => (
-            <button key={o.value} onClick={() => { onPick(o.value); onClose() }} className="flex w-full items-center justify-between border-b border-gray-50 px-5 py-3.5 text-left text-[15px] text-gray-900 active:bg-gray-50">
-              <span className={o.value === value ? 'font-semibold text-brand' : ''}>{o.label}</span>
-              {o.value === value && <Icon d="M5 12.5l4.5 4.5L19 7.5" size={18} className="text-brand" />}
-            </button>
-          ))}
-        </div>
+    <BottomSheet onClose={onClose} className="flex max-h-[70dvh] flex-col" pb="0px">
+      <p className="border-b border-gray-100 py-3.5 text-center text-base font-semibold text-gray-900">{title}</p>
+      <div className="overflow-y-auto">
+        {options.map((o) => (
+          <button key={o.value} onClick={() => { onPick(o.value); onClose() }} className="flex w-full items-center justify-between border-b border-gray-50 px-5 py-3.5 text-left text-[15px] text-gray-900 active:bg-gray-50">
+            <span className={o.value === value ? 'font-semibold text-brand' : ''}>{o.label}</span>
+            {o.value === value && <Icon d="M5 12.5l4.5 4.5L19 7.5" size={18} className="text-brand" />}
+          </button>
+        ))}
       </div>
-    </div>
+    </BottomSheet>
   )
 }
 

@@ -26,7 +26,7 @@ export default function MobileMe() {
         <Avatar name={emp.full_name} size={56} />
         <div className="min-w-0">
           <p className="truncate text-base font-semibold text-gray-900">{emp.full_name}</p>
-          <p className="text-sm text-gray-400">{emp.employee_no ? `#${emp.employee_no} · ` : ''}{t('manager')}</p>
+          <p className="text-sm text-gray-500">{emp.employee_no ? `#${emp.employee_no} · ` : ''}{t('manager')}</p>
         </div>
       </Card>
 
@@ -51,7 +51,7 @@ export default function MobileMe() {
       </Card>
 
       <Card className="mt-3">
-        <button onClick={async () => { await supabase.auth.signOut(); router.push('/') }} className="flex w-full items-center justify-center gap-2 py-3.5 text-[15px] font-medium text-[#F5222D] active:bg-red-50">
+        <button onClick={async () => { await supabase.auth.signOut(); router.push('/') }} className="flex w-full items-center justify-center gap-2 py-3.5 text-[15px] font-medium text-st-rejected-text active:bg-red-50">
           <Icon d={EI.logout} size={20} />{t('logout')}
         </button>
       </Card>

@@ -96,7 +96,7 @@ export default function MobileCalendar() {
       </div>
 
       <div className="mx-4 rounded-xl bg-white p-2">
-        <div className="grid grid-cols-7 text-center text-xs text-gray-400">
+        <div className="grid grid-cols-7 text-center text-xs text-gray-500">
           {weekdays.map((d) => <div key={d} className="py-1.5">{d}</div>)}
         </div>
         <div className="grid grid-cols-7 gap-y-1">
@@ -115,7 +115,7 @@ export default function MobileCalendar() {
                 <span className={`flex h-7 w-7 items-center justify-center rounded-full text-sm ${isSel ? 'bg-brand font-semibold text-white' : isToday ? 'font-bold text-brand' : holidays[key] ? 'text-[#C9A227]' : 'text-gray-800'}`}>{day}</span>
                 <span className="mt-1 flex flex-wrap items-center justify-center gap-0.5 px-0.5">
                   {show.map((c, j) => <span key={j} className="h-1.5 w-1.5 rounded-full" style={{ background: c }} />)}
-                  {extra > 0 && <span className="text-[10px] leading-none text-gray-400">+{extra}</span>}
+                  {extra > 0 && <span className="text-[10px] leading-none text-gray-500">+{extra}</span>}
                 </span>
               </button>
             )
@@ -140,7 +140,7 @@ export default function MobileCalendar() {
           </div>
           {selHoliday && <p className="mt-2 rounded-lg bg-[#FFF8E1] px-3 py-2 text-sm text-[#8A6D00]">{selHoliday}</p>}
           {selEntries.length === 0 ? (
-            <p className="mt-2 text-sm text-gray-400">{t('nobodyOnLeave')}</p>
+            <p className="mt-2 text-sm text-gray-500">{t('nobodyOnLeave')}</p>
           ) : (
             <>
               <p className="mt-1 text-sm text-gray-500">{selEntries.length} {t('nOnLeave')}</p>
