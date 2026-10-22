@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { IC } from '@/components/ManagerShell'
-import { Avatar, BottomSheet, EI, Icon } from '@/components/employee/EmployeeShell'
+import { Avatar, BottomSheet, EI, Icon, PickerSheet } from '@/components/employee/EmployeeShell'
 import { useMgrT, type MgrKey } from '@/lib/mgrText'
 import { useAttentionCount } from '@/lib/useApprovals'
 
@@ -95,24 +95,7 @@ export function ReasonSheet({
   )
 }
 
-// ── 单选底部面板(选员工等)──
-export function PickerSheet({
-  open, title, options, value, onPick, onClose,
-}: { open: boolean; title: string; options: { value: string; label: string }[]; value: string; onPick: (v: string) => void; onClose: () => void }) {
-  if (!open) return null
-  return (
-    <BottomSheet onClose={onClose} className="flex max-h-[70dvh] flex-col" pb="0px">
-      <p className="border-b border-gray-100 py-3.5 text-center text-base font-semibold text-gray-900">{title}</p>
-      <div className="overflow-y-auto">
-        {options.map((o) => (
-          <button key={o.value} onClick={() => { onPick(o.value); onClose() }} className="flex w-full items-center justify-between border-b border-gray-50 px-5 py-3.5 text-left text-[15px] text-gray-900 active:bg-gray-50">
-            <span className={o.value === value ? 'font-semibold text-brand' : ''}>{o.label}</span>
-            {o.value === value && <Icon d="M5 12.5l4.5 4.5L19 7.5" size={18} className="text-brand" />}
-          </button>
-        ))}
-      </div>
-    </BottomSheet>
-  )
-}
+// 单选面板已经移到 EmployeeShell(员工端选假种也用),这里再导出,旧的 import 路径照常能用
+export { PickerSheet }
 
 export { EI }
