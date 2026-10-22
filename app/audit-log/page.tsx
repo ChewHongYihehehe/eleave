@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabaseClient'
 import ManagerShell from '@/components/ManagerShell'
 import { useEmployee } from '@/lib/useEmployee'
 import AuthStatus from '@/components/AuthStatus'
+import MobileAuditLog from '@/components/manager/MobileAuditLog'
 
 type LogRow = {
   id: string
@@ -70,7 +71,7 @@ function formatWhen(iso: string): string {
   })
 }
 
-export default function AuditLogPage() {
+function DesktopAuditLog() {
   const auth = useEmployee({ requireManager: true })
   const [logs, setLogs] = useState<LogRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -194,34 +195,6 @@ export default function AuditLogPage() {
                   ))}
                 </tbody>
               </table>
-
-              {/* ── Mobile timeline cards ── */}
-              <div className="md:hidden divide-y divide-line">
-                {paginated.map((log) => {
-                  const detail = describeDetails(log.action, log.details)
-                  return (
-                    <div key={log.id} className="p-4 space-y-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-ink">{log.actor?.full_name || '—'}</p>
-                          <p className="text-xs text-ink-soft">{ACTION_LABELS[log.action] || log.action}</p>
-                          {log.target?.full_name && log.target.full_name !== log.actor?.full_name && (
-                            <p className="text-xs text-ink-faint">→ {log.target.full_name}</p>
-                          )}
-                        </div>
-                        <p className="shrink-0 text-[11px] text-ink-faint text-right">
-                          {new Date(log.created_at).toLocaleDateString('en-MY', { day: '2-digit', month: 'short' })}
-                          <br />
-                          {new Date(log.created_at).toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit' })}
-                        </p>
-                      </div>
-                      {detail && (
-                        <p className="rounded-lg bg-paper px-3 py-2 text-xs text-ink-faint">{detail}</p>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
             </>
           )}
         </div>
@@ -247,5 +220,19 @@ export default function AuditLogPage() {
         )}
       </div>
     </ManagerShell>
+  )
+}
+
+// 手机用新的钉钉风格页面,电脑沿用下面这个表格版
+export default function AuditLogPage() {
+  return (
+    <>
+      <div className="md:hidden">
+        <MobileAuditLog />
+      </div>
+      <div className="hidden md:block">
+        <DesktopAuditLog />
+      </div>
+    </>
   )
 }
