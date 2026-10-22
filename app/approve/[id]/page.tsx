@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import AuthStatus from '@/components/AuthStatus'
-import { Card, ConfirmSheet, ListSkeleton, SubPage, useToast } from '@/components/employee/EmployeeShell'
+import { Card, ConfirmSheet, FlowTimeline, type FlowStep, ListSkeleton, Stamp, SubPage, useToast } from '@/components/employee/EmployeeShell'
 import { Avatar, ReasonSheet } from '@/components/manager/ManagerTabs'
 import { statusOf } from '@/components/manager/MobileApprove'
 import { fmtNum, TYPE_COLOR } from '@/lib/useLeaveData'
@@ -15,7 +15,6 @@ import { isImported, useApprovals, type Action } from '@/lib/useApprovals'
 // 审批详情(钉钉样式):申请人、信息、对决策有帮助的余额和同期休假、进度时间线;
 // 底部固定操作按钮。同意要确认,拒绝要填原因(底部面板)。
 
-type Step = { title: string; time?: string | null; sub?: string | null; tone: 'done' | 'active' | 'bad' | 'muted' }
 type Sheet = null | 'approve' | 'reject' | 'confirmCancel' | 'keep' | 'managerCancel'
 
 export default function ApprovalDetail() {
@@ -51,16 +50,20 @@ export default function ApprovalDetail() {
       .map((o) => o.person.full_name)
   ))
 
-  const steps: Step[] = [{ title: t('tlSubmitted'), time: app.created_at, tone: 'done' }]
-  if (app.status === 'pending') steps.push({ title: t('tlReviewing'), tone: 'active' })
-  if (app.status === 'rejected') steps.push({ title: t('tlRejected'), time: app.last_decision_at, sub: app.remarks, tone: 'bad' })
+  const ft = (iso?: string | null) => (iso ? fmtDateTime(iso, lang) : null)
+  const who = app.person.full_name
+  const mgr = t('manager')
+  const steps: FlowStep[] = [{ title: t('tlSubmitted'), name: who, time: ft(app.created_at), tone: 'done' }]
+  if (app.status === 'pending') steps.push({ title: t('tlReviewing'), name: mgr, generic: true, tone: 'active' })
+  if (app.status === 'rejected') steps.push({ title: t('tlRejected'), name: mgr, generic: true, time: ft(app.last_decision_at), sub: app.remarks, tone: 'bad' })
   if (app.status === 'approved') {
-    steps.push({ title: t('tlApproved'), time: app.last_decision_at, tone: 'done' })
-    if (isCancelReq) steps.push({ title: t('tlCancelReq'), time: app.cancellation_requested_at, tone: 'active' })
-    if (app.cancellation_status === 'none' && app.cancellation_decision_reason) steps.push({ title: t('cancelDeclined'), sub: app.cancellation_decision_reason, tone: 'bad' })
+    steps.push({ title: t('tlApproved'), name: mgr, generic: true, time: ft(app.last_decision_at), tone: 'done' })
+    if (isCancelReq) steps.push({ title: t('tlCancelReq'), name: who, time: ft(app.cancellation_requested_at), tone: 'active' })
+    if (app.cancellation_status === 'none' && app.cancellation_decision_reason) steps.push({ title: t('cancelDeclined'), name: mgr, generic: true, sub: app.cancellation_decision_reason, tone: 'bad' })
   }
-  if (app.status === 'cancelled') steps.push({ title: t('tlCancelled'), time: app.last_decision_at, sub: app.cancellation_decision_reason, tone: 'muted' })
-  const dot = { done: 'bg-st-approved', active: 'bg-st-pending', bad: 'bg-st-rejected', muted: 'bg-gray-300' }
+  if (app.status === 'cancelled') steps.push({ title: t('tlCancelled'), time: ft(app.last_decision_at), sub: app.cancellation_decision_reason, tone: 'muted' })
+  // 有结果了就盖章;还在等审批 / 取消申请处理中只显示彩色文字
+  const stamped = !isPending && !isCancelReq
 
   async function run(action: Action, reason?: string) {
     setBusy(true)
@@ -100,14 +103,21 @@ export default function ApprovalDetail() {
 
   return (
     <SubPage title={t('details')} backHref="/approve" footer={footer}>
-      {/* 申请人 + 状态 */}
-      <div className="flex items-center gap-3 px-5 pb-4 pt-5">
-        <Avatar name={app.person.full_name} size={48} />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-lg font-semibold text-gray-900">{app.person.full_name}</p>
-          <p className="text-sm text-gray-500">{app.person.employee_no ? `#${app.person.employee_no}` : ''}</p>
+      {/* 申请人卡片:头像 + 姓名 + 假种和天数;有结果时右上角盖章 */}
+      <div className="relative mx-4 mb-3 mt-3 overflow-hidden rounded-xl bg-white px-4 py-4">
+        <div className="flex items-center gap-3">
+          <Avatar name={app.person.full_name} size={48} />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-lg font-semibold text-gray-900">{app.person.full_name}</p>
+            <p className="mt-0.5 flex items-center gap-1.5 text-sm text-gray-500">
+              {app.person.employee_no ? `#${app.person.employee_no} · ` : ''}
+              <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: TYPE_COLOR[app.leave_type] ?? '#8C8C8C' }} />
+              {leaveName(app.leave_type, lang)} · {fmtNum(Number(app.total_days))} {t('daysUnit')}
+            </p>
+          </div>
+          {!stamped && <span className="shrink-0 text-base font-semibold" style={{ color: st.color }}>{isCancelReq ? t('cancelReq') : st.label}</span>}
         </div>
-        <span className="text-base font-semibold" style={{ color: st.color }}>{isCancelReq ? t('cancelReq') : st.label}</span>
+        {stamped && <div className="absolute right-4 top-3"><Stamp label={st.label} color={st.color} /></div>}
       </div>
 
       {/* 决策参考:批准后余额 + 同期休假(待处理时放在最上面:先看,再点底部按钮) */}
@@ -167,23 +177,14 @@ export default function ApprovalDetail() {
         )}
       </Card>
 
-      {/* 进度 */}
+      {/* 审批进度 */}
       {!imported && (
-        <Card className="mt-3 px-4 py-4">
-          {steps.map((s, i) => (
-            <div key={i} className="relative flex gap-3 pb-5 last:pb-0">
-              {i < steps.length - 1 && <span className="absolute left-[5px] top-4 h-full w-px bg-gray-200" />}
-              <span className={`relative z-[1] mt-1.5 h-[11px] w-[11px] shrink-0 rounded-full ring-4 ring-white ${dot[s.tone]}`} />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-baseline justify-between gap-3">
-                  <p className="text-[15px] font-medium text-gray-900">{s.title}</p>
-                  {s.time && <span className="shrink-0 text-xs text-gray-500">{fmtDateTime(s.time, lang)}</span>}
-                </div>
-                {s.sub && <p className="mt-1 text-sm text-gray-500">{s.sub}</p>}
-              </div>
-            </div>
-          ))}
-        </Card>
+        <>
+          <p className="px-5 pb-2 pt-4 text-[13px] text-gray-500">{t('flowTitle')}</p>
+          <Card className="px-4 py-4">
+            <FlowTimeline steps={steps} />
+          </Card>
+        </>
       )}
 
       <ConfirmSheet open={sheet === 'approve'} busy={busy} message={summary} title={t('confirmApprove')} confirmLabel={t('approve')} onClose={() => setSheet(null)} onConfirm={() => run('approve')} />
