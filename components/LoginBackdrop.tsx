@@ -22,17 +22,17 @@ export function LoginBackdrop() {
   )
 }
 
-// Logo:静态,不带任何动画(登录页和"载入中"画面共用,两个画面看起来是同一屏)
+// Logo:静态,不带任何动画
 export function LogoMark({ alt = 'Puro' }: { alt?: string }) {
   return (
-    <div className="relative mx-auto flex h-24 w-24 items-center justify-center">
+    <div className="relative mx-auto flex h-32 w-32 items-center justify-center">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src="/logo.png"
         alt={alt}
-        width={96}
-        height={96}
-        className="h-24 w-24 drop-shadow-[0_10px_18px_rgba(48,41,134,0.28)]"
+        width={128}
+        height={128}
+        className="h-32 w-32 drop-shadow-[0_12px_22px_rgba(48,41,134,0.28)]"
       />
     </div>
   )
