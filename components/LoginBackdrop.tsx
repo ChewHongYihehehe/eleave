@@ -1,5 +1,5 @@
-// 登录页(出 logo 的那一屏)的背景和 logo 水纹。纯 SVG + CSS,不需要任何图片文件。
-// 设计来源是 logo 本身:蓝色渐变 + 蜂窝纹理 + 水滴 → 浅蓝渐变底 + 淡淡的蜂窝 + 从 logo 向外扩散的水纹。
+// 出 logo 那一屏的背景:纯 SVG + CSS,不需要图片文件,没有任何动画。
+// 设计来源是 logo 本身:蓝色渐变 + 蜂窝纹理 → 浅蓝渐变底 + 淡淡的蜂窝 + 一团柔光。
 
 const BLUE = '#0198DD' // 取自 logo 的亮蓝色
 
@@ -22,26 +22,17 @@ export function LoginBackdrop() {
   )
 }
 
-// Logo + 水纹:三圈固定的淡圈 + 两圈循环向外扩散的水纹(系统开了"减少动态效果"时只留静态圈)
+// Logo:静态,不带任何动画(登录页和"载入中"画面共用,两个画面看起来是同一屏)
 export function LogoMark({ alt = 'Puro' }: { alt?: string }) {
   return (
     <div className="relative mx-auto flex h-24 w-24 items-center justify-center">
-      {[1.6, 2.2, 2.9].map((k, i) => (
-        <span
-          key={k}
-          className="absolute inset-0 rounded-full border"
-          style={{ borderColor: BLUE, transform: `scale(${k})`, opacity: [0.18, 0.11, 0.06][i] }}
-        />
-      ))}
-      <span className="absolute inset-0 animate-ripple rounded-full border-2 motion-reduce:hidden" style={{ borderColor: BLUE }} />
-      <span className="absolute inset-0 animate-ripple rounded-full border-2 motion-reduce:hidden" style={{ borderColor: BLUE, animationDelay: '2.2s' }} />
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src="/logo.png"
         alt={alt}
         width={96}
         height={96}
-        className="relative h-24 w-24 animate-pop drop-shadow-[0_10px_18px_rgba(48,41,134,0.30)] motion-reduce:animate-none"
+        className="h-24 w-24 drop-shadow-[0_10px_18px_rgba(48,41,134,0.28)]"
       />
     </div>
   )
