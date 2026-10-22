@@ -9,21 +9,19 @@ import { calculateLeaveDays, calculateWorkingDays, LEAVE_TYPE_LABELS } from '@/l
 import { toLocalDateStr } from '@/lib/dateUtils'
 import { validateMcFile } from '@/lib/mcAttachments'
 import { submitApplication } from '@/lib/employeeActions'
-import { fmtDate } from '@/lib/employeeFmt'
-import { Card, DatePickerSheet, EI, Icon, PickerSheet, SubPage } from '@/components/employee/EmployeeShell'
+import { Card, EI, Icon, SubPage } from '@/components/employee/EmployeeShell'
+import DatePickerSheet from '@/components/DatePickerSheet'
 
 // 申请请假(全屏表单,钉钉样式):一行一项,时长自动算,底部固定提交按钮。
 // 这里的天数/余额只是"预览";真正的检查在服务器 /api/leave-applications。
 
-function Row({ label, children, onClick }: { label: string; children: React.ReactNode; onClick?: () => void }) {
-  const cls = 'flex min-h-[52px] w-full items-center justify-between gap-4 border-t border-gray-100 px-4 text-left first:border-t-0'
-  const inner = (
-    <>
+function Row({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="flex min-h-[52px] items-center justify-between gap-4 border-t border-gray-100 px-4 first:border-t-0">
       <span className="shrink-0 text-[15px] text-gray-900">{label}</span>
       <span className="flex min-w-0 items-center gap-1 text-[15px] text-gray-600">{children}</span>
-    </>
+    </label>
   )
-  return onClick ? <button type="button" onClick={onClick} className={`${cls} active:bg-gray-50`}>{inner}</button> : <label className={cls}>{inner}</label>
 }
 
 export default function ApplyPage() {
@@ -41,7 +39,7 @@ export default function ApplyPage() {
   const [mc, setMc] = useState<File | null>(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
-  const [sheet, setSheet] = useState<null | 'type' | 'start' | 'end'>(null)
+  const [pickerTarget, setPickerTarget] = useState<'start' | 'end' | null>(null)
 
   const realEnd = half ? start : end
   const days = useMemo(() => {
@@ -81,18 +79,32 @@ export default function ApplyPage() {
     <SubPage title={t('applyLeave')} backHref="/dashboard" footer={footer}>
       <div className="h-3" />
       <Card>
-        <Row label={t('leaveType')} onClick={() => setSheet('type')}>
-          <span className="max-w-[12rem] truncate text-gray-900">{leaveTypeName(type, lang)}</span>
+        <Row label={t('leaveType')}>
+          <select value={type} onChange={(e) => { setType(e.target.value); setMc(null) }} className="max-w-[12rem] appearance-none truncate bg-transparent text-right">
+            {Object.keys(LEAVE_TYPE_LABELS).map((k) => <option key={k} value={k}>{leaveTypeName(k, lang)}</option>)}
+          </select>
           <Icon d={EI.chevronR} size={16} className="shrink-0 text-gray-300" />
         </Row>
-        <Row label={t('startDate')} onClick={() => setSheet('start')}>
-          <span className={start ? 'text-gray-900' : 'text-gray-400'}>{start ? fmtDate(start, lang, true) : t('pickPlaceholder')}</span>
-          <Icon d={EI.chevronR} size={16} className="shrink-0 text-gray-300" />
+        <Row label={t('startDate')}>
+          <button
+            type="button"
+            onClick={() => setPickerTarget('start')}
+            className="flex items-center gap-1.5 text-right font-medium text-gray-900 active:opacity-60"
+          >
+            <span>{start || t('chooseDates')}</span>
+            <Icon d={EI.chevronR} size={16} className="shrink-0 text-gray-300" />
+          </button>
         </Row>
         {!half && (
-          <Row label={t('endDate')} onClick={() => setSheet('end')}>
-            <span className={end ? 'text-gray-900' : 'text-gray-400'}>{end ? fmtDate(end, lang, true) : t('pickPlaceholder')}</span>
-            <Icon d={EI.chevronR} size={16} className="shrink-0 text-gray-300" />
+          <Row label={t('endDate')}>
+            <button
+              type="button"
+              onClick={() => setPickerTarget('end')}
+              className="flex items-center gap-1.5 text-right font-medium text-gray-900 active:opacity-60"
+            >
+              <span>{end || t('chooseDates')}</span>
+              <Icon d={EI.chevronR} size={16} className="shrink-0 text-gray-300" />
+            </button>
           </Row>
         )}
         <Row label={t('halfDay')}>
@@ -116,13 +128,12 @@ export default function ApplyPage() {
           <span className="font-semibold text-gray-900">{days == null ? '–' : `${fmtNum(days)} ${t('daysUnit')}`}</span>
         </Row>
       </Card>
-      <p className="mx-4 mt-2 px-1 text-xs text-gray-500">{t('pastDateNote')}</p>
 
       {(type === 'annual' || (bal && days != null)) && (
         <div className="mx-4 mt-2 space-y-0.5 px-1 text-xs">
-          {type === 'annual' && <p className="text-gray-500">{t('annualNote')}</p>}
+          {type === 'annual' && <p className="text-gray-400">{t('annualNote')}</p>}
           {bal && after != null && (
-            <p className={after < 0 ? 'font-medium text-st-rejected-text' : 'text-gray-500'}>
+            <p className={after < 0 ? 'font-medium text-[#F5222D]' : 'text-gray-500'}>
               {after < 0 ? `${t('exceeds')} · ` : ''}{t('afterwards')}: {fmtNum(after)} {t('daysUnit')}
             </p>
           )}
@@ -153,24 +164,36 @@ export default function ApplyPage() {
       <Card className="mt-3">
         <div className="px-4 py-3">
           <p className="mb-2 text-[15px] text-gray-900">{t('note')}</p>
-          <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} placeholder={t('notePh')} className="w-full resize-none bg-transparent text-[15px] text-gray-800 placeholder:text-gray-400 focus:outline-none" />
+          <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={3} placeholder={t('notePh')} className="w-full resize-none bg-transparent text-[15px] text-gray-800 placeholder:text-gray-300 focus:outline-none" />
         </div>
       </Card>
 
       {error && <p className="mx-4 mt-3 rounded-xl bg-red-50 px-4 py-2.5 text-sm text-[#F5222D]">{error}</p>}
 
-      <PickerSheet
-        open={sheet === 'type'} title={t('selectLeaveType')} value={type}
-        options={Object.keys(LEAVE_TYPE_LABELS).map((k) => ({ value: k, label: leaveTypeName(k, lang) }))}
-        onPick={(v) => { setType(v); setMc(null) }} onClose={() => setSheet(null)}
-      />
+      {/* 底部滑出的月历网格选择器 */}
       <DatePickerSheet
-        open={sheet === 'start'} title={t('startDate')} value={start} min={today} lang={lang}
-        onPick={(v) => { setStart(v); if (end && v > end) setEnd('') }} onClose={() => setSheet(null)}
+        open={pickerTarget === 'start'}
+        title={t('startDate')}
+        value={start}
+        min={today}
+        holidayDates={holidayDates}
+        lang={lang}
+        onSelect={(date) => {
+          setStart(date)
+          if (end && date > end) setEnd(date)
+        }}
+        onClose={() => setPickerTarget(null)}
       />
+
       <DatePickerSheet
-        open={sheet === 'end'} title={t('endDate')} value={end} min={start || today} lang={lang}
-        onPick={setEnd} onClose={() => setSheet(null)}
+        open={pickerTarget === 'end'}
+        title={t('endDate')}
+        value={end}
+        min={start || today}
+        holidayDates={holidayDates}
+        lang={lang}
+        onSelect={(date) => setEnd(date)}
+        onClose={() => setPickerTarget(null)}
       />
     </SubPage>
   )
