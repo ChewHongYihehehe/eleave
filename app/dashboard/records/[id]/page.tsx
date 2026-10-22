@@ -7,12 +7,10 @@ import { useLang, leaveTypeName } from '@/lib/lang'
 import { useLeaveData, fmtNum, TYPE_COLOR } from '@/lib/useLeaveData'
 import { fmtDateTime, fmtRange, statusInfo } from '@/lib/employeeFmt'
 import { attachMc, cancelPending, openMc, requestCancellation, withdrawCancellation } from '@/lib/employeeActions'
-import { Card, ConfirmSheet, SubPage, useToast } from '@/components/employee/EmployeeShell'
+import { Avatar, Card, ConfirmSheet, FlowTimeline, type FlowStep, Stamp, SubPage, useToast } from '@/components/employee/EmployeeShell'
 import { toLocalDateStr } from '@/lib/dateUtils'
 
-// 记录详情:状态、信息、审批进度时间线(钉钉审批详情的样式)、可用的操作。
-
-type Step = { title: string; time?: string | null; sub?: string | null; tone: 'done' | 'active' | 'bad' | 'muted' }
+// 记录详情(钉钉审批详情的样式):申请人 + 右上角印章、信息、带头像的审批进度、可用的操作。
 
 export default function RecordDetail() {
   const { id } = useParams<{ id: string }>()
@@ -42,18 +40,22 @@ export default function RecordDetail() {
   const canWithdraw = app.status === 'approved' && app.cancellation_status === 'requested'
   const isImport = !!app.remarks?.includes('Historical import')
 
-  // 审批进度
-  const steps: Step[] = [{ title: t('tlSubmitted'), time: app.created_at, tone: 'done' }]
-  if (app.status === 'pending') steps.push({ title: t('tlReviewing'), tone: 'active' })
-  if (app.status === 'rejected') steps.push({ title: t('tlRejected'), time: app.last_decision_at, sub: app.remarks, tone: 'bad' })
+  // 审批进度(申请人用自己的名字,负责人用通用头像)
+  const me = employee?.full_name ?? ''
+  const mgr = t('manager')
+  const ft = (iso?: string | null) => (iso ? fmtDateTime(iso, lang) : null)
+  const steps: FlowStep[] = [{ title: t('tlSubmitted'), name: me, time: ft(app.created_at), tone: 'done' }]
+  if (app.status === 'pending') steps.push({ title: t('tlReviewing'), name: mgr, generic: true, tone: 'active' })
+  if (app.status === 'rejected') steps.push({ title: t('tlRejected'), name: mgr, generic: true, time: ft(app.last_decision_at), sub: app.remarks, tone: 'bad' })
   if (app.status === 'approved') {
-    steps.push({ title: t('tlApproved'), time: app.last_decision_at, tone: 'done' })
-    if (app.cancellation_status === 'requested') steps.push({ title: t('tlCancelReq'), tone: 'active' })
+    steps.push({ title: t('tlApproved'), name: mgr, generic: true, time: ft(app.last_decision_at), tone: 'done' })
+    if (app.cancellation_status === 'requested') steps.push({ title: t('tlCancelReq'), name: me, tone: 'active' })
     if (app.cancellation_status === 'none' && app.cancellation_decision_reason)
-      steps.push({ title: t('cancelDeclined'), sub: app.cancellation_decision_reason, tone: 'bad' })
+      steps.push({ title: t('cancelDeclined'), name: mgr, generic: true, sub: app.cancellation_decision_reason, tone: 'bad' })
   }
-  if (app.status === 'cancelled') steps.push({ title: t('tlCancelled'), time: app.last_decision_at, sub: app.cancellation_decision_reason, tone: 'muted' })
-  const dot = { done: 'bg-[#52C41A]', active: 'bg-[#FA8C16]', bad: 'bg-[#F5222D]', muted: 'bg-gray-300' }
+  if (app.status === 'cancelled') steps.push({ title: t('tlCancelled'), time: ft(app.last_decision_at), sub: app.cancellation_decision_reason, tone: 'muted' })
+  // 已经有结果了就盖章;还在审批中(或取消申请处理中)只显示彩色文字
+  const stamped = app.status !== 'pending' && app.cancellation_status !== 'requested'
 
   async function run(fn: () => Promise<string | null>) {
     setBusy(true)
@@ -94,12 +96,19 @@ export default function RecordDetail() {
 
   return (
     <SubPage title={t('details')} backHref="/dashboard/records" footer={footer}>
-      <div className="px-5 pb-4 pt-5 text-center">
-        <p className="text-2xl font-semibold" style={{ color: st.color }}>{st.label}</p>
-        <p className="mt-1 flex items-center justify-center gap-1.5 text-sm text-gray-500">
-          <span className="h-2 w-2 rounded-full" style={{ background: TYPE_COLOR[app.leave_type] ?? '#8C8C8C' }} />
-          {leaveTypeName(app.leave_type, lang)}
-        </p>
+      <div className="relative mx-4 mb-3 mt-3 overflow-hidden rounded-xl bg-white px-4 py-4">
+        <div className="flex items-center gap-3">
+          <Avatar name={me} size={44} />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-base font-semibold text-gray-900">{me}</p>
+            <p className="mt-0.5 flex items-center gap-1.5 text-sm text-gray-500">
+              <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: TYPE_COLOR[app.leave_type] ?? '#8C8C8C' }} />
+              {leaveTypeName(app.leave_type, lang)} · {fmtNum(Number(app.total_days))} {t('daysUnit')}
+            </p>
+          </div>
+          {!stamped && <span className="shrink-0 text-base font-semibold" style={{ color: st.color }}>{st.label}</span>}
+        </div>
+        {stamped && <div className="absolute right-4 top-3"><Stamp label={st.label} color={st.color} /></div>}
       </div>
 
       <Card>
@@ -123,21 +132,12 @@ export default function RecordDetail() {
 
       {/* 审批进度 */}
       {!isImport && (
-        <Card className="mt-3 px-4 py-4">
-          {steps.map((s, i) => (
-            <div key={i} className="relative flex gap-3 pb-5 last:pb-0">
-              {i < steps.length - 1 && <span className="absolute left-[5px] top-4 h-full w-px bg-gray-200" />}
-              <span className={`relative z-[1] mt-1.5 h-[11px] w-[11px] shrink-0 rounded-full ring-4 ring-white ${dot[s.tone]}`} />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-baseline justify-between gap-3">
-                  <p className="text-[15px] font-medium text-gray-900">{s.title}</p>
-                  {s.time && <span className="shrink-0 text-xs text-gray-400">{fmtDateTime(s.time, lang)}</span>}
-                </div>
-                {s.sub && <p className="mt-1 text-sm text-gray-500">{s.sub}</p>}
-              </div>
-            </div>
-          ))}
-        </Card>
+        <>
+          <p className="px-5 pb-2 pt-4 text-[13px] text-gray-500">{t('flowTitle')}</p>
+          <Card className="px-4 py-4">
+            <FlowTimeline steps={steps} />
+          </Card>
+        </>
       )}
 
       <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/heic,application/pdf" onChange={onFile} className="hidden" />
