@@ -9,6 +9,7 @@ import { toLocalDateStr } from '@/lib/dateUtils'
 import { fmtNum } from '@/lib/useLeaveData'
 import { useMgrT, leaveName } from '@/lib/mgrText'
 import { Card, EI, Icon } from '@/components/employee/EmployeeShell'
+import DatePickerSheet from '@/components/DatePickerSheet'
 
 // 负责人替员工登记请假(钉钉样式):
 // 沿用员工端申请请假(ApplyPage)的一行一项、自动算天数、半天开关、MC附件及底部提交按钮设计。
@@ -55,6 +56,7 @@ export default function RecordLeaveModal({
   const [reason, setReason] = useState('')
   const [mcFile, setMcFile] = useState<File | null>(null)
   const [mcFileError, setMcFileError] = useState('')
+  const [pickerTarget, setPickerTarget] = useState<'start' | 'end' | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
@@ -254,30 +256,27 @@ export default function RecordLeaveModal({
 
                 {/* 开始日期 */}
                 <Row label={lang === 'zh' ? '开始日期' : 'Start Date'}>
-                  <input
-                    type="date"
-                    required
-                    value={startDate}
-                    onChange={(e) => {
-                      setStartDate(e.target.value)
-                      if (endDate && e.target.value > endDate) setEndDate(e.target.value)
-                    }}
-                    className="bg-transparent text-right font-medium text-gray-900 focus:outline-none"
+                  <button
+                    type="button"
+                    onClick={() => setPickerTarget('start')}
+                    className="flex items-center gap-1.5 text-right font-medium text-gray-900 active:opacity-60"
                   >
-                  </input>
+                    <span>{startDate || (lang === 'zh' ? '请选择' : 'Select')}</span>
+                    <Icon d={EI.chevronR} size={16} className="shrink-0 text-gray-300" />
+                  </button>
                 </Row>
 
                 {/* 结束日期 (全天时显示) */}
                 {!isHalfDay && (
                   <Row label={lang === 'zh' ? '结束日期' : 'End Date'}>
-                    <input
-                      type="date"
-                      required
-                      min={startDate}
-                      value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
-                      className="bg-transparent text-right font-medium text-gray-900 focus:outline-none"
-                    />
+                    <button
+                      type="button"
+                      onClick={() => setPickerTarget('end')}
+                      className="flex items-center gap-1.5 text-right font-medium text-gray-900 active:opacity-60"
+                    >
+                      <span>{endDate || (lang === 'zh' ? '请选择' : 'Select')}</span>
+                      <Icon d={EI.chevronR} size={16} className="shrink-0 text-gray-300" />
+                    </button>
                   </Row>
                 )}
 
@@ -448,6 +447,31 @@ export default function RecordLeaveModal({
           </div>
         </div>
       </div>
+
+      {/* 日期选择弹窗 (底下滑出月历网格) */}
+      <DatePickerSheet
+        open={pickerTarget === 'start'}
+        title={lang === 'zh' ? '选择开始日期' : 'Select Start Date'}
+        value={startDate}
+        holidayDates={holidayDates}
+        lang={lang}
+        onSelect={(date) => {
+          setStartDate(date)
+          if (endDate && date > endDate) setEndDate(date)
+        }}
+        onClose={() => setPickerTarget(null)}
+      />
+
+      <DatePickerSheet
+        open={pickerTarget === 'end'}
+        title={lang === 'zh' ? '选择结束日期' : 'Select End Date'}
+        value={endDate}
+        min={startDate}
+        holidayDates={holidayDates}
+        lang={lang}
+        onSelect={(date) => setEndDate(date)}
+        onClose={() => setPickerTarget(null)}
+      />
     </div>
   )
 }
