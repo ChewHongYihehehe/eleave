@@ -17,6 +17,15 @@ export type CurrentEmployee = {
   last_notifications_seen_at: string | null
 }
 
+// 记在内存里:已经登录过的人切换页面时,直接用上一次的资料马上显示页面(同时在背景里悄悄再确认一次),
+// 这样每切一页都不会再闪一下"载入中"。退出登录时清掉,换人登录不会看到上一个人的资料。
+let cached: CurrentEmployee | null = null
+if (typeof window !== 'undefined') {
+  supabase.auth.onAuthStateChange((event) => {
+    if (event === 'SIGNED_OUT') cached = null
+  })
+}
+
 type State =
   | { status: 'loading' }
   | { status: 'ready'; employee: CurrentEmployee }
@@ -30,7 +39,11 @@ type State =
  */
 export function useEmployee(opts: { requireManager?: boolean } = {}): State {
   const router = useRouter()
-  const [state, setState] = useState<State>({ status: 'loading' })
+  const [state, setState] = useState<State>(() =>
+    cached && !(opts.requireManager && cached.role !== 'manager')
+      ? { status: 'ready', employee: cached }
+      : { status: 'loading' },
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -69,6 +82,7 @@ export function useEmployee(opts: { requireManager?: boolean } = {}): State {
         router.replace('/dashboard')
         return
       }
+      cached = emp as CurrentEmployee
       setState({ status: 'ready', employee: emp as CurrentEmployee })
     }
 

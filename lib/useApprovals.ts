@@ -57,13 +57,23 @@ const SELECT = `
   employees!leave_applications_employee_id_fkey(full_name, employment_type, employee_no)
 `
 
+// 上一次载入的数据记在内存里:切换页面时先马上显示,背景里再悄悄更新,不再每次都从空白/骨架开始。
+// 退出登录时清掉。
+type Cache = { apps: Application[]; staff: StaffRow[]; holidays: string[]; workWeek: WorkWeek }
+let cache: Cache | null = null
+if (typeof window !== 'undefined') {
+  supabase.auth.onAuthStateChange((event) => {
+    if (event === 'SIGNED_OUT') cache = null
+  })
+}
+
 export function useApprovals() {
   const auth = useEmployee({ requireManager: true })
-  const [apps, setApps] = useState<Application[]>([])
-  const [staff, setStaff] = useState<StaffRow[]>([])
-  const [holidays, setHolidays] = useState<string[]>([])
-  const [workWeek, setWorkWeek] = useState<WorkWeek>(DEFAULT_WORK_WEEK)
-  const [loading, setLoading] = useState(true)
+  const [apps, setApps] = useState<Application[]>(cache?.apps ?? [])
+  const [staff, setStaff] = useState<StaffRow[]>(cache?.staff ?? [])
+  const [holidays, setHolidays] = useState<string[]>(cache?.holidays ?? [])
+  const [workWeek, setWorkWeek] = useState<WorkWeek>(cache?.workWeek ?? DEFAULT_WORK_WEEK)
+  const [loading, setLoading] = useState(!cache)
   const [error, setError] = useState('')
 
   const reload = useCallback(async () => {
@@ -85,6 +95,7 @@ export function useApprovals() {
       const p = Array.isArray(employees) ? employees[0] : employees
       return { ...rest, person: p || { full_name: 'Employee' } }
     })
+    cache = { apps: list, staff: (emps || []) as StaffRow[], holidays: (hol || []).map((h) => h.holiday_date), workWeek: ww }
     setApps(list)
     setStaff((emps || []) as StaffRow[])
     setHolidays((hol || []).map((h) => h.holiday_date))
