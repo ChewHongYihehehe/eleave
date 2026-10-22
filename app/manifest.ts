@@ -12,8 +12,8 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: '/',
     display: 'standalone',
     orientation: 'portrait',
-    // 启动画面(手机系统自动生成的那一屏)的底色:和登录页的浅蓝背景接近,两屏衔接成一屏
-    background_color: '#E7F5FC',
+    // 启动画面和状态栏的颜色,和网站背景(paper)一致
+    background_color: '#F6F4EE',
     theme_color: '#F6F4EE',
     icons: [
       // "any":原本的圆角 logo,iPhone / 电脑 / 一般安卓用
