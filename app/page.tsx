@@ -90,8 +90,8 @@ function LoginForm() {
     }
   }
 
-  // 检查登录状态的那一小会儿也显示 logo 和背景(不再是一片空白),表单等检查完再浮上来,版面不会跳动
-  const hidden = checking ? 'invisible' : 'animate-rise'
+  // 检查登录状态的那一小会儿:logo 和背景照常显示,表单先隐藏(位置留着,出现时版面不会跳,也没有动画)
+  const hidden = checking ? 'invisible' : ''
 
   return (
     <div className="relative flex min-h-[100dvh] flex-col items-center justify-center overflow-hidden px-4 py-10">
@@ -99,13 +99,13 @@ function LoginForm() {
       <div className="relative w-full max-w-sm">
         <div className="mb-8 text-center">
           <LogoMark />
-          <div className={`mt-6 ${hidden}`} style={{ animationDelay: '80ms' }}>
+          <div className={`mt-6 ${hidden}`}>
             <h1 className="font-display text-3xl font-semibold text-ink">E-Leave</h1>
             <p className="mt-1 text-sm text-ink-soft">Sign in with your Staff ID</p>
           </div>
         </div>
 
-        <div className={hidden} style={{ animationDelay: '160ms' }}>
+        <div className={hidden}>
           {notice === 'part-time' && (
             <div className="mb-4 rounded-md border border-line bg-paper px-4 py-3 text-sm text-ink-soft">
               Part-time employees don&apos;t have system access. Please contact your manager.
