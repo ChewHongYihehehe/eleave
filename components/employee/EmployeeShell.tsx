@@ -23,12 +23,14 @@ export const EI = {
   logout: 'M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75',
   clip: 'M18.5 11.5l-6.4 6.4a4 4 0 01-5.7-5.7l7-7a2.7 2.7 0 013.8 3.8l-7 7a1.3 1.3 0 01-1.9-1.9l6.4-6.4',
   check: 'M5 12.5l4.5 4.5L19 7.5',
+  x: 'M6 6l12 12M18 6L6 18',
+  minus: 'M6 12h12',
   alert: 'M12 9v4m0 4h.01M10.3 3.9L2.4 18a2 2 0 001.7 3h15.8a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z',
 }
 
-export function Icon({ d, size = 22, className }: { d: string; size?: number; className?: string }) {
+export function Icon({ d, size = 22, className, filled }: { d: string; size?: number; className?: string; filled?: boolean }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} fillOpacity={filled ? 0.16 : undefined} stroke="currentColor" strokeWidth={filled ? 2 : 1.8} strokeLinecap="round" strokeLinejoin="round" className={className}>
       <path d={d} />
     </svg>
   )
@@ -43,6 +45,7 @@ const TABS = [
 export type TabKey = (typeof TABS)[number]['key']
 
 const safeBottom = 'env(safe-area-inset-bottom, 0px)'
+const safeTop = 'env(safe-area-inset-top, 0px)'
 
 export function TabPage({ tab, badge, children }: { tab: TabKey; badge?: number; children: React.ReactNode }) {
   const { lang, t } = useLang()
@@ -56,9 +59,9 @@ export function TabPage({ tab, badge, children }: { tab: TabKey; badge?: number;
           {TABS.map((x) => {
             const active = x.key === tab
             return (
-              <Link key={x.key} href={x.href} replace={!active} className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-xs ${active ? 'font-semibold text-brand' : 'text-gray-500'}`}>
+              <Link key={x.key} href={x.href} replace={!active} className={`flex flex-1 flex-col items-center gap-0.5 py-1.5 text-[11px] ${active ? 'font-semibold text-brand' : 'text-gray-500'}`}>
                 <span className="relative">
-                  <Icon d={x.icon} size={24} />
+                  <Icon d={x.icon} size={24} filled={active} />
                   {x.key === 'records' && !!badge && (
                     <span className="absolute -right-2.5 -top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-st-rejected px-1 text-[10px] font-bold leading-none text-white">
                       {badge > 99 ? '99+' : badge}
@@ -83,16 +86,18 @@ export function SubPage({
   return (
     <div translate="no" lang={lang === 'zh' ? 'zh-Hans' : 'en'} className="min-h-[100dvh] bg-app">
       <div className="mx-auto max-w-md">
-        <header className="sticky top-0 z-20 grid h-12 grid-cols-[4rem_1fr_4rem] items-center border-b border-gray-200 bg-white">
-          <button
-            onClick={() => (backHref ? router.push(backHref) : router.back())}
-            aria-label={t('back')}
-            className="flex h-12 w-12 items-center justify-center text-gray-800"
-          >
-            <Icon d={EI.chevronL} size={24} />
-          </button>
-          <h1 className="truncate text-center text-base font-semibold text-gray-900">{title}</h1>
-          <div className="flex justify-end pr-4">{right}</div>
+        <header className="sticky top-0 z-20 border-b border-gray-200 bg-white" style={{ paddingTop: safeTop }}>
+          <div className="grid h-12 grid-cols-[4rem_1fr_4rem] items-center">
+            <button
+              onClick={() => (backHref ? router.push(backHref) : router.back())}
+              aria-label={t('back')}
+              className="flex h-12 w-12 items-center justify-center text-gray-800"
+            >
+              <Icon d={EI.chevronL} size={24} />
+            </button>
+            <h1 className="truncate text-center text-[17px] font-semibold text-gray-900">{title}</h1>
+            <div className="flex justify-end pr-4">{right}</div>
+          </div>
         </header>
         <div style={{ paddingBottom: footer ? `calc(5rem + ${safeBottom})` : `calc(1.5rem + ${safeBottom})` }}>{children}</div>
       </div>
@@ -202,6 +207,157 @@ export function EmptyState({
       <p className="mt-4 text-[15px] font-medium text-gray-900">{title}</p>
       {hint && <p className="mt-1 text-sm text-gray-500">{hint}</p>}
       {children}
+    </div>
+  )
+}
+
+// ───────────────────────── 钉钉风格的公共部件 ─────────────────────────
+
+// ── 头像:按名字取固定颜色(负责人端 / 员工端共用)──
+const AVATAR_PALETTE = ['#1677FF', '#13C2C2', '#FA8C16', '#722ED1', '#EB2F96', '#52C41A', '#2F54EB', '#FA541C']
+export function Avatar({ name, size = 40 }: { name?: string | null; size?: number }) {
+  const safe = (name || '').trim()
+  const parts = safe ? safe.split(/\s+/) : []
+  let initials = '?'
+  if (parts.length === 1 && parts[0]) {
+    initials = parts[0].slice(0, 2).toUpperCase()
+  } else if (parts.length > 1) {
+    initials = ((parts[0][0] || '') + (parts[parts.length - 1][0] || '')).toUpperCase() || '?'
+  }
+  let h = 0
+  for (let i = 0; i < safe.length; i++) h = (h * 31 + safe.charCodeAt(i)) >>> 0
+  return (
+    <span className="flex shrink-0 items-center justify-center rounded-full font-semibold text-white" style={{ width: size, height: size, background: AVATAR_PALETTE[h % AVATAR_PALETTE.length], fontSize: Math.max(10, Math.round(size * 0.36)) }}>
+      {initials}
+    </span>
+  )
+}
+
+// ── 主页面顶部导航栏(钉钉:白底、标题居中、左右各一个文字/图标按钮)。children 放在标题下面,和导航栏一起吸顶(下划线标签页放这里)──
+export function TabHeader({ title, left, right, children }: { title: string; left?: React.ReactNode; right?: React.ReactNode; children?: React.ReactNode }) {
+  return (
+    <header className="sticky top-0 z-20 bg-white" style={{ paddingTop: safeTop }}>
+      <div className="grid h-12 grid-cols-[1fr_auto_1fr] items-center gap-2 px-3">
+        <div className="flex justify-start">{left}</div>
+        <h1 className="max-w-[56vw] truncate text-center text-[17px] font-semibold text-gray-900">{title}</h1>
+        <div className="flex justify-end">{right}</div>
+      </div>
+      {children}
+      <div className="h-px bg-gray-200" />
+    </header>
+  )
+}
+
+// 导航栏上的文字按钮
+export function NavButton({ onClick, href, children, strong, disabled }: { onClick?: () => void; href?: string; children: React.ReactNode; strong?: boolean; disabled?: boolean }) {
+  const cls = `flex h-9 items-center gap-0.5 whitespace-nowrap rounded-md px-1.5 text-[15px] active:opacity-60 disabled:opacity-40 ${strong ? 'font-medium text-brand' : 'text-gray-700'}`
+  if (href) return <Link href={href} className={cls}>{children}</Link>
+  return <button onClick={onClick} disabled={disabled} className={cls}>{children}</button>
+}
+
+// ── 下划线标签页(钉钉审批 / 消息顶部那种:选中蓝字 + 底部短蓝条)──
+export function UnderlineTabs<T extends string>({
+  items, value, onChange, scroll,
+}: { items: { key: T; label: string; count?: number }[]; value: T; onChange: (k: T) => void; scroll?: boolean }) {
+  return (
+    <div role="tablist" className={`flex bg-white ${scroll ? 'no-scrollbar overflow-x-auto' : ''}`}>
+      {items.map((i) => {
+        const on = i.key === value
+        return (
+          <button
+            key={i.key} role="tab" aria-selected={on} onClick={() => onChange(i.key)}
+            className={`relative flex h-11 items-center justify-center gap-1 whitespace-nowrap px-4 text-[15px] ${scroll ? 'shrink-0' : 'flex-1'} ${on ? 'font-semibold text-brand' : 'text-gray-600'}`}
+          >
+            {i.label}
+            {!!i.count && <span className={`text-[13px] ${on ? 'text-brand' : 'text-gray-400'}`}>{i.count > 99 ? '99+' : i.count}</span>}
+            {on && <span className="absolute bottom-0 left-1/2 h-[3px] w-6 -translate-x-1/2 rounded-full bg-brand" />}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+// ── 蓝色渐变头部(钉钉工作台 / 我的 的顶部)。下面的白卡片用 -mt-10 盖上来 ──
+export function Hero({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div className={`px-4 pb-14 text-white ${className}`} style={{ background: 'linear-gradient(180deg, #1677FF 0%, #3D90FF 100%)', paddingTop: `calc(1.25rem + ${safeTop})` }}>
+      {children}
+    </div>
+  )
+}
+
+// ── 审批结果印章(钉钉审批详情右上角那个斜着的章)──
+export function Stamp({ label, color }: { label: string; color: string }) {
+  return (
+    <span
+      className="pointer-events-none inline-block -rotate-12 select-none rounded-md px-2.5 py-1 text-[17px] font-bold leading-none tracking-wider"
+      style={{ color, boxShadow: `inset 0 0 0 2px ${color}, inset 0 0 0 4px #fff, inset 0 0 0 5px ${color}`, opacity: 0.88 }}
+    >
+      {label}
+    </span>
+  )
+}
+
+// ── 审批流:头像 + 右下角状态角标 + 竖线(钉钉审批详情的样式)──
+// generic = 这一步的人没有具体名字(比如"负责人"),头像用通用人形图标
+export type FlowStep = { title: string; name?: string; generic?: boolean; time?: string | null; sub?: string | null; tone: 'done' | 'active' | 'bad' | 'muted' }
+const FLOW = {
+  done: { bg: '#52C41A', text: '#237804', icon: EI.check },
+  active: { bg: '#FA8C16', text: '#AD4E00', icon: EI.clock },
+  bad: { bg: '#F5222D', text: '#CF1322', icon: EI.x },
+  muted: { bg: '#BFBFBF', text: '#595959', icon: EI.minus },
+}
+export function FlowTimeline({ steps }: { steps: FlowStep[] }) {
+  return (
+    <div>
+      {steps.map((s, i) => {
+        const f = FLOW[s.tone]
+        const last = i === steps.length - 1
+        return (
+          <div key={i} className={`relative flex gap-3 ${last ? '' : 'pb-5'}`}>
+            {!last && <span className="absolute bottom-0 left-[17px] top-10 w-px bg-gray-200" />}
+            <span className="relative h-9 w-9 shrink-0">
+              {s.name && !s.generic
+                ? <Avatar name={s.name} size={36} />
+                : <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-soft text-brand"><Icon d={EI.user} size={18} /></span>}
+              <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full text-white ring-2 ring-white" style={{ background: f.bg }}>
+                <Icon d={f.icon} size={10} />
+              </span>
+            </span>
+            <div className="min-w-0 flex-1 pt-0.5">
+              <div className="flex items-baseline justify-between gap-3">
+                <p className="truncate text-[15px] font-medium text-gray-900">{s.name ?? s.title}</p>
+                {s.time && <span className="shrink-0 text-xs text-gray-500">{s.time}</span>}
+              </div>
+              {s.name && <p className="mt-0.5 text-[13px]" style={{ color: f.text }}>{s.title}</p>}
+              {s.sub && <p className="mt-1.5 rounded-lg bg-gray-50 px-3 py-2 text-sm leading-snug text-gray-600">{s.sub}</p>}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ── 带彩色图标方块的设置行(钉钉「我的」页的行)──
+export function MenuRow({ icon, tint, label, value, onClick, danger }: { icon: string; tint: string; label: string; value?: string; onClick: () => void; danger?: boolean }) {
+  return (
+    <button onClick={onClick} className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-gray-50">
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white" style={{ background: tint }}><Icon d={icon} size={18} /></span>
+      <span className={`flex-1 text-[15px] ${danger ? 'text-st-rejected-text' : 'text-gray-900'}`}>{label}</span>
+      {value && <span className="text-sm text-gray-400">{value}</span>}
+      <Icon d={EI.chevronR} size={16} className="text-gray-300" />
+    </button>
+  )
+}
+
+// ── 审批卡片里的「标签 + 值」行 ──
+export function KV({ k, v }: { k: string; v: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-3 text-[14px] leading-6">
+      <span className="w-[4.5rem] shrink-0 text-gray-500">{k}</span>
+      <span className="min-w-0 flex-1 text-gray-900">{v}</span>
     </div>
   )
 }

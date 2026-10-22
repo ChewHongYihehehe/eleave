@@ -6,19 +6,9 @@ import { useLang, leaveTypeName } from '@/lib/lang'
 import { useLeaveData, fmtNum, TYPE_COLOR } from '@/lib/useLeaveData'
 import { toLocalDateStr } from '@/lib/dateUtils'
 import { getYearsOfService } from '@/lib/leaveRules'
-import { Card, EI, Icon, TabPage } from './EmployeeShell'
+import { Card, EI, Hero, Icon, TabPage } from './EmployeeShell'
 
 // 员工手机版 · 工作台(参考钉钉工作台:上面一张信息卡,下面"常用应用"图标格子,再往下是列表)
-
-function CalendarGridIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
-      <rect x="3" y="4" width="18" height="18" rx="3" />
-      <path d="M16 2v4M8 2v4M3 10h18" strokeLinecap="round" />
-      {[8, 12, 16].flatMap((x) => [14, 18].map((y) => <circle key={`${x}-${y}`} cx={x} cy={y} r="1.1" fill="currentColor" stroke="none" />))}
-    </svg>
-  )
-}
 
 export default function EmployeeHome() {
   const { auth, employee, apps, balances, upcoming, error, unseenCount } = useLeaveData()
@@ -40,77 +30,84 @@ export default function EmployeeHome() {
     { href: '/notifications', label: t('telegram'), icon: EI.bell, grad: 'linear-gradient(135deg, #722ED1, #9254DE)' },
   ]
 
+  const pct = annual && annual.total > 0 ? Math.min(100, Math.max(0, ((annual.total - annual.remaining) / annual.total) * 100)) : 0
+
   return (
     <TabPage tab="home" badge={unseenCount}>
-      {/* 顶部:头像 + 问候 */}
-      <div className="flex items-center gap-3 px-4 pb-3 pt-5">
-        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-brand text-sm font-bold text-white">{initials}</div>
-        <div className="min-w-0">
-          <p className="truncate text-lg font-semibold text-gray-900">{t('hello')}, {employee.full_name.split(' ')[0]}</p>
-          <p className="text-xs text-gray-400">
-            {employee.employee_no ? `#${employee.employee_no} · ` : ''}
-            {getYearsOfService(employee.date_of_commencement).toFixed(1)} {t('yearsOfService')}
-          </p>
-        </div>
-      </div>
-
-      {error && <p className="mx-4 mb-3 rounded-xl bg-red-50 px-4 py-2.5 text-sm text-red-600">{error}</p>}
-
-      {unseenCount > 0 && (
-        <Link href="/dashboard/records" className="mx-4 mb-3 flex items-center justify-between rounded-xl bg-orange-50 px-4 py-2.5 text-sm text-orange-600">
-          <span>{unseenCount} {t('updatesOn')}</span>
-          <Icon d={EI.chevronR} size={16} />
-        </Link>
-      )}
-
-      {/* 信息卡:沿用旧版的蓝色渐变 + 右侧日历图标 */}
-      {annual && (
-        <Link
-          href="/dashboard/balance/annual"
-          className="mx-4 block overflow-hidden rounded-2xl"
-          style={{ background: 'linear-gradient(135deg, #1677FF 0%, #4096FF 60%, #69B1FF 100%)' }}
-        >
-          <div className="flex items-center justify-between px-5 py-4">
-            <div>
-              <p className="mb-1 text-xs font-semibold tracking-wider text-blue-100">{lang === 'zh' ? '休假余额' : 'Leave balance'}</p>
-              <p className="text-2xl font-bold leading-tight text-white">
-                {lang === 'zh' ? <>剩余{fmtNum(annual.remaining)}</> : fmtNum(annual.remaining)}
-                <span className="ml-1 text-sm font-normal text-blue-100">{lang === 'zh' ? '天' : 'days left'}</span>
-              </p>
-              <p className="mt-0.5 text-xs text-blue-100">{leaveTypeName('annual', lang)} · {year}</p>
-            </div>
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20">
-              <CalendarGridIcon className="h-9 w-9 text-white" />
-            </div>
+      {/* 蓝色头部:头像 + 问候 + 通知入口(钉钉工作台的顶部) */}
+      <Hero>
+        <div className="flex items-center gap-3">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/25 text-base font-bold text-white ring-2 ring-white/40">{initials}</div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-lg font-semibold">{t('hello')}, {employee.full_name.split(' ')[0]}</p>
+            <p className="mt-0.5 text-xs text-blue-100">
+              {employee.employee_no ? `#${employee.employee_no} · ` : ''}
+              {getYearsOfService(employee.date_of_commencement).toFixed(1)} {t('yearsOfService')}
+            </p>
           </div>
-          {others.length > 0 && (
-            <div className="flex border-t border-white/20">
-              {others.map((b) => (
-                <div key={b.type} className="flex-1 border-r border-white/20 px-3 py-2.5 text-center last:border-r-0">
-                  <p className="text-sm font-bold text-white">{fmtNum(b.remaining)}</p>
-                  <p className="mt-0.5 text-[10px] leading-tight text-blue-100">{leaveTypeName(b.type, lang).replace(/( \(MC\)| Leave)/g, '')}</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </Link>
-      )}
+          <Link href="/notifications" aria-label={t('telegram')} className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15 active:bg-white/25">
+            <Icon d={EI.bell} size={20} />
+          </Link>
+        </div>
+      </Hero>
 
-      {/* 快捷功能:没有外框,渐变圆角图标 */}
-      <div className="mx-4 mt-5">
-        <p className="mb-3 text-sm font-semibold text-gray-500">{t('quickActions')}</p>
-        <div className="grid grid-cols-4 gap-3">
-          {tiles.map((x) => (
-            <Link key={x.href} href={x.href} className="flex flex-col items-center gap-1.5 active:opacity-60">
-              <span className="relative flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-sm" style={{ background: x.grad }}>
-                <Icon d={x.icon} size={28} />
-                {!!x.badge && (
-                  <span className="absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#F5222D] px-1 text-[11px] font-semibold leading-none text-white">{x.badge}</span>
-                )}
-              </span>
-              <span className="text-center text-[11px] leading-tight text-gray-600">{x.label}</span>
-            </Link>
-          ))}
+      <div className="relative -mt-10">
+        {error && <p className="mx-4 mb-3 rounded-xl bg-red-50 px-4 py-2.5 text-sm text-red-600">{error}</p>}
+
+        {/* 信息卡:白底盖在蓝色头部上面,大数字是年假剩余 */}
+        {annual && (
+          <Link href="/dashboard/balance/annual" className="mx-4 block overflow-hidden rounded-2xl bg-white shadow-sm active:bg-gray-50">
+            <div className="px-5 pb-4 pt-4">
+              <div className="flex items-center justify-between">
+                <p className="text-[13px] text-gray-500">{lang === 'zh' ? '休假余额' : 'Leave balance'} · {leaveTypeName('annual', lang)} · {year}</p>
+                <Icon d={EI.chevronR} size={16} className="text-gray-300" />
+              </div>
+              <p className="mt-2 flex items-baseline text-gray-900">
+                {lang === 'zh' && <span className="mr-1 text-base text-gray-500">剩余</span>}
+                <span className="text-[40px] font-bold leading-none tabular-nums text-brand">{fmtNum(annual.remaining)}</span>
+                <span className="ml-1.5 text-sm text-gray-500">{lang === 'zh' ? '天' : 'days left'}</span>
+                <span className="ml-auto text-xs text-gray-400">{t('total')} {fmtNum(annual.total)} {t('daysUnit')}</span>
+              </p>
+              <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-gray-100">
+                <div className="h-full rounded-full bg-brand" style={{ width: `${pct}%` }} />
+              </div>
+            </div>
+            {others.length > 0 && (
+              <div className="flex border-t border-gray-100">
+                {others.map((b) => (
+                  <div key={b.type} className="flex-1 border-r border-gray-100 px-2 py-2.5 text-center last:border-r-0">
+                    <p className="text-[15px] font-semibold text-gray-900">{fmtNum(b.remaining)}</p>
+                    <p className="mt-0.5 text-[11px] leading-tight text-gray-500">{leaveTypeName(b.type, lang).replace(/( \(MC\)| Leave)/g, '')}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Link>
+        )}
+
+        {unseenCount > 0 && (
+          <Link href="/dashboard/records" className="mx-4 mt-3 flex items-center justify-between rounded-xl bg-st-pending-soft px-4 py-2.5 text-sm text-st-pending-text">
+            <span>{unseenCount} {t('updatesOn')}</span>
+            <Icon d={EI.chevronR} size={16} />
+          </Link>
+        )}
+
+        {/* 快捷功能:白色卡片里一排渐变图标 */}
+        <div className="mx-4 mt-3 rounded-2xl bg-white p-4">
+          <p className="mb-3 text-[15px] font-semibold text-gray-900">{t('quickActions')}</p>
+          <div className="grid grid-cols-4 gap-3">
+            {tiles.map((x) => (
+              <Link key={x.href} href={x.href} className="flex flex-col items-center gap-1.5 active:opacity-60">
+                <span className="relative flex h-12 w-12 items-center justify-center rounded-[14px] text-white" style={{ background: x.grad }}>
+                  <Icon d={x.icon} size={26} />
+                  {!!x.badge && (
+                    <span className="absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-st-rejected px-1 text-[11px] font-semibold leading-none text-white ring-2 ring-white">{x.badge}</span>
+                  )}
+                </span>
+                <span className="text-center text-xs leading-tight text-gray-700">{x.label}</span>
+              </Link>
+            ))}
+          </div>
         </div>
       </div>
 
