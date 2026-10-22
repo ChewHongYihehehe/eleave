@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
+import { LoginBackdrop, LogoMark } from '@/components/LoginBackdrop'
 
 // Employees log in with a Staff ID + password. Under the hood, Supabase Auth
 // only understands email + password, so we convert the Staff ID into an
@@ -89,61 +90,67 @@ function LoginForm() {
     }
   }
 
-  if (checking) return <div className="min-h-screen" />
+  // 检查登录状态的那一小会儿也显示 logo 和背景(不再是一片空白),表单等检查完再浮上来,版面不会跳动
+  const hidden = checking ? 'invisible' : 'animate-rise'
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        <div className="mb-8">
-          <img src="/logo.png" alt="Puro" width={64} height={64} className="mb-4 h-16 w-16" />
-          <h1 className="font-display text-3xl font-semibold text-ink">E-Leave</h1>
-          <p className="mt-1 text-sm text-ink-soft">Sign in with your Staff ID</p>
+    <div className="relative flex min-h-[100dvh] flex-col items-center justify-center overflow-hidden px-4 py-10">
+      <LoginBackdrop />
+      <div className="relative w-full max-w-sm">
+        <div className="mb-8 text-center">
+          <LogoMark />
+          <div className={`mt-6 ${hidden}`} style={{ animationDelay: '80ms' }}>
+            <h1 className="font-display text-3xl font-semibold text-ink">E-Leave</h1>
+            <p className="mt-1 text-sm text-ink-soft">Sign in with your Staff ID</p>
+          </div>
         </div>
 
-        {notice === 'part-time' && (
-          <div className="mb-4 rounded-md border border-line bg-paper px-4 py-3 text-sm text-ink-soft">
-            Part-time employees don&apos;t have system access. Please contact your manager.
-          </div>
-        )}
-        {notice === 'inactive' && (
-          <div className="mb-4 rounded-md border border-line bg-paper px-4 py-3 text-sm text-ink-soft">
-            This account has been deactivated. Please contact your manager.
-          </div>
-        )}
-        <form onSubmit={handleLogin} className="panel space-y-4">
-          <div>
-            <label className="field-label">Staff ID</label>
-            <input
-              type="text"
-              required
-              value={staffId}
-              onChange={(e) => setStaffId(e.target.value)}
-              className="field-input"
-              placeholder="e.g. 001"
-            />
-          </div>
-          <div>
-            <label className="field-label">Password</label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="field-input"
-              placeholder="••••••••"
-            />
-          </div>
+        <div className={hidden} style={{ animationDelay: '160ms' }}>
+          {notice === 'part-time' && (
+            <div className="mb-4 rounded-md border border-line bg-paper px-4 py-3 text-sm text-ink-soft">
+              Part-time employees don&apos;t have system access. Please contact your manager.
+            </div>
+          )}
+          {notice === 'inactive' && (
+            <div className="mb-4 rounded-md border border-line bg-paper px-4 py-3 text-sm text-ink-soft">
+              This account has been deactivated. Please contact your manager.
+            </div>
+          )}
+          <form onSubmit={handleLogin} className="panel space-y-4 bg-white/90 shadow-[0_10px_30px_rgba(20,70,110,0.08)] backdrop-blur-sm">
+            <div>
+              <label className="field-label">Staff ID</label>
+              <input
+                type="text"
+                required
+                value={staffId}
+                onChange={(e) => setStaffId(e.target.value)}
+                className="field-input focus:border-brand focus:ring-brand"
+                placeholder="e.g. 001"
+              />
+            </div>
+            <div>
+              <label className="field-label">Password</label>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="field-input focus:border-brand focus:ring-brand"
+                placeholder="••••••••"
+              />
+            </div>
 
-          {error && <p className="text-sm text-rust">{error}</p>}
+            {error && <p className="text-sm text-rust">{error}</p>}
 
-          <button type="submit" disabled={loading} className="btn-primary">
-            {loading ? 'Signing in...' : 'Sign In'}
-          </button>
-        </form>
+            <button type="submit" disabled={loading} className="btn-primary bg-brand py-3 text-[15px] hover:bg-brand-deep">
+              {loading ? 'Signing in...' : 'Sign In'}
+            </button>
+          </form>
 
-        <p className="mt-4 text-xs text-ink-faint">
-          First time? Your admin needs to set up your Staff ID and password in Supabase.
-        </p>
+          <p className="mt-4 text-center text-xs text-ink-faint">
+            First time? Your admin needs to set up your Staff ID and password in Supabase.
+          </p>
+        </div>
       </div>
     </div>
   )
