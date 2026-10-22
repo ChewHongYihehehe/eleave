@@ -90,22 +90,29 @@ function LoginForm() {
     }
   }
 
-  // 检查登录状态的那一小会儿:logo 和背景照常显示,表单先隐藏(位置留着,出现时版面不会跳,也没有动画)
-  const hidden = checking ? 'invisible' : ''
+  // 检查登录状态的那一小会儿只显示背景:不再重复出一次 logo(手机系统的启动画面已经出过了),
+  // 已经登录的人会直接跳走,没登录的人才看到 logo 和表单
+  if (checking) {
+    return (
+      <div className="relative min-h-[100dvh] overflow-hidden">
+        <LoginBackdrop />
+      </div>
+    )
+  }
 
   return (
     <div className="relative flex min-h-[100dvh] flex-col items-center justify-center overflow-hidden px-4 py-10">
       <LoginBackdrop />
       <div className="relative w-full max-w-sm">
-        <div className="mb-8 text-center">
+        <div className="mb-6 text-center">
           <LogoMark />
-          <div className={`mt-6 ${hidden}`}>
+          <div className="mt-6">
             <h1 className="font-display text-3xl font-semibold text-ink">E-Leave</h1>
             <p className="mt-1 text-sm text-ink-soft">Sign in with your Staff ID</p>
           </div>
         </div>
 
-        <div className={hidden}>
+        <div>
           {notice === 'part-time' && (
             <div className="mb-4 rounded-md border border-line bg-paper px-4 py-3 text-sm text-ink-soft">
               Part-time employees don&apos;t have system access. Please contact your manager.
