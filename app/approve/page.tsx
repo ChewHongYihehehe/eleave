@@ -112,7 +112,7 @@ function StatusBadge({
 }) {
   if (status === 'approved' && cancellationStatus === 'requested') {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-gold/40 bg-gold-soft px-2.5 py-0.5 text-xs font-medium text-gold">
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-gold/40 bg-gold-soft px-2.5 py-0.5 text-xs font-medium text-st-pending-text">
         <span className="h-1.5 w-1.5 rounded-full bg-gold animate-pulse" />
         Cancel Requested
       </span>
@@ -120,15 +120,15 @@ function StatusBadge({
   }
   if (status === 'approved') {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-pine/20 bg-pine-soft px-2.5 py-0.5 text-xs font-medium text-pine-deep">
-        <span className="h-1.5 w-1.5 rounded-full bg-pine" />
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-st-approved/25 bg-st-approved-soft px-2.5 py-0.5 text-xs font-medium text-st-approved-text">
+        <span className="h-1.5 w-1.5 rounded-full bg-st-approved" />
         Approved
       </span>
     )
   }
   if (status === 'pending') {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-gold/30 bg-gold-soft px-2.5 py-0.5 text-xs font-medium text-gold">
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-gold/30 bg-gold-soft px-2.5 py-0.5 text-xs font-medium text-st-pending-text">
         <span className="h-1.5 w-1.5 rounded-full bg-gold" />
         Pending
       </span>
@@ -387,18 +387,18 @@ function DesktopApprove() {
           </div>
           <button
             onClick={() => { setNotice(''); setRecordOpen(true) }}
-            className="inline-flex items-center gap-2 rounded-xl bg-pine px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-pine-deep self-start sm:self-auto"
+            className="inline-flex items-center gap-2 rounded-md bg-pine px-4 py-2 text-sm font-medium text-white transition hover:bg-pine-deep self-start sm:self-auto"
           >
             <PlusIcon className="h-4 w-4" />
             Record leave for employee
           </button>
         </div>
 
-        {notice && <p className="rounded-xl border border-pine/20 bg-pine-soft p-3.5 text-sm text-pine-deep">{notice}</p>}
+        {notice && <p className="rounded-xl border border-st-approved/25 bg-st-approved-soft p-3.5 text-sm text-st-approved-text">{notice}</p>}
         {actionError && <p className="rounded-xl border border-rust/30 bg-rust-soft p-3.5 text-sm text-rust">{actionError}</p>}
 
         {/* ── Main Leave Requests Card (Same design as Your Leave Requests) ── */}
-        <div className="rounded-2xl border border-line bg-surface shadow-sm">
+        <div className="rounded-xl border border-line bg-surface shadow-sm">
           {/* Card Header with Search and Segmented Filter Tabs */}
           <div className="flex flex-col gap-4 border-b border-line p-5 lg:flex-row lg:items-center lg:justify-between">
             <div>
@@ -413,7 +413,7 @@ function DesktopApprove() {
               <select
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); setCurrentPage(1) }}
-                className="rounded-xl border border-line bg-paper px-3 py-1.5 text-xs sm:text-sm text-ink focus:border-pine focus:outline-none"
+                className="rounded-md border border-line bg-white px-3 py-1.5 text-xs sm:text-sm text-ink focus:border-pine focus:outline-none"
               >
                 <option value="">All employees</option>
                 {employeeOptions.map((emp) => (
@@ -508,7 +508,7 @@ function DesktopApprove() {
           <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-line text-xs font-semibold uppercase tracking-wider text-ink-soft">
+                <tr className="border-b border-line bg-paper text-[13px] font-medium text-ink-soft">
                   {filter === 'pending' && (
                     <th className="py-3.5 pl-6 pr-2 w-10">
                       <input
@@ -943,7 +943,7 @@ function DesktopApprove() {
       {/* ── Manager cancels an approved leave directly (any date) ── */}
       {managerCancelId && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4" onClick={() => !managerCancelBusy && setManagerCancelId(null)}>
-          <div className="w-full max-w-md rounded-2xl border border-line bg-surface p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-md rounded-xl border border-line bg-surface p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <h2 className="font-display text-lg font-semibold text-ink">Cancel this approved leave?</h2>
             <p className="mt-1 text-sm text-ink-soft">
               The days used will be returned to the employee&apos;s balance. This works even if the leave already started or is in the past.
@@ -979,7 +979,7 @@ function DesktopApprove() {
       {/* ── Decline a cancellation request ── */}
       {declineCancelId && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4" onClick={() => !declineCancelBusy && setDeclineCancelId(null)}>
-          <div className="w-full max-w-md rounded-2xl border border-line bg-surface p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-md rounded-xl border border-line bg-surface p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <h2 className="font-display text-lg font-semibold text-ink">Keep this leave as approved?</h2>
             <p className="mt-1 text-sm text-ink-soft">
               Give a reason. The employee will see it and the leave stays approved.
@@ -1016,7 +1016,7 @@ function DesktopApprove() {
       {/* ── Reject reason dialog ── */}
       {rejectIds && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4" onClick={() => !rejectBusy && setRejectIds(null)}>
-          <div className="w-full max-w-md rounded-2xl border border-line bg-surface p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-md rounded-xl border border-line bg-surface p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <h2 className="font-display text-lg font-semibold text-ink">
               Reject {rejectIds.length > 1 ? `${rejectIds.length} applications` : 'application'}
             </h2>
