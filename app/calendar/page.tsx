@@ -277,7 +277,7 @@ function DesktopCalendar() {
 
           {/* 被点选那一天的详情:全名完整显示 */}
           {selDate ? (
-            <div className="rounded-2xl border border-line bg-surface p-4 shadow-sm">
+            <div className="rounded-xl border border-line bg-surface p-4 shadow-sm">
               <div className="flex items-baseline justify-between gap-2">
                 <p className="text-base font-semibold text-ink">
                   {selDate.toLocaleDateString('en-MY', { weekday: 'long', day: 'numeric', month: 'long' })}
@@ -313,7 +313,7 @@ function DesktopCalendar() {
               )}
             </div>
           ) : (
-            <p className="rounded-2xl border border-dashed border-line py-6 text-center text-sm text-ink-faint">
+            <p className="rounded-xl border border-dashed border-line py-6 text-center text-sm text-ink-faint">
               Tap a date to see who is on leave.
             </p>
           )}
