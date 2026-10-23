@@ -246,7 +246,7 @@ function DesktopEmployees() {
           </form>
         )}
 
-        {message && <p className="rounded-md bg-pine-soft p-3 text-sm text-pine-deep">{message}</p>}
+        {message && <p className="rounded-md bg-st-approved-soft p-3 text-sm text-st-approved-text">{message}</p>}
         {!showAddForm && error && <p className="rounded-md bg-rust-soft p-3 text-sm text-rust">{error}</p>}
 
         {/* ── Tabs ── */}
@@ -309,7 +309,7 @@ function FullTimeTable({ employees, managerId, onToggleActive, onUpdateField, on
   onUpdateField: (id: string, field: string, value: string | number) => void
   onResetPassword: (id: string, name: string) => void
 }) {
-  const th = 'px-3 py-2.5 text-xs font-medium uppercase tracking-wide text-ink-faint whitespace-nowrap'
+  const th = 'px-3 py-2.5 text-[13px] font-medium text-ink-faint whitespace-nowrap'
   return (
     <>
       {/* ── Desktop table ── */}
@@ -382,7 +382,7 @@ function FullTimeTable({ employees, managerId, onToggleActive, onUpdateField, on
               </div>
               <button
                 onClick={() => onToggleActive(emp.id, emp.is_active)}
-                className={`rounded-full px-3 py-1 text-xs font-medium ${emp.is_active ? 'bg-pine-soft text-pine-deep' : 'bg-rust-soft text-rust'}`}
+                className={`rounded-full px-3 py-1 text-xs font-medium ${emp.is_active ? 'bg-st-approved-soft text-st-approved-text' : 'bg-rust-soft text-rust'}`}
               >
                 {emp.is_active ? 'Active' : 'Inactive'}
               </button>
@@ -457,7 +457,7 @@ function PartTimeTable({ employees, onToggleActive, onUpdateField }: {
   onToggleActive: (id: string, current: boolean) => void
   onUpdateField: (id: string, field: string, value: string | number) => void
 }) {
-  const th = 'px-3 py-2.5 text-xs font-medium uppercase tracking-wide text-ink-faint whitespace-nowrap'
+  const th = 'px-3 py-2.5 text-[13px] font-medium text-ink-faint whitespace-nowrap'
   return (
     <>
       {/* ── Desktop table ── */}
@@ -505,7 +505,7 @@ function PartTimeTable({ employees, onToggleActive, onUpdateField }: {
               </div>
               <button
                 onClick={() => onToggleActive(emp.id, emp.is_active)}
-                className={`rounded-full px-3 py-1 text-xs font-medium ${emp.is_active ? 'bg-pine-soft text-pine-deep' : 'bg-rust-soft text-rust'}`}
+                className={`rounded-full px-3 py-1 text-xs font-medium ${emp.is_active ? 'bg-st-approved-soft text-st-approved-text' : 'bg-rust-soft text-rust'}`}
               >
                 {emp.is_active ? 'Active' : 'Inactive'}
               </button>
