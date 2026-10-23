@@ -242,7 +242,7 @@ function DesktopHolidays() {
         Changing the list automatically recalculates existing annual leave applications that cover that date.
       </p>
 
-      {notice && <p className="rounded-md bg-pine-soft p-3 text-sm text-pine-deep">{notice}</p>}
+      {notice && <p className="rounded-md bg-st-approved-soft p-3 text-sm text-st-approved-text">{notice}</p>}
       {error && <p className="rounded-md bg-rust-soft p-3 text-sm text-rust">{error}</p>}
 
       <form onSubmit={handleAdd} className="panel space-y-3">
