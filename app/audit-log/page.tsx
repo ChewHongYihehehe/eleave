@@ -165,7 +165,7 @@ function DesktopAuditLog() {
 
         {loadError && <p className="rounded-xl border border-rust/30 bg-rust-soft p-3.5 text-sm text-rust">{loadError}</p>}
 
-        <div className="overflow-hidden rounded-2xl border border-line bg-surface">
+        <div className="overflow-hidden rounded-xl border border-line bg-surface">
           {loading ? (
             <p className="p-8 text-center text-sm text-ink-faint">Loading...</p>
           ) : paginated.length === 0 ? (
@@ -175,7 +175,7 @@ function DesktopAuditLog() {
               {/* ── Desktop table ── */}
               <table className="hidden md:table w-full text-sm">
                 <thead>
-                  <tr className="border-b border-line bg-paper/60 text-left text-xs font-medium uppercase tracking-wide text-ink-faint">
+                  <tr className="border-b border-line bg-paper/60 text-left text-[13px] font-medium text-ink-faint">
                     <th className="px-4 py-2.5">When</th>
                     <th className="px-4 py-2.5">Who</th>
                     <th className="px-4 py-2.5">Action</th>
