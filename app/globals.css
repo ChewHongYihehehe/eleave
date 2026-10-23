@@ -4,64 +4,67 @@
 
 body {
   -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 电脑版:细滚动条(钉钉客户端的样子) */
+@media (min-width: 1024px) {
+  * { scrollbar-width: thin; scrollbar-color: #D0D3D9 transparent; }
 }
 
 @layer components {
-  /* Primary action — solid pine fill */
+  /* 主按钮:蓝底白字 */
   .btn-primary {
-    @apply w-full rounded-md bg-pine px-4 py-2.5 text-sm font-semibold text-white
+    @apply w-full rounded-md bg-pine px-4 py-2.5 text-sm font-medium text-white
       transition-colors hover:bg-pine-deep disabled:cursor-not-allowed disabled:opacity-50;
   }
 
-  /* Secondary / quiet action — text only, no chrome */
+  /* 次要操作:纯文字 */
   .btn-ghost {
-    @apply text-sm font-medium text-ink-soft underline decoration-line underline-offset-4
-      transition-colors hover:text-ink;
+    @apply text-sm font-medium text-ink-soft transition-colors hover:text-ink;
   }
 
-  /* Link-style action in the accent color */
+  /* 链接式操作:钉钉的蓝字,不加下划线 */
   .btn-link {
-    @apply text-sm font-medium text-pine underline decoration-pine/30 underline-offset-4
-      transition-colors hover:text-pine-deep;
+    @apply text-sm font-medium text-pine transition-colors hover:text-pine-deep;
   }
 
   .btn-danger-ghost {
-    @apply text-sm font-medium text-rust underline decoration-rust/30 underline-offset-4;
+    @apply text-sm font-medium text-rust transition-colors hover:opacity-80;
   }
 
-  /* The one bordered "panel" treatment — reserved for hero content
-     (leave balances, forms), not applied to every block on the page. */
+  /* 白色卡片(钉钉后台:白底、细边框、小圆角) */
   .panel {
     @apply rounded-lg border border-line bg-surface p-5;
   }
 
-  /* Flat section separated by a hairline — the default for lists and
-     secondary content, so not everything competes for attention. */
   .section-divided > * + * {
     @apply border-t border-line pt-3 mt-3;
   }
 
+  /* 表单标签:正常大小写,不再全大写 */
   .field-label {
-    @apply mb-1.5 block text-xs font-medium uppercase tracking-wide text-ink-faint;
+    @apply mb-1.5 block text-[13px] font-medium text-ink-soft;
   }
 
   .field-input {
-    @apply w-full rounded-md border border-line bg-surface px-3 py-2.5 text-sm text-ink
-      placeholder:text-ink-faint focus:border-pine focus:outline-none focus:ring-1 focus:ring-pine
+    @apply w-full rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink
+      placeholder:text-ink-faint hover:border-pine/60 focus:border-pine focus:outline-none focus:ring-2 focus:ring-pine/15
       disabled:bg-paper disabled:text-ink-faint;
   }
 
   .stat-number {
-    @apply font-display text-3xl font-semibold tabular-nums text-ink;
+    @apply text-3xl font-semibold tabular-nums text-ink;
   }
 
+  /* 状态标签:浅底 + 深色字,小圆角(钉钉 Tag) */
   .badge {
-    @apply rounded-full px-2.5 py-0.5 text-xs font-medium;
+    @apply rounded px-2 py-0.5 text-xs font-medium;
   }
-  .badge-pending { @apply bg-gold-soft text-gold; }
-  .badge-approved { @apply bg-pine-soft text-pine-deep; }
-  .badge-rejected { @apply bg-rust-soft text-rust; }
-  .badge-cancelled { @apply bg-paper text-ink-faint; }
+  .badge-pending { @apply bg-st-pending-soft text-st-pending-text; }
+  .badge-approved { @apply bg-st-approved-soft text-st-approved-text; }
+  .badge-rejected { @apply bg-st-rejected-soft text-st-rejected-text; }
+  .badge-cancelled { @apply bg-st-muted-soft text-st-muted-text; }
 }
 
 @layer utilities {
