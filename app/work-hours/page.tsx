@@ -194,15 +194,15 @@ function DesktopWorkHours() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-line bg-paper">
-                  <th className="sticky left-0 z-10 bg-paper px-3 py-2.5 text-left text-xs font-medium uppercase tracking-wide text-ink-faint">
+                  <th className="sticky left-0 z-10 bg-paper px-3 py-2.5 text-left text-[13px] font-medium text-ink-faint">
                     Employee
                   </th>
                   {MONTHS.map((m) => (
-                    <th key={m} className="px-2 py-2.5 text-center text-xs font-medium uppercase tracking-wide text-ink-faint whitespace-nowrap">
+                    <th key={m} className="px-2 py-2.5 text-center text-[13px] font-medium text-ink-faint whitespace-nowrap">
                       {m}
                     </th>
                   ))}
-                  <th className="px-3 py-2.5 text-right text-xs font-medium uppercase tracking-wide text-ink-faint">
+                  <th className="px-3 py-2.5 text-right text-[13px] font-medium text-ink-faint">
                     Total
                   </th>
                 </tr>
