@@ -249,7 +249,7 @@ function StatusBadge({
   // If approved and cancellation has been requested by employee (matching manager's cancellations view)
   if (status === 'approved' && cancellationStatus === 'requested') {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-gold/40 bg-gold-soft px-2.5 py-0.5 text-xs font-medium text-gold">
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-gold/40 bg-gold-soft px-2.5 py-0.5 text-xs font-medium text-st-pending-text">
         <span className="h-1.5 w-1.5 rounded-full bg-gold animate-pulse" />
         Cancel Requested
       </span>
@@ -257,15 +257,15 @@ function StatusBadge({
   }
   if (status === 'approved') {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-pine/20 bg-pine-soft px-2.5 py-0.5 text-xs font-medium text-pine-deep">
-        <span className="h-1.5 w-1.5 rounded-full bg-pine" />
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-st-approved/25 bg-st-approved-soft px-2.5 py-0.5 text-xs font-medium text-st-approved-text">
+        <span className="h-1.5 w-1.5 rounded-full bg-st-approved" />
         Approved
       </span>
     )
   }
   if (status === 'pending') {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-gold/30 bg-gold-soft px-2.5 py-0.5 text-xs font-medium text-gold">
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-gold/30 bg-gold-soft px-2.5 py-0.5 text-xs font-medium text-st-pending-text">
         <span className="h-1.5 w-1.5 rounded-full bg-gold" />
         Pending
       </span>
@@ -639,41 +639,27 @@ export default function DashboardPage() {
           DESKTOP LAYOUT  (shown on screens >= md)
           ════════════════════════════════════════════ */}
       <div className="hidden md:block">
-        <div className="mx-auto max-w-5xl px-6 py-8 space-y-7 pb-16">
-
-          {/* ── "You have updates" banner ── */}
-          {unseenCount > 0 && !noticeDismissed && (
-            <div className="flex items-center justify-between gap-3 rounded-xl border border-gold/40 bg-gold-soft px-4 py-3 text-sm text-gold">
-              <span>You have {unseenCount} update{unseenCount > 1 ? 's' : ''} on your leave application{unseenCount > 1 ? 's' : ''} below.</span>
-              <button onClick={() => setNoticeDismissed(true)} className="shrink-0 text-xs font-medium underline decoration-dotted hover:no-underline">Dismiss</button>
-            </div>
-          )}
-
-          {/* ── Top Bar ── */}
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3">
-              <img src="/logo.png" alt="Puro" width={44} height={44} className="h-11 w-11 shrink-0 rounded-xl" />
-              <div>
-                <h1 className="font-display text-2xl font-bold tracking-tight text-ink">Hi, {employee.full_name.split(' ')[0]} 👋</h1>
-                <p className="mt-0.5 text-sm text-ink-soft">
-                  {employee.employee_no ? `#${employee.employee_no} · ` : ''}{years.toFixed(1)} years of service
-                </p>
-              </div>
+        {/* 电脑版顶部栏:白底通栏,左 logo,右 申请 + 用户菜单(和负责人电脑版一致) */}
+        <header className="sticky top-0 z-30 border-b border-line bg-white">
+          <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
+            <div className="flex items-center gap-2.5">
+              <img src="/logo.png" alt="Puro" width={32} height={32} className="h-8 w-8 shrink-0 rounded-lg" />
+              <span className="text-base font-semibold tracking-tight text-ink">eLeave</span>
             </div>
             <div className="flex items-center gap-3">
               <button onClick={() => { setModalOpen(true); setFormError('') }}
-                className="inline-flex items-center gap-2 rounded-xl bg-pine px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-pine-deep focus:outline-none focus:ring-2 focus:ring-pine/30">
+                className="inline-flex items-center gap-1.5 rounded-md bg-pine px-4 py-2 text-sm font-medium text-white transition hover:bg-pine-deep focus:outline-none focus:ring-2 focus:ring-pine/30">
                 <PlusIcon className="h-4 w-4" /> Request Leave
               </button>
               <div className="relative" ref={userMenuRef}>
                 <button type="button" onClick={(e) => { e.stopPropagation(); setUserMenuOpen(v => !v) }}
-                  className="flex items-center gap-2.5 rounded-xl border border-line bg-surface px-3 py-2 shadow-sm transition hover:bg-paper focus:outline-none">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-pine/20 text-xs font-bold text-pine">{initials}</div>
+                  className="flex items-center gap-2 rounded-md py-1 pl-1 pr-2 transition hover:bg-paper focus:outline-none">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-pine text-xs font-semibold text-white">{initials}</div>
                   <span className="text-sm font-medium text-ink">{employee.full_name}</span>
                   <ChevronDownIcon className="h-4 w-4 text-ink-faint ml-0.5" />
                 </button>
                 {userMenuOpen && (
-                  <div className="absolute right-0 z-30 mt-2 w-64 rounded-2xl border border-line bg-surface p-2 shadow-xl" onClick={e => e.stopPropagation()}>
+                  <div className="absolute right-0 z-40 mt-1.5 w-64 rounded-lg border border-line bg-surface p-2 shadow-lg" onClick={e => e.stopPropagation()}>
                     <div className="mb-1 flex flex-col gap-0.5">
                       <button onClick={() => { setUserMenuOpen(false); router.push('/change-password') }}
                         className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-ink-soft transition-colors hover:bg-paper hover:text-ink">
@@ -689,7 +675,7 @@ export default function DashboardPage() {
                       </button>
                     </div>
                     <div className="flex items-center gap-3 rounded-xl border border-line bg-paper px-3 py-2.5 mt-1">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-pine/20 text-xs font-bold text-pine">{initials}</div>
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-pine text-xs font-semibold text-white">{initials}</div>
                       <div className="min-w-0 text-left">
                         <p className="truncate text-sm font-medium text-ink">{employee.full_name}</p>
                         <p className="text-xs text-ink-faint capitalize">{employee.employment_type || 'Employee'}</p>
@@ -700,6 +686,25 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
+        </header>
+
+        <div className="mx-auto max-w-6xl px-6 py-6 space-y-5 pb-16">
+
+          {/* ── "You have updates" banner ── */}
+          {unseenCount > 0 && !noticeDismissed && (
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-gold/40 bg-gold-soft px-4 py-3 text-sm text-st-pending-text">
+              <span>You have {unseenCount} update{unseenCount > 1 ? 's' : ''} on your leave application{unseenCount > 1 ? 's' : ''} below.</span>
+              <button onClick={() => setNoticeDismissed(true)} className="shrink-0 text-xs font-medium underline decoration-dotted hover:no-underline">Dismiss</button>
+            </div>
+          )}
+
+          {/* ── 欢迎卡片(蓝色渐变,和负责人电脑版的工作台一致)── */}
+          <section className="rounded-xl px-7 py-6 text-white" style={{ background: 'linear-gradient(120deg, #1677FF 0%, #4096FF 100%)' }}>
+            <h1 className="text-2xl font-semibold tracking-tight">Hi, {employee.full_name.split(' ')[0]}</h1>
+            <p className="mt-1 text-sm text-blue-100">
+              {employee.employee_no ? `#${employee.employee_no} · ` : ''}{years.toFixed(1)} years of service
+            </p>
+          </section>
 
           {loadError && (
             <div className="rounded-xl border border-rust/30 bg-rust-soft px-4 py-3 text-sm text-rust">{loadError}</div>
@@ -708,7 +713,7 @@ export default function DashboardPage() {
           {/* ── 4 Stat Cards ── */}
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             {statCards.map(({ label, remaining, total, Icon, accent }) => (
-              <div key={label} className="rounded-2xl border border-line bg-surface p-5 shadow-sm transition hover:shadow-md">
+              <div key={label} className="rounded-xl border border-line bg-surface p-5 shadow-sm transition hover:shadow-md">
                 <div className="flex items-start justify-between">
                   <span className="text-xs sm:text-sm font-medium text-ink-soft">{label}</span>
                   <div className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${accent}`}><Icon className="h-5 w-5" /></div>
@@ -724,7 +729,7 @@ export default function DashboardPage() {
 
           {/* ── Upcoming Public Holidays (desktop) ── */}
           {upcomingHolidays.length > 0 && (
-            <div className="rounded-2xl border border-line bg-surface shadow-sm overflow-hidden">
+            <div className="rounded-xl border border-line bg-surface shadow-sm overflow-hidden">
               <div className="border-b border-line px-5 py-4">
                 <h2 className="text-base font-semibold text-ink">Upcoming Public Holidays</h2>
                 <p className="mt-0.5 text-xs text-ink-soft">Next {upcomingHolidays.length} upcoming holiday{upcomingHolidays.length > 1 ? 's' : ''}</p>
@@ -745,7 +750,7 @@ export default function DashboardPage() {
                         <p className="truncate text-sm font-medium text-ink">{h.name}</p>
                         <p className="mt-0.5 text-xs text-ink-faint">
                           {d.toLocaleDateString('en-MY', { weekday: 'long' })}
-                          {isToday && <span className="ml-2 font-semibold text-gold">· Today</span>}
+                          {isToday && <span className="ml-2 font-semibold text-st-pending-text">· Today</span>}
                         </p>
                       </div>
                     </div>
@@ -756,7 +761,7 @@ export default function DashboardPage() {
           )}
 
           {/* ── Your leave requests (desktop) ── */}
-          <div className="rounded-2xl border border-line bg-surface shadow-sm">
+          <div className="rounded-xl border border-line bg-surface shadow-sm">
             {/* Card Header with Title and Segmented Status Tabs */}
             <div className="flex flex-col gap-4 border-b border-line p-5 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -907,7 +912,7 @@ export default function DashboardPage() {
                           {isUpcomingApproved && (
                             <button
                               onClick={() => handleRequestCancellation(app.id)}
-                              className="rounded-lg border border-gold/40 bg-gold-soft px-2.5 py-1 text-xs font-medium text-gold transition hover:bg-gold/30"
+                              className="rounded-lg border border-gold/40 bg-gold-soft px-2.5 py-1 text-xs font-medium text-st-pending-text transition hover:bg-gold/30"
                             >
                               Request cancel
                             </button>
@@ -952,7 +957,7 @@ export default function DashboardPage() {
                                 {isUpcomingApproved && (
                                   <button
                                     onClick={() => { setActiveMenuId(null); handleRequestCancellation(app.id) }}
-                                    className="flex w-full items-center px-4 py-2 text-xs font-medium text-gold hover:bg-gold-soft"
+                                    className="flex w-full items-center px-4 py-2 text-xs font-medium text-st-pending-text hover:bg-gold-soft"
                                   >
                                     Request cancellation
                                   </button>
@@ -1010,7 +1015,7 @@ export default function DashboardPage() {
           onClick={() => setModalOpen(false)}
         >
           <div
-            className="w-full max-w-md rounded-t-3xl sm:rounded-2xl border border-line bg-surface p-6 shadow-2xl"
+            className="w-full max-w-md rounded-t-3xl sm:rounded-xl border border-line bg-surface p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-5 flex items-start justify-between">
@@ -1173,7 +1178,7 @@ export default function DashboardPage() {
 
       {/* ── Toast ── */}
       {toast && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 rounded-2xl border border-gray-100 bg-white px-5 py-3 shadow-2xl md:bottom-6 md:left-auto md:right-6 md:translate-x-0">
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 rounded-xl border border-gray-100 bg-white px-5 py-3 shadow-2xl md:bottom-6 md:left-auto md:right-6 md:translate-x-0">
           <span className="h-2 w-2 rounded-full bg-[#1677FF]" />
           <p className="text-sm font-semibold text-gray-900 whitespace-nowrap">{toast}</p>
         </div>
