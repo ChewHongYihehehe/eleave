@@ -236,7 +236,7 @@ function DesktopReports() {
 
   if (auth.status !== 'ready') return <AuthStatus state={auth} />
 
-  const th = 'px-3.5 py-3 text-xs font-semibold uppercase tracking-wider text-ink-faint whitespace-nowrap bg-paper border-b border-line'
+  const th = 'px-3.5 py-3 text-[13px] font-medium text-ink-faint whitespace-nowrap bg-paper border-b border-line'
   const tdNum = 'px-3.5 py-3 text-center tabular-nums text-sm text-ink-soft align-middle'
   const emptyBox = 'rounded-xl border border-line py-10 text-center text-sm text-ink-faint bg-surface'
   const notice = 'rounded-xl border border-amber-200 bg-amber-50/80 p-3.5 text-sm text-amber-800'
@@ -361,7 +361,7 @@ function DesktopReports() {
             {scope === 'ft' && (
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
                 {/* 无薪假: 扣薪重点，红底强调 */}
-                <div className="rounded-2xl border border-red-200 bg-gradient-to-br from-[#FFF1F0] to-white p-4 shadow-xs">
+                <div className="rounded-xl border border-red-200 bg-gradient-to-br from-[#FFF1F0] to-white p-4 shadow-xs">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold text-red-700">Unpaid Leave</span>
                     <span className="rounded-md bg-red-100 px-2 py-0.5 text-[11px] font-bold text-red-700">Deduct pay</span>
@@ -373,7 +373,7 @@ function DesktopReports() {
                 </div>
 
                 {/* 带薪病假 */}
-                <div className="rounded-2xl border border-amber-200 bg-gradient-to-br from-[#FFFBE6] to-white p-4 shadow-xs">
+                <div className="rounded-xl border border-amber-200 bg-gradient-to-br from-[#FFFBE6] to-white p-4 shadow-xs">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold text-amber-800">Medical Leave (MC)</span>
                     <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700">Paid</span>
@@ -385,7 +385,7 @@ function DesktopReports() {
                 </div>
 
                 {/* 年假 */}
-                <div className="rounded-2xl border border-blue-200 bg-gradient-to-br from-[#E6F4FF] to-white p-4 shadow-xs">
+                <div className="rounded-xl border border-blue-200 bg-gradient-to-br from-[#E6F4FF] to-white p-4 shadow-xs">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold text-blue-800">Annual Leave</span>
                     <span className="rounded-md bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-700">Working days</span>
@@ -397,7 +397,7 @@ function DesktopReports() {
                 </div>
 
                 {/* 产假 / 陪产假 */}
-                <div className="rounded-2xl border border-purple-200 bg-gradient-to-br from-[#F9F0FF] to-white p-4 shadow-xs">
+                <div className="rounded-xl border border-purple-200 bg-gradient-to-br from-[#F9F0FF] to-white p-4 shadow-xs">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold text-purple-800">Maternity / Paternity</span>
                   </div>
@@ -411,14 +411,14 @@ function DesktopReports() {
 
             {scope === 'pt' && (
               <div className="grid grid-cols-2 gap-3.5">
-                <div className="rounded-2xl border border-blue-200 bg-gradient-to-br from-[#E6F4FF] to-white p-5 shadow-xs">
+                <div className="rounded-xl border border-blue-200 bg-gradient-to-br from-[#E6F4FF] to-white p-5 shadow-xs">
                   <p className="text-xs font-semibold text-blue-800">Total Part-time Hours</p>
                   <p className="mt-2 text-3xl font-bold tabular-nums text-ink">
                     {fmt(t.hours)} <span className="text-base font-normal text-ink-soft">hours</span>
                   </p>
                   <p className="mt-1 text-xs text-ink-faint">{monthReport.partTime.length} staff enrolled</p>
                 </div>
-                <div className="rounded-2xl border border-amber-200 bg-[#FFFBE6] p-5 shadow-xs">
+                <div className="rounded-xl border border-amber-200 bg-[#FFFBE6] p-5 shadow-xs">
                   <p className="text-xs font-semibold text-amber-800">Missing Hours Warning</p>
                   <p className="mt-2 text-3xl font-bold tabular-nums text-amber-700">
                     {monthReport.missingHoursCount} <span className="text-base font-normal text-amber-600">staff</span>
@@ -432,17 +432,17 @@ function DesktopReports() {
 
             {scope === 'all' && (
               <div className="grid grid-cols-3 gap-3.5">
-                <div className="rounded-2xl border border-red-200 bg-[#FFF1F0] p-4 shadow-xs">
+                <div className="rounded-xl border border-red-200 bg-[#FFF1F0] p-4 shadow-xs">
                   <p className="text-xs font-semibold text-red-700">Unpaid Leave</p>
                   <p className="mt-1.5 text-2xl font-bold tabular-nums text-rust">{fmt(t.unpaid)} <span className="text-xs font-normal">days</span></p>
                   <p className="text-xs text-red-600/80">{t.unpaidStaff} staff</p>
                 </div>
-                <div className="rounded-2xl border border-blue-200 bg-[#E6F4FF] p-4 shadow-xs">
+                <div className="rounded-xl border border-blue-200 bg-[#E6F4FF] p-4 shadow-xs">
                   <p className="text-xs font-semibold text-blue-800">Medical Leave (MC)</p>
                   <p className="mt-1.5 text-2xl font-bold tabular-nums text-blue-900">{fmt(t.medical)} <span className="text-xs font-normal">days</span></p>
                   <p className="text-xs text-blue-700/80">Paid leave</p>
                 </div>
-                <div className="rounded-2xl border border-purple-200 bg-[#F9F0FF] p-4 shadow-xs">
+                <div className="rounded-xl border border-purple-200 bg-[#F9F0FF] p-4 shadow-xs">
                   <p className="text-xs font-semibold text-purple-800">Part-time Hours</p>
                   <p className="mt-1.5 text-2xl font-bold tabular-nums text-purple-900">{fmt(t.hours)} <span className="text-xs font-normal">hrs</span></p>
                   <p className="text-xs text-purple-700/80">{monthReport.partTime.length} staff</p>
