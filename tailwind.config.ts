@@ -5,12 +5,13 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        ink: '#1B2A28',
-        'ink-soft': '#57655F',
-        'ink-faint': '#8B9791',
-        paper: '#F6F4EE',
+        // 钉钉风格的中性色(电脑版和手机版共用)
+        ink: '#1F2329',
+        'ink-soft': '#646A73',
+        'ink-faint': '#8F959E',
+        paper: '#F5F6F8',
         surface: '#FFFFFF',
-        line: '#E3DFD3',
+        line: '#E5E6EB',
         // 员工端(钉钉风格)
         brand: { DEFAULT: '#1677FF', deep: '#0958D9', soft: '#E6F0FF' },
         app: '#F5F6F8',
@@ -21,32 +22,25 @@ const config: Config = {
           rejected: { DEFAULT: '#F5222D', soft: '#FFF1F0', text: '#CF1322' },
           muted: { DEFAULT: '#8C8C8C', soft: '#F5F5F5', text: '#595959' },
         },
-        pine: {
-          DEFAULT: '#2F6B5E',
-          deep: '#234F45',
-          soft: '#E7F0EC',
-        },
-        gold: {
-          DEFAULT: '#C9A227',
-          soft: '#F6EDCF',
-        },
-        rust: {
-          DEFAULT: '#B54A2A',
-          soft: '#F5E4DC',
-        },
+        // 下面这几组是老版电脑页面里用的名字(pine / gold / rust / leave-*)。
+        // 名字没改,颜色换成钉钉的蓝 / 橙 / 红,这样所有电脑页面一次就跟着变了。
+        pine: { DEFAULT: '#1677FF', deep: '#0958D9', soft: '#E6F0FF' },
+        gold: { DEFAULT: '#D46B08', soft: '#FFF7E6' },
+        rust: { DEFAULT: '#CF1322', soft: '#FFF1F0' },
         leave: {
-          annual: '#2F6B5E',
-          medical: '#B54A2A',
-          maternity: '#6B5B95',
-          paternity: '#3B6E91',
-          unpaid: '#8A8377',
-          holiday: '#C9A227',
+          annual: '#1677FF',
+          medical: '#F5222D',
+          maternity: '#EB2F96',
+          paternity: '#722ED1',
+          unpaid: '#8C8C8C',
+          holiday: '#FA8C16',
         },
       },
       fontFamily: {
         // Manrope 没有中文字形,显式写出中文字体,各手机上的中文观感才一致
         sans: ['var(--font-manrope)', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', 'Microsoft YaHei', 'sans-serif'],
-        display: ['var(--font-fraunces)', 'serif'],
+        // 钉钉没有衬线标题:display 也用无衬线
+        display: ['var(--font-manrope)', 'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', 'Microsoft YaHei', 'sans-serif'],
       },
       // 代码里已经在用 shadow-xs / shadow-2xs / backdrop-blur-xs / active:scale-98,
       // 在这里定义,Tailwind v3 下也会生效
