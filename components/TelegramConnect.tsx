@@ -80,7 +80,7 @@ export default function TelegramConnect() {
       {state === 'connected' ? (
         <>
           <div className="flex items-center gap-2">
-            <span className="badge bg-pine-soft text-pine">Connected</span>
+            <span className="badge badge-approved">Connected</span>
             <span className="text-sm text-ink-soft">You will receive E-Leave updates on Telegram.</span>
           </div>
           <button onClick={handleDisconnect} disabled={busy} className="btn-danger-ghost">

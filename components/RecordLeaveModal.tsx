@@ -172,7 +172,7 @@ export default function RecordLeaveModal({
       onClick={() => !submitting && onClose()}
     >
       <div
-        className="flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl border border-gray-100 bg-[#F5F6F8] shadow-2xl sm:rounded-2xl"
+        className="flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl border border-gray-100 bg-[#F5F6F8] shadow-2xl sm:rounded-xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 顶部标题栏 (钉钉专业风格) */}
