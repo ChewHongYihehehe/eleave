@@ -174,7 +174,7 @@ export default function ManagerShell({
       {/* ══ 电脑版顶部栏(钉钉后台:白底、左边产品名、右边语言 / 通知 / 用户)══ */}
       <header className="fixed inset-x-0 top-0 z-40 hidden h-14 items-center justify-between border-b border-line bg-white px-5 print:hidden lg:flex">
         <Link href="/workspace" className="flex items-center gap-2.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-pine text-white"><SvgIcon d={IC.leaf} size={18} /></span>
+          <img src="/logo.png" alt="Puro" width={32} height={32} className="h-8 w-8 shrink-0 rounded-lg" />
           <span className="text-base font-semibold tracking-tight text-ink">eLeave</span>
           <span className="rounded bg-pine-soft px-1.5 py-0.5 text-xs font-medium text-pine">{t('manager')}</span>
         </Link>
