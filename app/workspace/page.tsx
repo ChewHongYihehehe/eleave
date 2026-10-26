@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabaseClient'
 import { toLocalDateStr } from '@/lib/dateUtils'
 import ManagerShell, { IC, SvgIcon } from '@/components/ManagerShell'
+import PageHeader from '@/components/PageHeader'
 import { useEmployee } from '@/lib/useEmployee'
 import AuthStatus from '@/components/AuthStatus'
 import { useLang, type DictKey } from '@/lib/lang'
@@ -33,6 +34,8 @@ function DesktopWorkspace() {
   const { lang, t } = useLang()
   const [attention, setAttention] = useState<number | null>(null)
   const [onLeaveToday, setOnLeaveToday] = useState<number | null>(null)
+  const [monthLeave, setMonthLeave] = useState<number | null>(null)
+  const [staffCount, setStaffCount] = useState<number | null>(null)
 
   useEffect(() => {
     if (auth.status !== 'ready') return
@@ -63,6 +66,29 @@ function DesktopWorkspace() {
         setOnLeaveToday(ids.size)
       })
 
+    // 本月请假:已批准、日期和本月有重叠;历史导入的记录不算
+    const now = new Date()
+    const monthStart = toLocalDateStr(new Date(now.getFullYear(), now.getMonth(), 1))
+    const monthEnd = toLocalDateStr(new Date(now.getFullYear(), now.getMonth() + 1, 0))
+    supabase
+      .from('leave_applications')
+      .select('id, remarks')
+      .eq('status', 'approved')
+      .lte('start_date', monthEnd)
+      .gte('end_date', monthStart)
+      .then(({ data }) => {
+        if (cancelled || !data) return
+        setMonthLeave((data as { id: string; remarks: string | null }[]).filter((r) => !(r.remarks && r.remarks.includes('Historical import'))).length)
+      })
+
+    // 在职员工:启用中的全职员工
+    supabase
+      .from('employees')
+      .select('id', { count: 'exact', head: true })
+      .eq('is_active', true)
+      .eq('employment_type', 'full_time')
+      .then(({ count }) => { if (!cancelled && typeof count === 'number') setStaffCount(count) })
+
     return () => { cancelled = true }
   }, [auth.status])
 
@@ -74,50 +100,49 @@ function DesktopWorkspace() {
 
   const first = auth.employee.full_name.trim().split(/\s+/)[0]
 
-  const stats: { href: string; label: string; count: number | null; hot: boolean; unit: string; icon: keyof typeof IC; grad: string; hint: string }[] = [
-    { href: '/approve', label: t('pendingApprovals'), count: attention, hot: (attention ?? 0) > 0, unit: '', icon: 'approve', grad: 'linear-gradient(135deg, #1677FF, #4096FF)', hint: (attention ?? 0) > 0 ? (lang === 'zh' ? '有申请在等你处理' : 'Requests waiting for you') : (lang === 'zh' ? '目前没有待处理的申请' : 'Nothing waiting') },
-    { href: '/calendar', label: t('onLeaveToday'), count: onLeaveToday, hot: false, unit: '', icon: 'calendar', grad: 'linear-gradient(135deg, #13C2C2, #36CFC9)', hint: lang === 'zh' ? '查看休假日历' : 'Open the leave calendar' },
+  const pending = (attention ?? 0) > 0
+  const stats: { href: string; label: string; count: number | null; hot: boolean; icon: keyof typeof IC; grad: string; hint: string }[] = [
+    { href: '/approve', label: t('pendingApprovals'), count: attention, hot: pending, icon: 'approve', grad: 'linear-gradient(135deg, #1677FF, #4096FF)', hint: pending ? t('statHintPending') : t('statHintNone') },
+    { href: '/calendar', label: t('onLeaveToday'), count: onLeaveToday, hot: false, icon: 'calendar', grad: 'linear-gradient(135deg, #13C2C2, #36CFC9)', hint: t('statHintCalendar') },
+    { href: '/reports', label: t('statMonthLeave'), count: monthLeave, hot: false, icon: 'reports', grad: 'linear-gradient(135deg, #722ED1, #9254DE)', hint: t('statHintMonth') },
+    { href: '/manage', label: t('statStaff'), count: staffCount, hot: false, icon: 'people', grad: 'linear-gradient(135deg, #FA8C16, #FFA940)', hint: t('statHintStaff') },
   ]
 
   return (
     <ManagerShell>
-      <div className="mx-auto max-w-6xl space-y-4 pb-4">
-        {/* 欢迎卡片:蓝色渐变 + 问候 */}
-        <section className="overflow-hidden rounded-xl text-white" style={{ background: 'linear-gradient(120deg, #1677FF 0%, #4096FF 100%)' }}>
-          <div className="px-7 py-7">
-            <div>
-              <h1 className="text-2xl font-semibold">{t('hello')}, {first}</h1>
-              <p className="mt-1 text-sm text-blue-100">{dateLabel}</p>
-            </div>
-          </div>
+      <div className="mx-auto max-w-[1360px] space-y-4 pb-6">
+        <PageHeader title={`${t('hello')}, ${first}`} subtitle={dateLabel} />
+
+        {/* 数据概览:4 张可点击的卡片 */}
+        <section className="grid grid-cols-4 gap-4">
+          {stats.map((r) => (
+            <Link
+              key={r.href + r.label}
+              href={r.href}
+              className="group flex items-start justify-between rounded-lg border border-line bg-white p-5 transition-colors hover:border-pine/50"
+            >
+              <div className="min-w-0">
+                <p className="text-[13px] text-ink-soft">{r.label}</p>
+                <p className={`mt-2 text-[32px] font-semibold leading-none tabular-nums ${r.hot ? 'text-pine' : 'text-ink'}`}>
+                  {r.count === null ? '–' : r.count}
+                </p>
+                <p className="mt-3 truncate text-xs text-ink-faint group-hover:text-pine">{r.hint}</p>
+              </div>
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white" style={{ background: r.grad }}>
+                <SvgIcon d={IC[r.icon]} size={20} />
+              </span>
+            </Link>
+          ))}
         </section>
 
-        {/* 需要处理 */}
-        <section className="rounded-xl border border-line bg-white">
-          <h2 className="border-b border-line px-5 py-3.5 text-[15px] font-semibold text-ink">{t('needsAttention')}</h2>
-          <div className="grid grid-cols-1 divide-y divide-line sm:grid-cols-2 sm:divide-x sm:divide-y-0">
-            {stats.map((r) => (
-              <Link key={r.href + r.label} href={r.href} className="group flex items-center gap-4 px-5 py-4 transition-colors hover:bg-paper">
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white" style={{ background: r.grad }}><SvgIcon d={IC[r.icon]} size={22} /></span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-ink">{r.label}</p>
-                  <p className="mt-0.5 text-xs text-ink-faint">{r.hint}</p>
-                </div>
-                <span className={`text-2xl font-semibold tabular-nums ${r.hot ? 'text-pine' : 'text-ink'}`}>{r.count === null ? '–' : r.count}</span>
-                <span className="text-ink-faint transition-transform group-hover:translate-x-0.5"><SvgIcon d={IC.chevronR} size={16} /></span>
-              </Link>
-            ))}
-          </div>
-        </section>
-
-        {/* 全部功能 */}
-        <section className="rounded-xl border border-line bg-white">
-          <h2 className="border-b border-line px-5 py-3.5 text-[15px] font-semibold text-ink">{t('allFeatures')}</h2>
-          <div className="grid grid-cols-4 gap-y-7 px-4 py-7 sm:grid-cols-7">
+        {/* 快捷入口 */}
+        <section className="rounded-lg border border-line bg-white">
+          <h2 className="border-b border-line px-5 py-3.5 text-[15px] font-semibold text-ink">{t('quickEntry')}</h2>
+          <div className="grid grid-cols-7 gap-y-6 px-4 py-6">
             {FEATURES.map((f) => (
               <Link key={f.href} href={f.href} className="group flex flex-col items-center gap-2.5 px-1 text-center">
-                <span className="relative flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-xs transition-all group-hover:-translate-y-0.5 group-hover:shadow-md" style={{ background: f.grad }}>
-                  <SvgIcon d={IC[f.icon]} size={26} />
+                <span className="relative flex h-12 w-12 items-center justify-center rounded-xl text-white transition-transform group-hover:-translate-y-0.5" style={{ background: f.grad }}>
+                  <SvgIcon d={IC[f.icon]} size={24} />
                   {f.badge === 'attention' && !!attention && (
                     <span className="absolute -right-2 -top-2 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-rust px-1 text-[11px] font-medium leading-none text-white ring-2 ring-white">
                       {attention > 99 ? '99+' : attention}
@@ -134,14 +159,14 @@ function DesktopWorkspace() {
   )
 }
 
-// 手机(< md)用钉钉风格的新版页面;电脑(≥ md)保持原来的版面。
+// 手机/平板(< lg)用手机版;电脑(≥ lg)用后台版。断点和 ManagerShell 一致。
 export default function WorkspacePage() {
   return (
     <>
-      <div className="md:hidden">
+      <div className="lg:hidden">
         <MobileWorkspace />
       </div>
-      <div className="hidden md:block">
+      <div className="hidden lg:block">
         <DesktopWorkspace />
       </div>
     </>
