@@ -3,8 +3,10 @@
 import MobileApprove from '@/components/manager/MobileApprove'
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
-import { LEAVE_TYPE_LABELS } from '@/lib/leaveRules'
 import ManagerShell from '@/components/ManagerShell'
+import PageHeader, { PrimaryButton } from '@/components/PageHeader'
+import { Avatar, UnderlineTabs } from '@/components/employee/EmployeeShell'
+import { useLang, leaveTypeName, type Lang } from '@/lib/lang'
 import { useEmployee } from '@/lib/useEmployee'
 import AuthStatus from '@/components/AuthStatus'
 import RecordLeaveModal from '@/components/RecordLeaveModal'
@@ -51,117 +53,82 @@ function ChevronRightIcon({ className }: { className?: string }) {
   )
 }
 
-function MoreHorizontalIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
-      <circle cx="12" cy="12" r="1.75" />
-      <circle cx="19" cy="12" r="1.75" />
-      <circle cx="5" cy="12" r="1.75" />
-    </svg>
-  )
-}
-
 function PlusIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <line x1="12" y1="5" x2="12" y2="19" />
+      <line x1="5" y1="12" x2="19" y2="12" />
     </svg>
   )
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function getInitials(name: string) {
-  if (!name) return 'U'
-  const parts = name.trim().split(/\s+/)
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-}
-
-function formatLeaveDates(startDate: string, endDate: string) {
+// 日期:中文用 2026-10-26 至 2026-10-28(后台表格里最好扫读),英文保持原来的写法
+function formatLeaveDates(startDate: string, endDate: string, lang: Lang) {
   if (!startDate) return ''
+  if (lang === 'zh') return startDate === endDate ? startDate : `${startDate} 至 ${endDate}`
   const start = new Date(startDate + 'T00:00:00')
   const end = new Date(endDate + 'T00:00:00')
   const startMonth = start.toLocaleDateString('en-US', { month: 'short' })
   const startDay = start.getDate()
   const startYear = start.getFullYear()
-
-  if (startDate === endDate) {
-    return `${startMonth} ${startDay}, ${startYear}`
-  }
-
+  if (startDate === endDate) return `${startMonth} ${startDay}, ${startYear}`
   const endMonth = end.toLocaleDateString('en-US', { month: 'short' })
   const endDay = end.getDate()
   const endYear = end.getFullYear()
-
   if (startYear === endYear) {
-    if (startMonth === endMonth) {
-      return `${startMonth} ${startDay} – ${endDay}, ${startYear}`
-    }
+    if (startMonth === endMonth) return `${startMonth} ${startDay} – ${endDay}, ${startYear}`
     return `${startMonth} ${startDay} – ${endMonth} ${endDay}, ${startYear}`
   }
   return `${startMonth} ${startDay}, ${startYear} – ${endMonth} ${endDay}, ${endYear}`
 }
 
-function StatusBadge({
-  status,
-  cancellationStatus,
-}: {
-  status: string
-  cancellationStatus?: string
-}) {
+// 状态:钉钉/Ant 的 Badge 写法 —— 一个小圆点 + 彩色文字,不加底色和边框
+function StatusBadge({ status, cancellationStatus }: { status: string; cancellationStatus?: string }) {
+  const { t } = useLang()
+  let dot = 'bg-ink-faint'
+  let text = 'text-ink-soft'
+  let label: string = status
+  let pulse = false
   if (status === 'approved' && cancellationStatus === 'requested') {
-    return (
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-gold/40 bg-gold-soft px-2.5 py-0.5 text-xs font-medium text-st-pending-text">
-        <span className="h-1.5 w-1.5 rounded-full bg-gold animate-pulse" />
-        Cancel Requested
-      </span>
-    )
-  }
-  if (status === 'approved') {
-    return (
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-st-approved/25 bg-st-approved-soft px-2.5 py-0.5 text-xs font-medium text-st-approved-text">
-        <span className="h-1.5 w-1.5 rounded-full bg-st-approved" />
-        Approved
-      </span>
-    )
-  }
-  if (status === 'pending') {
-    return (
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-gold/30 bg-gold-soft px-2.5 py-0.5 text-xs font-medium text-st-pending-text">
-        <span className="h-1.5 w-1.5 rounded-full bg-gold" />
-        Pending
-      </span>
-    )
-  }
-  if (status === 'rejected') {
-    return (
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-rust/20 bg-rust-soft px-2.5 py-0.5 text-xs font-medium text-rust">
-        <span className="h-1.5 w-1.5 rounded-full bg-rust" />
-        Rejected
-      </span>
-    )
-  }
-  if (status === 'cancelled') {
-    return (
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-paper px-2.5 py-0.5 text-xs font-medium text-ink-faint">
-        <span className="h-1.5 w-1.5 rounded-full bg-ink-faint" />
-        Cancelled
-      </span>
-    )
+    dot = 'bg-st-pending'; text = 'text-st-pending-text'; label = t('sCancelReq'); pulse = true
+  } else if (status === 'approved') {
+    dot = 'bg-st-approved'; text = 'text-st-approved-text'; label = t('sApproved')
+  } else if (status === 'pending') {
+    dot = 'bg-st-pending'; text = 'text-st-pending-text'; label = t('sPending')
+  } else if (status === 'rejected') {
+    dot = 'bg-st-rejected'; text = 'text-st-rejected-text'; label = t('sRejected')
+  } else if (status === 'cancelled') {
+    label = t('sCancelled')
   }
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-line bg-paper px-2.5 py-0.5 text-xs font-medium text-ink-faint">
-      <span className="h-1.5 w-1.5 rounded-full bg-ink-faint" />
-      {status}
+    <span className={`inline-flex items-center gap-1.5 text-[13px] ${text}`}>
+      <span className={`h-1.5 w-1.5 rounded-full ${dot} ${pulse ? 'animate-pulse' : ''}`} />
+      {label}
     </span>
   )
+}
+
+// 分页页码:当前页前后各 1 页,首尾页固定显示,中间用省略号
+function pageList(total: number, cur: number): (number | '…')[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
+  const out: (number | '…')[] = [1]
+  const from = Math.max(2, cur - 1)
+  const to = Math.min(total - 1, cur + 1)
+  if (from > 2) out.push('…')
+  for (let i = from; i <= to; i++) out.push(i)
+  if (to < total - 1) out.push('…')
+  out.push(total)
+  return out
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 
 function DesktopApprove() {
   const auth = useEmployee({ requireManager: true })
+  const { lang, t } = useLang()
+  const zh = lang === 'zh'
   const approverId = auth.status === 'ready' ? auth.employee.id : null
   const [applications, setApplications] = useState<Application[]>([])
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'cancelled'>('pending')
@@ -173,10 +140,9 @@ function DesktopApprove() {
   const [notice, setNotice] = useState('')
   const [recordOpen, setRecordOpen] = useState(false)
 
-  // Pagination & action menu state
+  // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
-  const [activeMenuId, setActiveMenuId] = useState<string | null>(null)
-  const pageSize = 5
+  const pageSize = 10
 
   // 拒绝时要填理由
   const [rejectIds, setRejectIds] = useState<string[] | null>(null)
@@ -199,17 +165,6 @@ function DesktopApprove() {
     setSelected(new Set())
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auth.status])
-
-  // Close menus on outside click
-  useEffect(() => {
-    function handleClickOutside() {
-      setActiveMenuId(null)
-    }
-    if (activeMenuId) {
-      window.addEventListener('click', handleClickOutside)
-      return () => window.removeEventListener('click', handleClickOutside)
-    }
-  }, [activeMenuId])
 
   async function loadData() {
     if (employeeOptions.length === 0) {
@@ -376,141 +331,98 @@ function DesktopApprove() {
 
   const pendingCount = applications.filter((a) => a.status === 'pending').length
 
+  const tabCount = (k: string) => applications.filter((a) => a.status === k).length
+  const dayWord = (n: number) => (zh ? `${n} 天` : `${n} ${n === 1 ? 'day' : 'days'}`)
+  const pagerBtn = 'flex h-8 min-w-[32px] items-center justify-center rounded-md border px-2 text-[13px] transition-colors'
+
   return (
     <ManagerShell pendingCount={pendingCount}>
-      <div className="space-y-6 pb-12">
-        {/* Top Header */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="font-display text-2xl font-semibold text-ink">Leave Approvals</h1>
-            <p className="mt-0.5 text-sm text-ink-soft">Review and process leave requests for all employees.</p>
-          </div>
-          <button
-            onClick={() => { setNotice(''); setRecordOpen(true) }}
-            className="inline-flex items-center gap-2 rounded-md bg-pine px-4 py-2 text-sm font-medium text-white transition hover:bg-pine-deep self-start sm:self-auto"
-          >
-            <PlusIcon className="h-4 w-4" />
-            Record leave for employee
-          </button>
-        </div>
+      <div className="mx-auto max-w-[1360px] space-y-4 pb-12">
+        <PageHeader
+          title={t('apprTitle')}
+          subtitle={t('apprSub')}
+          actions={
+            <PrimaryButton onClick={() => { setNotice(''); setRecordOpen(true) }}>
+              <PlusIcon className="h-3.5 w-3.5" />
+              {t('recordForEmployee')}
+            </PrimaryButton>
+          }
+        />
 
-        {notice && <p className="rounded-xl border border-st-approved/25 bg-st-approved-soft p-3.5 text-sm text-st-approved-text">{notice}</p>}
-        {actionError && <p className="rounded-xl border border-rust/30 bg-rust-soft p-3.5 text-sm text-rust">{actionError}</p>}
+        {notice && <p className="rounded-md border border-st-approved/25 bg-st-approved-soft px-4 py-2.5 text-[13px] text-st-approved-text">{notice}</p>}
+        {actionError && <p className="rounded-md border border-rust/30 bg-rust-soft px-4 py-2.5 text-[13px] text-rust">{actionError}</p>}
 
-        {/* ── Main Leave Requests Card (Same design as Your Leave Requests) ── */}
-        <div className="rounded-xl border border-line bg-surface shadow-sm">
-          {/* Card Header with Search and Segmented Filter Tabs */}
-          <div className="flex flex-col gap-4 border-b border-line p-5 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-ink">Employee leave requests</h2>
-              <p className="mt-0.5 text-xs sm:text-sm text-ink-soft">
-                View and manage time-off requests across your team.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2.5">
-              {/* Employee Search Filter */}
-              <select
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); setCurrentPage(1) }}
-                className="rounded-md border border-line bg-white px-3 py-1.5 text-xs sm:text-sm text-ink focus:border-pine focus:outline-none"
-              >
-                <option value="">All employees</option>
-                {employeeOptions.map((emp) => (
-                  <option key={emp.id} value={emp.full_name}>
-                    {emp.full_name}
-                  </option>
-                ))}
-              </select>
-
-              {/* Segmented Filter Tabs */}
-              <div className="inline-flex flex-wrap rounded-xl border border-line bg-paper p-1 gap-0.5">
-                <button
-                  type="button"
-                  onClick={() => { setFilter('all'); setCurrentPage(1) }}
-                  className={`rounded-lg px-3 py-1.5 text-xs sm:text-sm font-medium transition ${filter === 'all'
-                    ? 'bg-surface text-ink font-semibold shadow-sm'
-                    : 'text-ink-soft hover:text-ink'
-                    }`}
-                >
-                  All requests
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setFilter('pending'); setCurrentPage(1) }}
-                  className={`rounded-lg px-3 py-1.5 text-xs sm:text-sm font-medium transition ${filter === 'pending'
-                    ? 'bg-surface text-ink font-semibold shadow-sm'
-                    : 'text-ink-soft hover:text-ink'
-                    }`}
-                >
-                  Pending {pendingCount > 0 && `(${pendingCount})`}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setFilter('approved'); setCurrentPage(1) }}
-                  className={`rounded-lg px-3 py-1.5 text-xs sm:text-sm font-medium transition ${filter === 'approved'
-                    ? 'bg-surface text-ink font-semibold shadow-sm'
-                    : 'text-ink-soft hover:text-ink'
-                    }`}
-                >
-                  Approved
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setFilter('rejected'); setCurrentPage(1) }}
-                  className={`rounded-lg px-3 py-1.5 text-xs sm:text-sm font-medium transition ${filter === 'rejected'
-                    ? 'bg-surface text-ink font-semibold shadow-sm'
-                    : 'text-ink-soft hover:text-ink'
-                    }`}
-                >
-                  Rejected
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setFilter('cancelled'); setCurrentPage(1) }}
-                  className={`rounded-lg px-3 py-1.5 text-xs sm:text-sm font-medium transition ${filter === 'cancelled'
-                    ? 'bg-surface text-ink font-semibold shadow-sm'
-                    : 'text-ink-soft hover:text-ink'
-                    }`}
-                >
-                  Cancelled
-                </button>
-              </div>
-            </div>
+        <div className="overflow-hidden rounded-lg border border-line bg-white">
+          {/* 状态标签页(钉钉审批:下划线标签 + 数字) */}
+          <div className="border-b border-line px-3">
+            <UnderlineTabs
+              scroll
+              value={filter}
+              onChange={(k) => { setFilter(k); setCurrentPage(1) }}
+              items={[
+                { key: 'pending' as const, label: t('sPending'), count: pendingCount },
+                { key: 'all' as const, label: t('all') },
+                { key: 'approved' as const, label: t('sApproved') },
+                { key: 'rejected' as const, label: t('sRejected') },
+                { key: 'cancelled' as const, label: t('sCancelled') },
+              ]}
+            />
           </div>
 
-          {/* Batch Bar (For Pending approvals) */}
+          {/* 筛选条 */}
+          <div className="flex flex-wrap items-center gap-3 px-5 py-3">
+            <select
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setCurrentPage(1) }}
+              className="h-8 w-52 rounded-md border border-line bg-white px-2.5 text-[13px] text-ink transition-colors hover:border-pine focus:border-pine focus:outline-none focus:ring-2 focus:ring-pine/15"
+            >
+              <option value="">{t('allEmployees')}</option>
+              {employeeOptions.map((emp) => (
+                <option key={emp.id} value={emp.full_name}>{emp.full_name}</option>
+              ))}
+            </select>
+            {search && (
+              <button type="button" onClick={() => { setSearch(''); setCurrentPage(1) }} className="text-[13px] text-pine hover:text-pine-deep">
+                {zh ? '重置' : 'Reset'}
+              </button>
+            )}
+            <span className="ml-auto text-[13px] text-ink-faint">
+              {zh ? `共 ${filteredApplications.length} 条` : `${filteredApplications.length} total`}
+            </span>
+          </div>
+
+          {/* 批量操作条:选中后出现 */}
           {filter === 'pending' && selected.size > 0 && (
-            <div className="flex flex-wrap items-center gap-3 border-b border-line bg-paper px-6 py-2.5">
-              <span className="text-xs sm:text-sm text-ink-soft">
-                <span className="font-semibold text-ink">{selected.size}</span> selected
+            <div className="flex flex-wrap items-center gap-3 border-y border-pine/15 bg-pine-soft px-5 py-2">
+              <span className="text-[13px] text-ink">
+                {zh ? <>已选择 <b className="font-semibold text-pine">{selected.size}</b> 项</> : <><b className="font-semibold text-pine">{selected.size}</b> selected</>}
               </span>
               <div className="ml-auto flex gap-2">
                 <button
                   disabled={batchBusy}
                   onClick={handleBatchApprove}
-                  className="rounded-lg bg-pine px-3 py-1.5 text-xs font-medium text-white hover:bg-pine-deep disabled:opacity-40"
+                  className="h-7 rounded-md bg-pine px-3 text-[13px] font-medium text-white transition-colors hover:bg-pine-deep disabled:opacity-40"
                 >
-                  Approve selected
+                  {zh ? '批量同意' : 'Approve selected'}
                 </button>
                 <button
                   disabled={batchBusy}
                   onClick={() => openRejectDialog(Array.from(selected))}
-                  className="rounded-lg border border-rust/30 bg-rust-soft px-3 py-1.5 text-xs font-medium text-rust hover:bg-rust/20 disabled:opacity-40"
+                  className="h-7 rounded-md border border-rust/40 bg-white px-3 text-[13px] font-medium text-rust transition-colors hover:bg-rust-soft disabled:opacity-40"
                 >
-                  Reject selected
+                  {zh ? '批量拒绝' : 'Reject selected'}
                 </button>
               </div>
             </div>
           )}
 
-          {/* Table View (Desktop & Tablet) */}
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-left text-sm">
+          {/* 表格 */}
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[860px] text-left text-sm">
               <thead>
-                <tr className="border-b border-line bg-paper text-[13px] font-medium text-ink-soft">
+                <tr className="border-y border-line bg-[#FAFAFA] text-[13px] font-medium text-ink-soft">
                   {filter === 'pending' && (
-                    <th className="py-3.5 pl-6 pr-2 w-10">
+                    <th className="w-12 py-2.5 pl-5 pr-2">
                       <input
                         type="checkbox"
                         checked={selected.size === paginatedApplications.length && paginatedApplications.length > 0}
@@ -519,241 +431,134 @@ function DesktopApprove() {
                       />
                     </th>
                   )}
-                  <th className={`py-3.5 ${filter === 'pending' ? 'pl-2' : 'pl-6'} pr-4`}>Employee</th>
-                  <th className="py-3.5 px-4">Leave type</th>
-                  <th className="py-3.5 px-4">Dates</th>
-                  <th className="py-3.5 px-4">Duration</th>
-                  <th className="py-3.5 px-4">Status</th>
-                  <th className="py-3.5 pl-4 pr-6 text-right">Action</th>
+                  <th className={`py-2.5 pr-4 ${filter === 'pending' ? 'pl-2' : 'pl-5'}`}>{t('colEmployee')}</th>
+                  <th className="px-4 py-2.5">{t('leaveType')}</th>
+                  <th className="px-4 py-2.5">{t('dates')}</th>
+                  <th className="px-4 py-2.5">{t('duration')}</th>
+                  <th className="px-4 py-2.5">{t('colStatus')}</th>
+                  <th className="py-2.5 pl-4 pr-5 text-right">{t('colAction')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
                 {paginatedApplications.length === 0 ? (
                   <tr>
-                    <td colSpan={filter === 'pending' ? 7 : 6} className="py-12 text-center text-sm text-ink-faint">
+                    <td colSpan={filter === 'pending' ? 7 : 6} className="py-16 text-center text-[13px] text-ink-faint">
                       {applications.length === 0
-                        ? 'No leave requests found.'
+                        ? t('noRequests')
                         : search
-                          ? `No ${filter} requests from ${search}.`
-                          : `No ${filter} requests found.`}
+                          ? (zh ? `${search} 没有这类申请` : `No ${filter} requests from ${search}`)
+                          : t('noRequests')}
                     </td>
                   </tr>
                 ) : (
                   paginatedApplications.map((app) => {
-                    const empName = app.employees?.full_name || 'Employee'
-                    const initials = getInitials(empName)
-
+                    const empName = app.employees?.full_name || (zh ? '员工' : 'Employee')
+                    const empNo = app.employees?.employee_no
+                    const isCancelReq = app.status === 'approved' && app.cancellation_status === 'requested'
                     return (
-                      <tr key={app.id} className="transition hover:bg-paper/40">
+                      <tr key={app.id} className="align-top transition-colors hover:bg-[#FAFAFA]">
                         {filter === 'pending' && (
-                          <td className="py-4 pl-6 pr-2">
+                          <td className="py-3.5 pl-5 pr-2">
                             <input
                               type="checkbox"
                               checked={selected.has(app.id)}
                               onChange={() => toggleSelected(app.id)}
-                              className="h-4 w-4 rounded border-line text-pine focus:ring-pine"
+                              className="mt-1.5 h-4 w-4 rounded border-line text-pine focus:ring-pine"
                             />
                           </td>
                         )}
 
-                        {/* Employee */}
-                        <td className={`py-4 ${filter === 'pending' ? 'pl-2' : 'pl-6'} pr-4`}>
-                          <div className="flex items-center gap-3">
-                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-pine/20 font-bold text-xs text-pine">
-                              {initials}
-                            </div>
-                            <div>
-                              <p className="font-medium text-ink">{empName}</p>
-                              <p className="text-xs text-ink-faint">
-                                {app.employees?.employment_type || (app.employees?.employee_no ? `#${app.employees.employee_no}` : 'Staff')}
-                              </p>
+                        {/* 员工 */}
+                        <td className={`py-3.5 pr-4 ${filter === 'pending' ? 'pl-2' : 'pl-5'}`}>
+                          <div className="flex items-center gap-2.5">
+                            <Avatar name={empName} size={32} />
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium text-ink">{empName}</p>
+                              {!!empNo && <p className="text-xs text-ink-faint">{zh ? `工号 ${empNo}` : `#${empNo}`}</p>}
                             </div>
                           </div>
                         </td>
 
-                        {/* Leave Type */}
-                        <td className="py-4 px-4">
-                          <p className="text-sm font-medium text-ink">
-                            {LEAVE_TYPE_LABELS[app.leave_type] || app.leave_type}
+                        {/* 假种 */}
+                        <td className="max-w-[260px] px-4 py-3.5">
+                          <p className="text-sm text-ink">
+                            {leaveTypeName(app.leave_type, lang)}
                             {app.is_half_day && app.half_day_period && (
-                              <span className="ml-1.5 text-xs text-ink-faint">
-                                ({app.half_day_period.toUpperCase()})
+                              <span className="ml-1.5 rounded bg-paper px-1.5 py-0.5 text-xs text-ink-soft">
+                                {t('halfDay')} · {app.half_day_period === 'am' ? t('am') : t('pm')}
                               </span>
                             )}
                           </p>
                           {app.reason && (
-                            <p className="mt-0.5 line-clamp-1 text-xs text-ink-soft" title={app.reason}>
-                              Note: {app.reason}
+                            <p className="mt-0.5 line-clamp-1 text-xs text-ink-faint" title={app.reason}>
+                              {t('note')}:{app.reason}
                             </p>
                           )}
                           {app.mc_attachment_path && (
                             <button
                               onClick={() => handleViewMc(app.mc_attachment_path as string)}
-                              className="mt-0.5 text-xs font-medium text-pine underline decoration-dotted hover:text-pine-deep"
+                              className="mt-0.5 text-xs text-pine hover:text-pine-deep"
                             >
-                              View MC
+                              {t('viewMc')}
                             </button>
                           )}
                         </td>
 
-                        {/* Dates */}
-                        <td className="py-4 px-4 whitespace-nowrap text-sm text-ink-soft">
-                          {formatLeaveDates(app.start_date, app.end_date)}
+                        {/* 日期 */}
+                        <td className="whitespace-nowrap px-4 py-3.5 text-sm tabular-nums text-ink">
+                          {formatLeaveDates(app.start_date, app.end_date, lang)}
                         </td>
 
-                        {/* Duration */}
-                        <td className="py-4 px-4 whitespace-nowrap text-sm text-ink-soft">
-                          {app.total_days} {app.total_days === 1 ? 'day' : 'days'}
+                        {/* 时长 */}
+                        <td className="whitespace-nowrap px-4 py-3.5 text-sm tabular-nums text-ink">
+                          {dayWord(app.total_days)}
                         </td>
 
-                        {/* Status */}
-                        <td className="py-4 px-4 whitespace-nowrap">
-                          <StatusBadge
-                            status={app.status}
-                            cancellationStatus={app.cancellation_status}
-                          />
-                          {app.status === 'approved' && app.cancellation_status === 'requested' && (
-                            <p className="mt-1 text-[11px] text-amber-700 font-medium">
-                              {app.cancellation_requested_at
-                                ? `Requested ${new Date(app.cancellation_requested_at).toLocaleDateString('en-MY')}`
-                                : 'Cancellation requested'}
+                        {/* 状态 */}
+                        <td className="whitespace-nowrap px-4 py-3.5">
+                          <StatusBadge status={app.status} cancellationStatus={app.cancellation_status} />
+                          {isCancelReq && app.cancellation_requested_at && (
+                            <p className="mt-0.5 text-xs text-ink-faint">
+                              {zh ? '申请于 ' : 'Requested '}
+                              {new Date(app.cancellation_requested_at).toLocaleDateString(zh ? 'zh-CN' : 'en-MY')}
                             </p>
                           )}
                           {app.status === 'approved' && app.cancellation_status === 'none' && app.cancellation_decision_reason && (
-                            <p className="mt-1 text-[11px] text-rust font-medium">
-                              Cancel declined: {app.cancellation_decision_reason}
+                            <p className="mt-0.5 max-w-[200px] text-xs text-rust">
+                              {t('cancelDeclined')}:{app.cancellation_decision_reason}
                             </p>
                           )}
                           {app.status === 'cancelled' && app.cancellation_decision_reason && (
-                            <p className="mt-1 text-[11px] text-ink-soft">
-                              Cancelled: {app.cancellation_decision_reason}
+                            <p className="mt-0.5 max-w-[200px] text-xs text-ink-faint">
+                              {t('cancelReason')}:{app.cancellation_decision_reason}
                             </p>
                           )}
                           {app.status === 'rejected' && app.remarks && (
-                            <p className="mt-1 text-[11px] text-rust font-medium">
-                              Reason: {app.remarks}
+                            <p className="mt-0.5 max-w-[200px] text-xs text-rust">
+                              {t('rejectReason')}:{app.remarks}
                             </p>
                           )}
                         </td>
 
-                        {/* Actions */}
-                        <td className="py-4 pl-4 pr-6 text-right relative">
-                          <div className="inline-flex items-center justify-end gap-2">
-                            {/* Pending actions */}
+                        {/* 操作:钉钉后台的文字链接 */}
+                        <td className="whitespace-nowrap py-3.5 pl-4 pr-5 text-right">
+                          <div className="inline-flex items-center gap-4 text-[13px]">
                             {app.status === 'pending' && (
                               <>
-                                <button
-                                  onClick={() => handleApprove(app.id)}
-                                  className="rounded-lg bg-pine px-2.5 py-1 text-xs font-medium text-white transition hover:bg-pine-deep"
-                                >
-                                  Approve
-                                </button>
-                                <button
-                                  onClick={() => openRejectDialog([app.id])}
-                                  className="rounded-lg border border-rust/30 bg-rust-soft px-2.5 py-1 text-xs font-medium text-rust transition hover:bg-rust/20"
-                                >
-                                  Reject
-                                </button>
+                                <button onClick={() => handleApprove(app.id)} className="text-pine transition-colors hover:text-pine-deep">{t('aApprove')}</button>
+                                <button onClick={() => openRejectDialog([app.id])} className="text-rust transition-opacity hover:opacity-70">{t('aReject')}</button>
                               </>
                             )}
-
-                            {/* Cancellation request actions */}
-                            {app.status === 'approved' && app.cancellation_status === 'requested' && (
+                            {isCancelReq && (
                               <>
-                                <button
-                                  onClick={() => handleConfirmCancellation(app.id)}
-                                  className="rounded-lg bg-pine px-2.5 py-1 text-xs font-medium text-white transition hover:bg-pine-deep"
-                                >
-                                  Confirm cancel
-                                </button>
-                                <button
-                                  onClick={() => openDeclineCancelDialog(app.id)}
-                                  className="rounded-lg border border-rust/30 bg-rust-soft px-2.5 py-1 text-xs font-medium text-rust transition hover:bg-rust/20"
-                                >
-                                  Keep leave
-                                </button>
+                                <button onClick={() => handleConfirmCancellation(app.id)} className="text-pine transition-colors hover:text-pine-deep">{t('aConfirmCancel')}</button>
+                                <button onClick={() => openDeclineCancelDialog(app.id)} className="text-rust transition-opacity hover:opacity-70">{t('aKeepLeave')}</button>
                               </>
                             )}
-
-                            {/* Approved leave direct cancellation by manager */}
                             {app.status === 'approved' && app.cancellation_status !== 'requested' && (
-                              <button
-                                onClick={() => openManagerCancelDialog(app.id)}
-                                className="rounded-lg border border-line bg-paper px-2.5 py-1 text-xs font-medium text-ink-soft transition hover:bg-rust-soft hover:text-rust"
-                              >
-                                Cancel
-                              </button>
+                              <button onClick={() => openManagerCancelDialog(app.id)} className="text-ink-soft transition-colors hover:text-rust">{t('aCancelLeave')}</button>
                             )}
-
-                            {/* Dropdown toggle for extra details */}
-                            <div className="relative">
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  setActiveMenuId(activeMenuId === app.id ? null : app.id)
-                                }}
-                                className="rounded-lg p-1.5 text-ink-faint transition hover:bg-paper hover:text-ink"
-                                title="Actions"
-                              >
-                                <MoreHorizontalIcon className="h-5 w-5" />
-                              </button>
-
-                              {activeMenuId === app.id && (
-                                <div
-                                  className="absolute right-0 z-20 mt-1 w-48 rounded-xl border border-line bg-surface py-1 text-left shadow-xl"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  {app.status === 'pending' && (
-                                    <>
-                                      <button
-                                        onClick={() => { setActiveMenuId(null); handleApprove(app.id) }}
-                                        className="flex w-full items-center px-4 py-2 text-xs font-medium text-pine hover:bg-pine-soft"
-                                      >
-                                        Approve request
-                                      </button>
-                                      <button
-                                        onClick={() => { setActiveMenuId(null); openRejectDialog([app.id]) }}
-                                        className="flex w-full items-center px-4 py-2 text-xs font-medium text-rust hover:bg-rust-soft"
-                                      >
-                                        Reject request
-                                      </button>
-                                    </>
-                                  )}
-
-                                  {app.status === 'approved' && app.cancellation_status === 'requested' && (
-                                    <>
-                                      <button
-                                        onClick={() => { setActiveMenuId(null); handleConfirmCancellation(app.id) }}
-                                        className="flex w-full items-center px-4 py-2 text-xs font-medium text-pine hover:bg-pine-soft"
-                                      >
-                                        Confirm cancellation
-                                      </button>
-                                      <button
-                                        onClick={() => { setActiveMenuId(null); openDeclineCancelDialog(app.id) }}
-                                        className="flex w-full items-center px-4 py-2 text-xs font-medium text-rust hover:bg-rust-soft"
-                                      >
-                                        Decline cancellation
-                                      </button>
-                                    </>
-                                  )}
-
-                                  {app.status === 'approved' && app.cancellation_status !== 'requested' && (
-                                    <button
-                                      onClick={() => { setActiveMenuId(null); openManagerCancelDialog(app.id) }}
-                                      className="flex w-full items-center px-4 py-2 text-xs font-medium text-rust hover:bg-rust-soft"
-                                    >
-                                      Cancel this leave
-                                    </button>
-                                  )}
-
-                                  <div className="border-t border-line my-1" />
-                                  <div className="px-4 py-1.5 text-[11px] text-ink-faint">
-                                    Total: {app.total_days} day(s)
-                                  </div>
-                                </div>
-                              )}
-                            </div>
+                            {(app.status === 'rejected' || app.status === 'cancelled') && <span className="text-ink-faint">–</span>}
                           </div>
                         </td>
                       </tr>
@@ -764,161 +569,42 @@ function DesktopApprove() {
             </table>
           </div>
 
-          {/* Mobile Card List View */}
-          <div className="md:hidden divide-y divide-line">
-            {paginatedApplications.length === 0 ? (
-              <p className="py-10 text-center text-sm text-ink-faint">
-                No leave requests found in this category.
-              </p>
-            ) : (
-              paginatedApplications.map((app) => {
-                const empName = app.employees?.full_name || 'Employee'
-                const initials = getInitials(empName)
-
-                return (
-                  <div key={app.id} className="p-4 space-y-3">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-2.5">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-pine/20 font-bold text-xs text-pine">
-                          {initials}
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-ink">{empName}</p>
-                          <p className="text-xs text-ink-faint">{LEAVE_TYPE_LABELS[app.leave_type] || app.leave_type}</p>
-                        </div>
-                      </div>
-                      <StatusBadge
-                        status={app.status}
-                        cancellationStatus={app.cancellation_status}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2 rounded-xl bg-paper p-3 text-xs">
-                      <div>
-                        <span className="text-ink-faint block mb-0.5">Dates</span>
-                        <span className="font-medium text-ink">
-                          {formatLeaveDates(app.start_date, app.end_date)}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-ink-faint block mb-0.5">Duration</span>
-                        <span className="font-medium text-ink">
-                          {app.total_days} {app.total_days === 1 ? 'day' : 'days'}
-                          {app.is_half_day && app.half_day_period && ` (${app.half_day_period.toUpperCase()})`}
-                        </span>
-                      </div>
-                    </div>
-
-                    {app.reason && (
-                      <p className="text-xs text-ink-soft">
-                        <span className="text-ink-faint">Note:</span> {app.reason}
-                      </p>
-                    )}
-
-                    {app.mc_attachment_path && (
-                      <button
-                        onClick={() => handleViewMc(app.mc_attachment_path as string)}
-                        className="text-xs font-medium text-pine underline decoration-dotted"
-                      >
-                        View MC
-                      </button>
-                    )}
-
-                    {app.status === 'approved' && app.cancellation_status === 'requested' && (
-                      <p className="text-xs text-amber-700 font-medium">
-                        Cancellation requested by employee
-                      </p>
-                    )}
-                    {app.status === 'approved' && app.cancellation_status === 'none' && app.cancellation_decision_reason && (
-                      <p className="text-xs text-rust font-medium">
-                        Cancellation declined: {app.cancellation_decision_reason}
-                      </p>
-                    )}
-                    {app.status === 'cancelled' && app.cancellation_decision_reason && (
-                      <p className="text-xs text-ink-soft">
-                        Cancelled reason: {app.cancellation_decision_reason}
-                      </p>
-                    )}
-                    {app.status === 'rejected' && app.remarks && (
-                      <p className="text-xs text-rust font-medium">
-                        Reason: {app.remarks}
-                      </p>
-                    )}
-
-                    {/* Mobile Action Buttons */}
-                    <div className="flex items-center justify-end gap-2 pt-1">
-                      {app.status === 'pending' && (
-                        <>
-                          <button
-                            onClick={() => handleApprove(app.id)}
-                            className="rounded-lg bg-pine px-3 py-1.5 text-xs font-medium text-white transition hover:bg-pine-deep"
-                          >
-                            Approve
-                          </button>
-                          <button
-                            onClick={() => openRejectDialog([app.id])}
-                            className="rounded-lg border border-rust/30 bg-rust-soft px-3 py-1.5 text-xs font-medium text-rust transition hover:bg-rust/20"
-                          >
-                            Reject
-                          </button>
-                        </>
-                      )}
-
-                      {app.status === 'approved' && app.cancellation_status === 'requested' && (
-                        <>
-                          <button
-                            onClick={() => handleConfirmCancellation(app.id)}
-                            className="rounded-lg bg-pine px-3 py-1.5 text-xs font-medium text-white transition hover:bg-pine-deep"
-                          >
-                            Confirm Cancel
-                          </button>
-                          <button
-                            onClick={() => openDeclineCancelDialog(app.id)}
-                            className="rounded-lg border border-rust/30 bg-rust-soft px-3 py-1.5 text-xs font-medium text-rust transition hover:bg-rust/20"
-                          >
-                            Keep Leave
-                          </button>
-                        </>
-                      )}
-
-                      {app.status === 'approved' && app.cancellation_status !== 'requested' && (
-                        <button
-                          onClick={() => openManagerCancelDialog(app.id)}
-                          className="rounded-lg border border-line bg-paper px-3 py-1.5 text-xs font-medium text-ink-soft transition hover:bg-rust-soft hover:text-rust"
-                        >
-                          Cancel Leave
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )
-              })
-            )}
-          </div>
-
-          {/* Footer Pagination matching dashboard exactly */}
-          <div className="flex items-center justify-between border-t border-line px-5 py-3.5">
-            <span className="text-xs sm:text-sm text-ink-soft">
-              {filteredApplications.length === 0
-                ? 'Showing 0 of 0 requests'
-                : `Showing ${paginatedApplications.length} of ${filteredApplications.length} requests`}
+          {/* 分页(Ant 风格:共 N 条 + 页码) */}
+          <div className="flex items-center justify-between border-t border-line px-5 py-3">
+            <span className="text-[13px] text-ink-soft">
+              {zh ? `共 ${filteredApplications.length} 条,每页 ${pageSize} 条` : `${filteredApplications.length} requests · ${pageSize} per page`}
             </span>
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={safeCurrentPage <= 1}
-                aria-label="Previous page"
-                className="flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-surface text-ink-soft transition hover:bg-paper hover:text-ink disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-surface disabled:hover:text-ink-soft"
+                aria-label={t('prevPage')}
+                className={`${pagerBtn} border-line bg-white text-ink-soft hover:border-pine hover:text-pine disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-line disabled:hover:text-ink-soft`}
               >
                 <ChevronLeftIcon className="h-4 w-4" />
               </button>
+              {pageList(totalPages, safeCurrentPage).map((n, i) =>
+                n === '…' ? (
+                  <span key={`e${i}`} className="px-1 text-ink-faint">…</span>
+                ) : (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setCurrentPage(n)}
+                    aria-current={n === safeCurrentPage ? 'page' : undefined}
+                    className={`${pagerBtn} ${n === safeCurrentPage ? 'border-pine text-pine' : 'border-transparent text-ink hover:text-pine'}`}
+                  >
+                    {n}
+                  </button>
+                ),
+              )}
               <button
                 type="button"
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={safeCurrentPage >= totalPages}
-                aria-label="Next page"
-                className="flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-surface text-ink-soft transition hover:bg-paper hover:text-ink disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-surface disabled:hover:text-ink-soft"
+                aria-label={t('nextPage')}
+                className={`${pagerBtn} border-line bg-white text-ink-soft hover:border-pine hover:text-pine disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-line disabled:hover:text-ink-soft`}
               >
                 <ChevronRightIcon className="h-4 w-4" />
               </button>
@@ -934,7 +620,7 @@ function DesktopApprove() {
           onClose={() => setRecordOpen(false)}
           onSaved={(name) => {
             setRecordOpen(false)
-            setNotice(`Leave recorded for ${name} (approved).`)
+            setNotice(zh ? `已为 ${name} 补录请假(已批准)。` : `Leave recorded for ${name} (approved).`)
             loadData()
           }}
         />
@@ -943,17 +629,17 @@ function DesktopApprove() {
       {/* ── Manager cancels an approved leave directly (any date) ── */}
       {managerCancelId && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4" onClick={() => !managerCancelBusy && setManagerCancelId(null)}>
-          <div className="w-full max-w-md rounded-xl border border-line bg-surface p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h2 className="font-display text-lg font-semibold text-ink">Cancel this approved leave?</h2>
+          <div className="w-full max-w-md rounded-lg border border-line bg-surface p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-base font-semibold text-ink">{zh ? '取消这条已批准的假?' : 'Cancel this approved leave?'}</h2>
             <p className="mt-1 text-sm text-ink-soft">
-              The days used will be returned to the employee&apos;s balance. This works even if the leave already started or is in the past.
+              {zh ? '扣除的天数会退回员工的余额。即使假期已经开始或已是过去的日期,也可以取消。' : "The days used will be returned to the employee's balance. This works even if the leave already started or is in the past."}
             </p>
             <textarea
               rows={3}
               maxLength={300}
               value={managerCancelReason}
               onChange={(e) => setManagerCancelReason(e.target.value)}
-              placeholder="Reason (optional)"
+              placeholder={zh ? '原因(选填)' : 'Reason (optional)'}
               className="field-input mt-3"
             />
             <div className="mt-4 flex justify-end gap-2">
@@ -962,14 +648,14 @@ function DesktopApprove() {
                 onClick={() => setManagerCancelId(null)}
                 className="rounded-lg bg-paper px-3 py-1.5 text-sm font-medium text-ink-soft ring-1 ring-line disabled:opacity-40"
               >
-                Never mind
+                {zh ? '再想想' : 'Never mind'}
               </button>
               <button
                 disabled={managerCancelBusy}
                 onClick={confirmManagerCancel}
                 className="rounded-lg bg-rust px-3 py-1.5 text-sm font-medium text-white disabled:opacity-40"
               >
-                {managerCancelBusy ? 'Cancelling...' : 'Cancel this leave'}
+                {managerCancelBusy ? (zh ? '取消中...' : 'Cancelling...') : t('aCancelLeave')}
               </button>
             </div>
           </div>
@@ -979,10 +665,10 @@ function DesktopApprove() {
       {/* ── Decline a cancellation request ── */}
       {declineCancelId && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4" onClick={() => !declineCancelBusy && setDeclineCancelId(null)}>
-          <div className="w-full max-w-md rounded-xl border border-line bg-surface p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h2 className="font-display text-lg font-semibold text-ink">Keep this leave as approved?</h2>
+          <div className="w-full max-w-md rounded-lg border border-line bg-surface p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-base font-semibold text-ink">{zh ? '保留这条假期?' : 'Keep this leave as approved?'}</h2>
             <p className="mt-1 text-sm text-ink-soft">
-              Give a reason. The employee will see it and the leave stays approved.
+              {zh ? '请填写理由,员工会看到,假期仍保持已批准。' : 'Give a reason. The employee will see it and the leave stays approved.'}
             </p>
             <textarea
               autoFocus
@@ -990,7 +676,7 @@ function DesktopApprove() {
               maxLength={300}
               value={declineCancelReason}
               onChange={(e) => setDeclineCancelReason(e.target.value)}
-              placeholder="e.g. Too many staff on leave that week already"
+              placeholder={zh ? '例如:那一周已经有太多同事休假' : 'e.g. Too many staff on leave that week already'}
               className="field-input mt-3"
             />
             <div className="mt-4 flex justify-end gap-2">
@@ -999,14 +685,14 @@ function DesktopApprove() {
                 onClick={() => setDeclineCancelId(null)}
                 className="rounded-lg bg-paper px-3 py-1.5 text-sm font-medium text-ink-soft ring-1 ring-line disabled:opacity-40"
               >
-                Cancel
+                {t('cancel')}
               </button>
               <button
                 disabled={declineCancelBusy || !declineCancelReason.trim()}
                 onClick={confirmDeclineCancel}
                 className="rounded-lg bg-rust px-3 py-1.5 text-sm font-medium text-white disabled:opacity-40"
               >
-                {declineCancelBusy ? 'Saving...' : 'Keep leave, decline cancellation'}
+                {declineCancelBusy ? (zh ? '保存中...' : 'Saving...') : (zh ? '保留假期,拒绝取消' : 'Keep leave, decline cancellation')}
               </button>
             </div>
           </div>
@@ -1016,12 +702,12 @@ function DesktopApprove() {
       {/* ── Reject reason dialog ── */}
       {rejectIds && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4" onClick={() => !rejectBusy && setRejectIds(null)}>
-          <div className="w-full max-w-md rounded-xl border border-line bg-surface p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-md rounded-lg border border-line bg-surface p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
             <h2 className="font-display text-lg font-semibold text-ink">
-              Reject {rejectIds.length > 1 ? `${rejectIds.length} applications` : 'application'}
+              {zh ? (rejectIds.length > 1 ? `拒绝 ${rejectIds.length} 条申请` : '拒绝申请') : `Reject ${rejectIds.length > 1 ? `${rejectIds.length} applications` : 'application'}`}
             </h2>
             <p className="mt-1 text-sm text-ink-soft">
-              Please give a reason. The employee will see it on their dashboard.
+              {zh ? '请填写拒绝理由,员工会在首页看到。' : 'Please give a reason. The employee will see it on their dashboard.'}
             </p>
             <textarea
               autoFocus
@@ -1029,7 +715,7 @@ function DesktopApprove() {
               maxLength={300}
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
-              placeholder="e.g. Too many staff on leave that week"
+              placeholder={zh ? '例如:那一周休假的人太多' : 'e.g. Too many staff on leave that week'}
               className="field-input mt-3"
             />
             <div className="mt-4 flex justify-end gap-2">
@@ -1038,14 +724,14 @@ function DesktopApprove() {
                 onClick={() => setRejectIds(null)}
                 className="rounded-lg bg-paper px-3 py-1.5 text-sm font-medium text-ink-soft ring-1 ring-line disabled:opacity-40"
               >
-                Cancel
+                {t('cancel')}
               </button>
               <button
                 disabled={rejectBusy || !rejectReason.trim()}
                 onClick={confirmReject}
                 className="rounded-lg bg-rust px-3 py-1.5 text-sm font-medium text-white disabled:opacity-40"
               >
-                {rejectBusy ? 'Rejecting...' : 'Reject'}
+                {rejectBusy ? (zh ? '处理中...' : 'Rejecting...') : t('aReject')}
               </button>
             </div>
           </div>
@@ -1055,14 +741,14 @@ function DesktopApprove() {
   )
 }
 
-// 手机(< md)用钉钉风格的新版页面;电脑(≥ md)保持原来的版面。
+// 手机/平板(< lg)用钉钉风格的手机版;电脑(≥ lg)用后台版。断点和 ManagerShell 一致。
 export default function ApprovePage() {
   return (
     <>
-      <div className="md:hidden">
+      <div className="lg:hidden">
         <MobileApprove />
       </div>
-      <div className="hidden md:block">
+      <div className="hidden lg:block">
         <DesktopApprove />
       </div>
     </>
