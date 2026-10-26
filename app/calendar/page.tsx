@@ -5,6 +5,9 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { toLocalDateStr, eachDay } from '@/lib/dateUtils'
 import ManagerShell from '@/components/ManagerShell'
+import PageHeader from '@/components/PageHeader'
+import { Avatar } from '@/components/employee/EmployeeShell'
+import { useLang, leaveTypeName } from '@/lib/lang'
 import { useEmployee } from '@/lib/useEmployee'
 import AuthStatus from '@/components/AuthStatus'
 
@@ -41,26 +44,25 @@ const LEAVE_TYPE_BG: Record<string, string> = {
 }
 
 const LEGEND = [
-  { key: 'annual', label: 'Annual' },
-  { key: 'medical', label: 'Medical' },
-  { key: 'maternity', label: 'Maternity' },
-  { key: 'paternity', label: 'Paternity' },
-  { key: 'unpaid', label: 'Unpaid' },
-  { key: 'holiday', label: 'Public Holiday' },
-]
+  { key: 'annual', label: 'legendAnnual' },
+  { key: 'medical', label: 'legendMedical' },
+  { key: 'maternity', label: 'legendMaternity' },
+  { key: 'paternity', label: 'legendPaternity' },
+  { key: 'unpaid', label: 'legendUnpaid' },
+  { key: 'holiday', label: 'calPublicHoliday' },
+] as const
 
-const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-const LEAVE_LABELS: Record<string, string> = {
-  annual: 'Annual Leave', medical: 'Medical Leave', maternity: 'Maternity Leave',
-  paternity: 'Paternity Leave', unpaid: 'Unpaid Leave',
-}
+const WEEKDAYS_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const WEEKDAYS_ZH = ['日', '一', '二', '三', '四', '五', '六']
 
 function DesktopCalendar() {
   const auth = useEmployee({ requireManager: true })
+  const { lang, t } = useLang()
+  const zh = lang === 'zh'
   const [currentDate, setCurrentDate] = useState(new Date())
   const [entriesByDate, setEntriesByDate] = useState<Record<string, CalendarEntry[]>>({})
   const [holidaysByDate, setHolidaysByDate] = useState<Record<string, string>>({})
-  // 手机版:点哪一天,下面就显示那一天"谁请假"(全名完整显示,不会被截断)
+  // 点哪一天,右边面板就显示那一天"谁请假"(全名完整显示,不会被截断)
   const [selectedKey, setSelectedKey] = useState<string | null>(toLocalDateStr(new Date()))
 
   useEffect(() => {
@@ -146,203 +148,176 @@ function DesktopCalendar() {
     return (firstNameOwners[first]?.size ?? 0) > 1 ? fullName : first
   }
 
-  const monthLabel = currentDate.toLocaleString('en-US', { month: 'long', year: 'numeric' })
+  const monthLabel = zh
+    ? `${year}年${month + 1}月`
+    : currentDate.toLocaleString('en-US', { month: 'long', year: 'numeric' })
   const todayKey = toLocalDateStr(new Date())
+  const weekdays = zh ? WEEKDAYS_ZH : WEEKDAYS_EN
 
-  // 手机版:被点选那一天的资料(只在当前显示的月份里才有效)
+  // 补齐最后一行,让表格的边框是完整的
+  while (cells.length % 7 !== 0) cells.push(null)
+
   const selectedInMonth = selectedKey !== null && selectedKey.slice(0, 7) === toLocalDateStr(firstDayOfMonth).slice(0, 7)
-  const selDate = selectedInMonth ? new Date(Number(selectedKey!.slice(0, 4)), Number(selectedKey!.slice(5, 7)) - 1, Number(selectedKey!.slice(8, 10))) : null
+  const selDate = selectedInMonth
+    ? new Date(Number(selectedKey!.slice(0, 4)), Number(selectedKey!.slice(5, 7)) - 1, Number(selectedKey!.slice(8, 10)))
+    : null
   const selEntries = selectedInMonth ? entriesByDate[selectedKey!] || [] : []
   const selHoliday = selectedInMonth ? holidaysByDate[selectedKey!] : undefined
 
+  const navBtn = 'flex h-8 w-8 items-center justify-center rounded-md border border-line bg-white text-ink-soft transition-colors hover:border-pine hover:text-pine'
+
   return (
     <ManagerShell>
-      <div className="space-y-5 pb-10">
-        <h1 className="font-display text-2xl font-semibold text-ink">Team Leave Calendar</h1>
+      <div className="mx-auto max-w-[1360px] space-y-4 pb-10">
+        <PageHeader title={t('calTitle')} subtitle={t('calSub')} />
 
-        {/* Month navigation */}
-        <div className="flex items-center justify-between panel py-2">
-          <button onClick={() => changeMonth(-1)} className="px-4 py-2 text-ink-soft hover:text-ink text-lg" aria-label="Previous month">‹</button>
-          <span className="font-display text-base font-semibold text-ink">{monthLabel}</span>
-          <button onClick={() => changeMonth(1)} className="px-4 py-2 text-ink-soft hover:text-ink text-lg" aria-label="Next month">›</button>
-        </div>
-
-        {/* ── Desktop: Grid calendar(显示名字) ─────────────────────── */}
-        <div className="hidden md:block panel">
-          <div className="grid grid-cols-7 gap-1 text-center text-xs text-ink-faint">
-            {WEEKDAYS.map((d) => (
-              <div key={d} className="py-1">{d}</div>
-            ))}
-          </div>
-          <div className="grid grid-cols-7 gap-1">
-            {cells.map((day, idx) => {
-              if (day === null) return <div key={idx} className="min-h-[64px]" />
-              const dateKey = toLocalDateStr(new Date(year, month, day))
-              const isToday = dateKey === todayKey
-              const holidayName = holidaysByDate[dateKey]
-              const entries = entriesByDate[dateKey] || []
-              return (
-                <div
-                  key={idx}
-                  className={`min-h-[64px] rounded-md border p-1 text-left ${isToday
-                    ? 'border-pine bg-pine-soft ring-1 ring-pine'
-                    : holidayName
-                      ? 'border-gold/40 bg-gold-soft'
-                      : 'border-line'
-                    }`}
+        <div className="grid grid-cols-[minmax(0,1fr)_300px] items-start gap-4">
+          {/* ── 月历 ── */}
+          <section className="overflow-hidden rounded-lg border border-line bg-white">
+            {/* 工具栏:左 月份切换,右 图例 */}
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-3">
+              <div className="flex items-center gap-2">
+                <button onClick={() => changeMonth(-1)} className={navBtn} aria-label="Previous month">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+                </button>
+                <button onClick={() => changeMonth(1)} className={navBtn} aria-label="Next month">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+                </button>
+                <button
+                  onClick={() => { setCurrentDate(new Date()); setSelectedKey(todayKey) }}
+                  className="h-8 rounded-md border border-line bg-white px-3 text-[13px] text-ink transition-colors hover:border-pine hover:text-pine"
                 >
-                  <p className={`text-xs ${isToday ? 'font-semibold text-pine-deep' : 'text-ink-faint'}`}>
-                    {day}
-                    {isToday && <span className="ml-1 text-[9px] font-medium uppercase tracking-wide">Today</span>}
-                  </p>
-                  <div className="mt-0.5 space-y-0.5">
-                    {holidayName && (
-                      <p className="truncate rounded bg-leave-holiday px-1 text-[10px] font-medium text-white">
-                        {holidayName}
-                      </p>
-                    )}
-                    {entries.slice(0, 2).map((e, i) => (
-                      <p
-                        key={i}
-                        title={`${e.full_name} · ${e.leave_type}${e.half_day_period ? ` (${e.half_day_period.toUpperCase()})` : ''}`}
-                        className={`truncate rounded px-1 text-[10px] text-white ${LEAVE_TYPE_BG[e.leave_type] || 'bg-ink-faint'}`}
-                      >
-                        {displayName(e.full_name)}
-                        {e.half_day_period ? ` (${e.half_day_period.toUpperCase()})` : ''}
-                      </p>
-                    ))}
-                    {entries.length > 2 && (
-                      <p className="text-[10px] text-ink-faint" title={entries.slice(2).map((e) => e.full_name).join(', ')}>
-                        +{entries.length - 2} more
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
+                  {t('calToday')}
+                </button>
+                <h2 className="ml-2 text-base font-semibold tabular-nums text-ink">{monthLabel}</h2>
+              </div>
+              <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-ink-soft">
+                {LEGEND.map((l) => (
+                  <span key={l.key} className="flex items-center gap-1.5">
+                    <span className={`h-2 w-2 rounded-full ${LEAVE_TYPE_BG[l.key]}`} />
+                    {t(l.label)}
+                  </span>
+                ))}
+              </div>
+            </div>
 
-        {/* ── Mobile: 日历格子(用小圆点代替名字)+ 点日期看详情 ──────── */}
-        <div className="space-y-3 md:hidden">
-          <div className="panel p-2">
-            <div className="grid grid-cols-7 gap-1 text-center text-xs text-ink-faint">
-              {WEEKDAYS.map((d) => (
-                <div key={d} className="py-1">{d}</div>
+            {/* 星期 */}
+            <div className="grid grid-cols-7 border-b border-line bg-[#FAFAFA] text-center text-[13px] text-ink-soft">
+              {weekdays.map((d, i) => (
+                <div key={d} className={`py-2 ${i === 0 || i === 6 ? 'text-ink-faint' : ''}`}>{d}</div>
               ))}
             </div>
-            <div className="grid grid-cols-7 gap-1">
+
+            {/* 日期格子 */}
+            <div className="grid grid-cols-7">
               {cells.map((day, idx) => {
-                if (day === null) return <div key={idx} className="h-14" />
+                const lastCol = idx % 7 === 6
+                const cellBase = `min-h-[112px] border-b border-line ${lastCol ? '' : 'border-r'}`
+                if (day === null) return <div key={idx} className={`${cellBase} bg-[#FAFAFA]/60`} />
                 const dateKey = toLocalDateStr(new Date(year, month, day))
                 const isToday = dateKey === todayKey
                 const isSelected = dateKey === selectedKey
                 const holidayName = holidaysByDate[dateKey]
                 const entries = entriesByDate[dateKey] || []
-
-                // 圆点:公假放第一个,然后是每个请假的人(颜色 = 假种)。最多 4 个位置,超过就显示 +N
-                const dots: string[] = []
-                if (holidayName) dots.push(LEAVE_TYPE_BG.holiday)
-                for (const e of entries) dots.push(LEAVE_TYPE_BG[e.leave_type] || 'bg-ink-faint')
-                const showAll = dots.length <= 4
-                const visible = showAll ? dots : dots.slice(0, 3)
-                const extra = dots.length - visible.length
-
+                const shown = entries.slice(0, holidayName ? 2 : 3)
+                const extra = entries.length - shown.length
                 return (
-                  <button
+                  <div
                     key={idx}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => setSelectedKey(dateKey)}
-                    aria-label={`${day}, ${entries.length} on leave${holidayName ? `, ${holidayName}` : ''}`}
-                    className={`flex h-14 flex-col items-center rounded-lg border pt-1.5 transition-colors ${isSelected
-                      ? 'border-pine bg-pine-soft ring-1 ring-pine'
-                      : isToday
-                        ? 'border-pine/60 bg-surface'
-                        : holidayName
-                          ? 'border-gold/40 bg-gold-soft'
-                          : 'border-line bg-surface'
-                      }`}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedKey(dateKey) } }}
+                    className={`${cellBase} cursor-pointer p-1.5 text-left transition-colors ${isSelected ? 'bg-pine-soft/60 shadow-[inset_0_0_0_1.5px_#1677FF]' : 'hover:bg-[#FAFAFA]'}`}
                   >
-                    <span className={`text-sm leading-none ${isToday ? 'font-bold text-pine-deep' : 'font-medium text-ink'}`}>{day}</span>
-                    <span className="mt-1.5 flex flex-wrap items-center justify-center gap-0.5 px-0.5">
-                      {visible.map((bg, i) => (
-                        <span key={i} className={`h-1.5 w-1.5 rounded-full ${bg}`} />
-                      ))}
-                      {extra > 0 && <span className="text-[10px] leading-none text-ink-faint">+{extra}</span>}
+                    <span className={`inline-flex h-6 min-w-[24px] items-center justify-center rounded-full px-1 text-[13px] tabular-nums ${isToday ? 'bg-pine font-semibold text-white' : 'text-ink'}`}>
+                      {day}
                     </span>
-                  </button>
+                    <div className="mt-1 space-y-0.5">
+                      {holidayName && (
+                        <p className="truncate rounded bg-st-pending-soft px-1.5 py-px text-[11px] font-medium text-st-pending-text" title={holidayName}>
+                          {holidayName}
+                        </p>
+                      )}
+                      {shown.map((e, i) => (
+                        <p
+                          key={i}
+                          title={`${e.full_name} · ${leaveTypeName(e.leave_type, lang)}${e.half_day_period ? ` (${e.half_day_period.toUpperCase()})` : ''}`}
+                          className={`truncate rounded px-1.5 py-px text-[11px] text-white ${LEAVE_TYPE_BG[e.leave_type] || 'bg-ink-faint'}`}
+                        >
+                          {displayName(e.full_name)}
+                          {e.half_day_period ? ` · ${e.half_day_period === 'am' ? (zh ? '上午' : 'AM') : (zh ? '下午' : 'PM')}` : ''}
+                        </p>
+                      ))}
+                      {extra > 0 && (
+                        <p className="px-1.5 text-[11px] text-pine">+{extra} {t('calMore')}</p>
+                      )}
+                    </div>
+                  </div>
                 )
               })}
             </div>
-          </div>
+          </section>
 
-          {/* 被点选那一天的详情:全名完整显示 */}
-          {selDate ? (
-            <div className="rounded-xl border border-line bg-surface p-4 shadow-sm">
-              <div className="flex items-baseline justify-between gap-2">
-                <p className="text-base font-semibold text-ink">
-                  {selDate.toLocaleDateString('en-MY', { weekday: 'long', day: 'numeric', month: 'long' })}
+          {/* ── 右侧:选中那一天的详情 ── */}
+          <aside className="sticky top-20 overflow-hidden rounded-lg border border-line bg-white">
+            <div className="border-b border-line px-5 py-3.5">
+              <h3 className="text-[15px] font-semibold text-ink">
+                {selDate
+                  ? selDate.toLocaleDateString(zh ? 'zh-CN' : 'en-MY', { month: 'long', day: 'numeric', weekday: 'long' })
+                  : (zh ? '点选日期查看' : 'Select a date')}
+              </h3>
+              {selDate && (
+                <p className="mt-0.5 text-[13px] text-ink-soft">
+                  {selEntries.length === 0 ? t('calNoOne') : zh ? `${selEntries.length} ${t('calOnLeave')}` : `${selEntries.length} ${t('calOnLeave')}`}
                 </p>
-                {selectedKey === todayKey && <span className="rounded-full bg-pine/15 px-2 py-0.5 text-xs font-medium text-pine">Today</span>}
-              </div>
-              <p className="mt-0.5 text-sm text-ink-soft">
-                {selEntries.length === 0 ? 'No one on leave' : `${selEntries.length} on leave`}
-              </p>
-
-              {selHoliday && (
-                <div className="mt-3 flex items-center gap-2 rounded-lg bg-gold-soft px-3 py-2">
-                  <span className="h-2 w-2 shrink-0 rounded-full bg-leave-holiday" />
-                  <span className="text-sm font-medium text-amber-800">{selHoliday}</span>
-                </div>
-              )}
-
-              {selEntries.length > 0 && (
-                <div className="mt-3 space-y-2">
-                  {selEntries.map((e, i) => (
-                    <div key={i} className="flex items-start gap-3 rounded-lg bg-paper px-3 py-2.5">
-                      <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${LEAVE_TYPE_BG[e.leave_type] || 'bg-ink-faint'}`} />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-ink">{e.full_name}</p>
-                        <p className="text-xs text-ink-soft">
-                          {LEAVE_LABELS[e.leave_type] || e.leave_type}
-                          {e.half_day_period && <span className="ml-1 font-medium">· {e.half_day_period.toUpperCase()} only</span>}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
               )}
             </div>
-          ) : (
-            <p className="rounded-xl border border-dashed border-line py-6 text-center text-sm text-ink-faint">
-              Tap a date to see who is on leave.
-            </p>
-          )}
+            <div className="max-h-[calc(100vh-14rem)] overflow-y-auto">
+              {!selDate && (
+                <p className="px-5 py-10 text-center text-[13px] text-ink-faint">
+                  {zh ? '点击左边的日期,查看当天谁休假。' : 'Click a date to see who is on leave.'}
+                </p>
+              )}
+              {selHoliday && (
+                <div className="flex items-center gap-2 border-b border-line bg-st-pending-soft px-5 py-2.5">
+                  <span className="h-2 w-2 shrink-0 rounded-full bg-leave-holiday" />
+                  <span className="text-[13px] font-medium text-st-pending-text">{selHoliday}</span>
+                </div>
+              )}
+              {selEntries.length > 0 && (
+                <ul className="divide-y divide-line">
+                  {selEntries.map((e, i) => (
+                    <li key={i} className="flex items-center gap-3 px-5 py-3">
+                      <Avatar name={e.full_name} size={32} />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-ink">{e.full_name}</p>
+                        <p className="flex items-center gap-1.5 text-xs text-ink-soft">
+                          <span className={`h-1.5 w-1.5 rounded-full ${LEAVE_TYPE_BG[e.leave_type] || 'bg-ink-faint'}`} />
+                          {leaveTypeName(e.leave_type, lang)}
+                          {e.half_day_period && <span>· {e.half_day_period === 'am' ? t('am') : t('pm')}</span>}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </aside>
         </div>
-
-        {/* Legend */}
-        <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-ink-soft">
-          {LEGEND.map((l) => (
-            <span key={l.key} className="flex items-center gap-1.5">
-              <span className={`h-2 w-2 rounded-full ${LEAVE_TYPE_BG[l.key]}`} />
-              {l.label}
-            </span>
-          ))}
-        </div>
-
-        <p className="text-xs text-ink-faint">Showing approved leave and enabled public holidays only.</p>
       </div>
     </ManagerShell>
   )
 }
 
-// 手机(< md)用钉钉风格的新版页面;电脑(≥ md)保持原来的版面。
+// 手机/平板(< lg)用手机版;电脑(≥ lg)用后台版。断点和 ManagerShell 一致。
 export default function TeamCalendarPage() {
   return (
     <>
-      <div className="md:hidden">
+      <div className="lg:hidden">
         <MobileCalendar />
       </div>
-      <div className="hidden md:block">
+      <div className="hidden lg:block">
         <DesktopCalendar />
       </div>
     </>
