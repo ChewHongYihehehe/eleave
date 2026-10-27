@@ -18,6 +18,8 @@ import {
 import ManagerShell from '@/components/ManagerShell'
 import { useEmployee } from '@/lib/useEmployee'
 import AuthStatus from '@/components/AuthStatus'
+import PageHeader, { DefaultButton } from '@/components/PageHeader'
+import { UnderlineTabs } from '@/components/employee/EmployeeShell'
 
 // 报表页,两个视图:
 //  · Month(预设)—— 给算薪水的人用:选一个月,全职看"谁请了什么假、几天、哪几号",
@@ -97,6 +99,36 @@ function Stat({ label, tone, children }: { label: string; tone?: 'rust'; childre
     <div className={`rounded-md px-1 py-1.5 text-center ${rust ? 'bg-rust-soft/40' : 'bg-paper'}`}>
       <p className={`text-xs ${rust ? 'text-rust' : 'text-ink-faint'}`}>{label}</p>
       <p className={`mt-0.5 text-base font-semibold tabular-nums ${rust ? 'text-rust' : 'text-ink'}`}>{children}</p>
+    </div>
+  )
+}
+
+// 数据卡:白底扁平,颜色只留在左边的小圆点和(需要强调时)数字上
+function StatCard({
+  label, value, unit, hint, dot, tag, valueClass = 'text-ink',
+}: {
+  label: string
+  value: ReactNode
+  unit?: string
+  hint?: ReactNode
+  dot: string
+  tag?: ReactNode
+  valueClass?: string
+}) {
+  return (
+    <div className="rounded-lg border border-line bg-white p-5">
+      <div className="flex items-center justify-between gap-2">
+        <span className="flex items-center gap-2 text-[13px] text-ink-soft">
+          <span className={`h-2 w-2 rounded-full ${dot}`} />
+          {label}
+        </span>
+        {tag}
+      </div>
+      <p className={`mt-3 text-[28px] font-semibold leading-none tabular-nums ${valueClass}`}>
+        {value}
+        {unit && <span className="ml-1.5 text-[13px] font-normal text-ink-soft">{unit}</span>}
+      </p>
+      {hint && <div className="mt-3 text-xs text-ink-faint">{hint}</div>}
     </div>
   )
 }
@@ -236,14 +268,20 @@ function DesktopReports() {
 
   if (auth.status !== 'ready') return <AuthStatus state={auth} />
 
-  const th = 'px-3.5 py-3 text-[13px] font-medium text-ink-faint whitespace-nowrap bg-paper border-b border-line'
+  const th = 'px-3.5 py-2.5 text-[13px] font-medium text-ink-soft whitespace-nowrap bg-[#FAFAFA] border-b border-line'
   const tdNum = 'px-3.5 py-3 text-center tabular-nums text-sm text-ink-soft align-middle'
-  const emptyBox = 'rounded-xl border border-line py-10 text-center text-sm text-ink-faint bg-surface'
-  const notice = 'rounded-xl border border-amber-200 bg-amber-50/80 p-3.5 text-sm text-amber-800'
+  const emptyBox = 'rounded-lg border border-line py-10 text-center text-[13px] text-ink-faint bg-white'
+  const notice = 'rounded-md border border-st-pending/25 bg-st-pending-soft px-4 py-2.5 text-[13px] text-st-pending-text'
+  // 下拉框 / 方形小按钮 / 过滤标签:和审批页同一套尺寸(32px 高)
+  const sel = 'h-8 rounded-md border border-line bg-white px-2.5 text-[13px] text-ink transition-colors hover:border-pine focus:border-pine focus:outline-none focus:ring-2 focus:ring-pine/15'
+  const sqBtn = 'flex h-8 w-8 items-center justify-center rounded-md border border-line bg-white text-ink-soft transition-colors hover:border-pine hover:text-pine'
+  const chip = 'rounded-md px-3 py-1 text-[13px] transition-colors'
+  const chipOn = 'bg-pine-soft font-medium text-pine'
+  const chipOff = 'bg-paper text-ink-soft hover:text-ink'
 
   const name = (e: ReportEmployee) => (
     <div className="flex items-center gap-2">
-      <span className="font-semibold text-ink">{e.full_name}</span>
+      <span className="font-medium text-ink">{e.full_name}</span>
       {e.employee_no && (
         <span className="text-xs text-ink-faint font-normal">#{e.employee_no}</span>
       )}
@@ -261,192 +299,143 @@ function DesktopReports() {
 
   return (
     <ManagerShell>
-      <div className="space-y-6 pb-12">
-        {/* ── 标题 + 导出操作 ── */}
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="font-display text-2xl font-semibold text-ink">Reports</h1>
-            <p className="mt-0.5 text-sm text-ink-soft">
-              {view === 'month' ? `Monthly leave & work hours breakdown · ${monthLabel}` : `Annual leave balance ledger · ${year}`}
-            </p>
-          </div>
-          <div className="flex shrink-0 gap-2 print:hidden">
-            <button onClick={handleExport} disabled={loading} className="btn-ghost shadow-xs">Export CSV</button>
-            <button onClick={() => window.print()} disabled={loading} className="btn-ghost hidden sm:inline-flex shadow-xs">Print</button>
-          </div>
-        </div>
-
-        {/* ── 控制列 (钉钉企业排版: 日期控制 + 全职兼职分离) ── */}
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between print:hidden">
-          <div className="flex flex-wrap items-center gap-2.5">
-            {/* 月度 / 年度 视图切换 */}
-            <div className="flex rounded-xl border border-line bg-paper p-0.5 shadow-2xs">
-              {([['month', 'Month View'], ['year', 'Year Balances']] as [View, string][]).map(([key, label]) => (
-                <button
-                  key={key}
-                  onClick={() => setView(key)}
-                  className={`rounded-lg px-3.5 py-1.5 text-sm font-semibold transition-all ${
-                    view === key ? 'bg-pine text-white shadow-xs' : 'text-ink-soft hover:text-ink'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
+      <div className="mx-auto max-w-[1360px] space-y-4 pb-12">
+        <PageHeader
+          title="Reports"
+          subtitle={view === 'month' ? `Monthly leave & work hours breakdown · ${monthLabel}` : `Annual leave balance ledger · ${year}`}
+          actions={
+            <div className="flex gap-2 print:hidden">
+              <DefaultButton onClick={handleExport} disabled={loading}>Export CSV</DefaultButton>
+              <DefaultButton onClick={() => window.print()} disabled={loading}>Print</DefaultButton>
             </div>
+          }
+        />
 
-            {/* 日期选择器 */}
+        {/* ── 视图标签 + 筛选条(和审批页同一种白色卡片)── */}
+        <div className="overflow-hidden rounded-lg border border-line bg-white print:hidden">
+          <div className="border-b border-line px-3">
+            <UnderlineTabs
+              scroll
+              value={view}
+              onChange={setView}
+              items={[
+                { key: 'month' as const, label: 'Month View' },
+                { key: 'year' as const, label: 'Year Balances' },
+              ]}
+            />
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
+            {/* 日期选择 */}
             {view === 'month' ? (
-              <div className="flex items-center gap-1.5">
-                <button onClick={() => shiftMonth(-1)} className="btn-ghost px-2.5 py-1.5" aria-label="Previous month">‹</button>
-                <select value={month} onChange={(e) => setMonth(Number(e.target.value))} className="field-input py-1.5 text-sm font-medium">
+              <div className="flex items-center gap-2">
+                <button onClick={() => shiftMonth(-1)} className={sqBtn} aria-label="Previous month">‹</button>
+                <select value={month} onChange={(e) => setMonth(Number(e.target.value))} className={`${sel} w-32`}>
                   {MONTH_NAMES.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
                 </select>
-                <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="field-input py-1.5 w-24 text-sm font-medium">
+                <select value={year} onChange={(e) => setYear(Number(e.target.value))} className={`${sel} w-24`}>
                   {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
                 </select>
-                <button onClick={() => shiftMonth(1)} className="btn-ghost px-2.5 py-1.5" aria-label="Next month">›</button>
+                <button onClick={() => shiftMonth(1)} className={sqBtn} aria-label="Next month">›</button>
                 {!isCurrentMonth && (
-                  <button onClick={goToday} className="btn-ghost py-1.5 text-xs font-medium">This month</button>
+                  <button onClick={goToday} className="ml-1 text-[13px] text-pine transition-colors hover:text-pine-deep">This month</button>
                 )}
               </div>
             ) : (
-              <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="field-input py-1.5 w-32 text-sm font-medium">
+              <select value={year} onChange={(e) => setYear(Number(e.target.value))} className={`${sel} w-32`}>
                 {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
               </select>
             )}
-          </div>
 
-          {/* 全职 / 兼职 分离控件 (满足用户强烈要求的分类切换) */}
-          <div className="flex rounded-xl border border-line bg-paper p-0.5 shadow-2xs">
-            <button
-              onClick={() => setScope('ft')}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
-                scope === 'ft' ? 'bg-white text-ink shadow-xs border border-line' : 'text-ink-soft hover:text-ink'
-              }`}
-            >
-              <span>Full-time</span>
-              <span className={`rounded-full px-1.5 py-0.2 text-[10px] ${scope === 'ft' ? 'bg-pine/10 text-pine' : 'bg-gray-200/70 text-gray-500'}`}>
-                {ftCount}
-              </span>
-            </button>
-            <button
-              onClick={() => setScope('pt')}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
-                scope === 'pt' ? 'bg-white text-ink shadow-xs border border-line' : 'text-ink-soft hover:text-ink'
-              }`}
-            >
-              <span>Part-time</span>
-              <span className={`rounded-full px-1.5 py-0.2 text-[10px] ${scope === 'pt' ? 'bg-pine/10 text-pine' : 'bg-gray-200/70 text-gray-500'}`}>
-                {ptCount}
-              </span>
-            </button>
-            <button
-              onClick={() => setScope('all')}
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
-                scope === 'all' ? 'bg-white text-ink shadow-xs border border-line' : 'text-ink-soft hover:text-ink'
-              }`}
-            >
-              All staff
-            </button>
+            {/* 全职 / 兼职(和顶栏的中/EN 切换同一种样式)*/}
+            <div className="flex rounded-md bg-paper p-0.5 text-[13px]">
+              {([
+                ['ft', 'Full-time', ftCount],
+                ['pt', 'Part-time', ptCount],
+                ['all', 'All staff', null],
+              ] as [typeof scope, string, number | null][]).map(([key, label, n]) => (
+                <button
+                  key={key}
+                  onClick={() => setScope(key)}
+                  className={`flex items-center gap-1.5 rounded px-3 py-1 font-medium transition-colors ${scope === key ? 'bg-white text-pine shadow-xs' : 'text-ink-soft hover:text-ink'}`}
+                >
+                  {label}
+                  {n !== null && <span className={`text-xs tabular-nums ${scope === key ? 'text-pine' : 'text-ink-faint'}`}>{n}</span>}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
-        {loadError && <p className="rounded-xl bg-rust-soft p-4 text-sm text-rust">{loadError}</p>}
+        {loadError && <p className="rounded-md border border-rust/30 bg-rust-soft px-4 py-2.5 text-[13px] text-rust">{loadError}</p>}
 
         {loading ? (
           <p className="py-16 text-center text-sm text-ink-soft">Loading report data...</p>
         ) : view === 'month' ? (
           <>
-            {/* ── 核心指标摘要面板 (钉钉高对比度卡片) ── */}
+            {/* ── 核心指标(白底扁平;只有"无薪假 > 0"时数字变红)── */}
             {scope === 'ft' && (
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-                {/* 无薪假: 扣薪重点，红底强调 */}
-                <div className="rounded-xl border border-red-200 bg-gradient-to-br from-[#FFF1F0] to-white p-4 shadow-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-red-700">Unpaid Leave</span>
-                    <span className="rounded-md bg-red-100 px-2 py-0.5 text-[11px] font-bold text-red-700">Deduct pay</span>
-                  </div>
-                  <p className="mt-2 text-2xl font-bold tabular-nums text-rust">
-                    {fmt(t.unpaid)} <span className="text-sm font-normal text-red-600">days</span>
-                  </p>
-                  <p className="mt-1 text-xs text-red-600/80">{t.unpaidStaff} staff affected</p>
-                </div>
-
-                {/* 带薪病假 */}
-                <div className="rounded-xl border border-amber-200 bg-gradient-to-br from-[#FFFBE6] to-white p-4 shadow-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-amber-800">Medical Leave (MC)</span>
-                    <span className="rounded-md bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-700">Paid</span>
-                  </div>
-                  <p className="mt-2 text-2xl font-bold tabular-nums text-amber-800">
-                    {fmt(t.medical)} <span className="text-sm font-normal text-amber-700">days</span>
-                  </p>
-                  <p className="mt-1 text-xs text-amber-700/80">{monthReport.fullTime.filter((r) => r.medical > 0).length} staff</p>
-                </div>
-
-                {/* 年假 */}
-                <div className="rounded-xl border border-blue-200 bg-gradient-to-br from-[#E6F4FF] to-white p-4 shadow-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-blue-800">Annual Leave</span>
-                    <span className="rounded-md bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-700">Working days</span>
-                  </div>
-                  <p className="mt-2 text-2xl font-bold tabular-nums text-blue-800">
-                    {fmt(t.annual)} <span className="text-sm font-normal text-blue-700">days</span>
-                  </p>
-                  <p className="mt-1 text-xs text-blue-700/80">{monthReport.fullTime.filter((r) => r.annual > 0).length} staff</p>
-                </div>
-
-                {/* 产假 / 陪产假 */}
-                <div className="rounded-xl border border-purple-200 bg-gradient-to-br from-[#F9F0FF] to-white p-4 shadow-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-purple-800">Maternity / Paternity</span>
-                  </div>
-                  <p className="mt-2 text-2xl font-bold tabular-nums text-purple-800">
-                    {fmt(t.other)} <span className="text-sm font-normal text-purple-700">days</span>
-                  </p>
-                  <p className="mt-1 text-xs text-purple-700/80">{monthReport.fullTime.filter((r) => r.other > 0).length} staff</p>
-                </div>
+              <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                <StatCard
+                  label="Unpaid Leave" dot="bg-st-rejected" unit="days"
+                  value={fmt(t.unpaid)}
+                  valueClass={t.unpaid > 0 ? 'text-st-rejected-text' : 'text-ink'}
+                  tag={<span className="badge badge-rejected">Deduct pay</span>}
+                  hint={`${t.unpaidStaff} staff affected`}
+                />
+                <StatCard
+                  label="Medical Leave (MC)" dot="bg-st-pending" unit="days"
+                  value={fmt(t.medical)}
+                  tag={<span className="badge badge-approved">Paid</span>}
+                  hint={`${monthReport.fullTime.filter((r) => r.medical > 0).length} staff`}
+                />
+                <StatCard
+                  label="Annual Leave" dot="bg-brand" unit="days"
+                  value={fmt(t.annual)}
+                  hint={`${monthReport.fullTime.filter((r) => r.annual > 0).length} staff · working days`}
+                />
+                <StatCard
+                  label="Maternity / Paternity" dot="bg-leave-paternity" unit="days"
+                  value={fmt(t.other)}
+                  hint={`${monthReport.fullTime.filter((r) => r.other > 0).length} staff`}
+                />
               </div>
             )}
 
             {scope === 'pt' && (
-              <div className="grid grid-cols-2 gap-3.5">
-                <div className="rounded-xl border border-blue-200 bg-gradient-to-br from-[#E6F4FF] to-white p-5 shadow-xs">
-                  <p className="text-xs font-semibold text-blue-800">Total Part-time Hours</p>
-                  <p className="mt-2 text-3xl font-bold tabular-nums text-ink">
-                    {fmt(t.hours)} <span className="text-base font-normal text-ink-soft">hours</span>
-                  </p>
-                  <p className="mt-1 text-xs text-ink-faint">{monthReport.partTime.length} staff enrolled</p>
-                </div>
-                <div className="rounded-xl border border-amber-200 bg-[#FFFBE6] p-5 shadow-xs">
-                  <p className="text-xs font-semibold text-amber-800">Missing Hours Warning</p>
-                  <p className="mt-2 text-3xl font-bold tabular-nums text-amber-700">
-                    {monthReport.missingHoursCount} <span className="text-base font-normal text-amber-600">staff</span>
-                  </p>
-                  <Link href="/work-hours" className="mt-1 inline-flex items-center text-xs font-semibold text-brand hover:underline">
-                    Enter hours in Work Hours &rarr;
-                  </Link>
-                </div>
+              <div className="grid grid-cols-2 gap-4">
+                <StatCard
+                  label="Total Part-time Hours" dot="bg-brand" unit="hours"
+                  value={fmt(t.hours)}
+                  hint={`${monthReport.partTime.length} staff enrolled`}
+                />
+                <StatCard
+                  label="Missing Hours" dot="bg-st-pending" unit="staff"
+                  value={monthReport.missingHoursCount}
+                  valueClass={monthReport.missingHoursCount > 0 ? 'text-st-pending-text' : 'text-ink'}
+                  hint={<Link href="/work-hours" className="text-pine transition-colors hover:text-pine-deep">Enter hours in Work Hours &rarr;</Link>}
+                />
               </div>
             )}
 
             {scope === 'all' && (
-              <div className="grid grid-cols-3 gap-3.5">
-                <div className="rounded-xl border border-red-200 bg-[#FFF1F0] p-4 shadow-xs">
-                  <p className="text-xs font-semibold text-red-700">Unpaid Leave</p>
-                  <p className="mt-1.5 text-2xl font-bold tabular-nums text-rust">{fmt(t.unpaid)} <span className="text-xs font-normal">days</span></p>
-                  <p className="text-xs text-red-600/80">{t.unpaidStaff} staff</p>
-                </div>
-                <div className="rounded-xl border border-blue-200 bg-[#E6F4FF] p-4 shadow-xs">
-                  <p className="text-xs font-semibold text-blue-800">Medical Leave (MC)</p>
-                  <p className="mt-1.5 text-2xl font-bold tabular-nums text-blue-900">{fmt(t.medical)} <span className="text-xs font-normal">days</span></p>
-                  <p className="text-xs text-blue-700/80">Paid leave</p>
-                </div>
-                <div className="rounded-xl border border-purple-200 bg-[#F9F0FF] p-4 shadow-xs">
-                  <p className="text-xs font-semibold text-purple-800">Part-time Hours</p>
-                  <p className="mt-1.5 text-2xl font-bold tabular-nums text-purple-900">{fmt(t.hours)} <span className="text-xs font-normal">hrs</span></p>
-                  <p className="text-xs text-purple-700/80">{monthReport.partTime.length} staff</p>
-                </div>
+              <div className="grid grid-cols-3 gap-4">
+                <StatCard
+                  label="Unpaid Leave" dot="bg-st-rejected" unit="days"
+                  value={fmt(t.unpaid)}
+                  valueClass={t.unpaid > 0 ? 'text-st-rejected-text' : 'text-ink'}
+                  hint={`${t.unpaidStaff} staff`}
+                />
+                <StatCard
+                  label="Medical Leave (MC)" dot="bg-st-pending" unit="days"
+                  value={fmt(t.medical)}
+                  hint="Paid leave"
+                />
+                <StatCard
+                  label="Part-time Hours" dot="bg-brand" unit="hrs"
+                  value={fmt(t.hours)}
+                  hint={`${monthReport.partTime.length} staff`}
+                />
               </div>
             )}
 
@@ -455,20 +444,20 @@ function DesktopReports() {
               <p className={notice}>
                 <strong>{monthReport.pendingCount}</strong> leave application{monthReport.pendingCount > 1 ? 's' : ''} in {monthLabel} {monthReport.pendingCount > 1 ? 'are' : 'is'} still
                 pending approval and <strong>not counted</strong> below.{' '}
-                <Link href="/approve" className="font-semibold underline print:hidden">Review in Approvals</Link>
+                <Link href="/approve" className="font-medium text-pine hover:text-pine-deep print:hidden">Review in Approvals</Link>
               </p>
             )}
             {monthReport.cancellationCount > 0 && (
               <p className={notice}>
                 <strong>{monthReport.cancellationCount}</strong> approved leave {monthReport.cancellationCount > 1 ? 'have' : 'has'} a cancellation request waiting for a decision.
                 {monthReport.cancellationCount > 1 ? ' They are' : ' It is'} still counted below until decided.{' '}
-                <Link href="/approve" className="font-semibold underline print:hidden">Review in Approvals</Link>
+                <Link href="/approve" className="font-medium text-pine hover:text-pine-deep print:hidden">Review in Approvals</Link>
               </p>
             )}
             {monthReport.missingHoursCount > 0 && (scope === 'pt' || scope === 'all') && (
               <p className={notice}>
                 <strong>{monthReport.missingHoursCount}</strong> part-time staff have no hours entered for {monthLabel}.{' '}
-                <Link href="/work-hours" className="font-semibold underline print:hidden">Enter hours</Link>
+                <Link href="/work-hours" className="font-medium text-pine hover:text-pine-deep print:hidden">Enter hours</Link>
               </p>
             )}
 
@@ -477,7 +466,7 @@ function DesktopReports() {
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
-                    <h2 className="font-display text-base font-semibold text-ink">Full-time staff</h2>
+                    <h2 className="text-[15px] font-semibold text-ink">Full-time staff</h2>
                     <span className="text-xs text-ink-faint">({ftRows.length})</span>
                   </div>
 
@@ -485,26 +474,20 @@ function DesktopReports() {
                   <div className="flex items-center gap-1.5 print:hidden">
                     <button
                       onClick={() => setFilter('all')}
-                      className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
-                        filter === 'all' ? 'bg-ink text-white shadow-xs' : 'bg-paper text-ink-soft hover:bg-gray-200'
-                      }`}
+                      className={`${chip} ${filter === 'all' ? chipOn : chipOff}`}
                     >
                       All ({monthReport.fullTime.length})
                     </button>
                     <button
                       onClick={() => setFilter('leave')}
-                      className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
-                        filter === 'leave' ? 'bg-pine text-white shadow-xs' : 'bg-paper text-ink-soft hover:bg-gray-200'
-                      }`}
+                      className={`${chip} ${filter === 'leave' ? chipOn : chipOff}`}
                     >
                       With leave ({monthReport.fullTime.filter((r) => r.annual + r.medical + r.unpaid + r.other > 0 || r.lines.length > 0).length})
                     </button>
                     {t.unpaid > 0 && (
                       <button
                         onClick={() => setFilter('unpaid')}
-                        className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
-                          filter === 'unpaid' ? 'bg-rust text-white shadow-xs' : 'border border-rust/30 bg-rust-soft/40 text-rust hover:bg-rust-soft'
-                        }`}
+                        className={`${chip} ${filter === 'unpaid' ? chipOn : chipOff}`}
                       >
                         Unpaid ({monthReport.fullTime.filter((r) => r.unpaid > 0).length})
                       </button>
@@ -512,9 +495,7 @@ function DesktopReports() {
                     {t.medical > 0 && (
                       <button
                         onClick={() => setFilter('mc')}
-                        className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
-                          filter === 'mc' ? 'bg-amber-600 text-white shadow-xs' : 'border border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100'
-                        }`}
+                        className={`${chip} ${filter === 'mc' ? chipOn : chipOff}`}
                       >
                         MC ({monthReport.fullTime.filter((r) => r.medical > 0).length})
                       </button>
@@ -527,14 +508,14 @@ function DesktopReports() {
                     {filter === 'all' ? 'No full-time staff.' : 'No staff matched the selected filter.'}
                   </p>
                 ) : (
-                  <div className="overflow-hidden rounded-xl border border-line bg-surface shadow-xs">
+                  <div className="overflow-hidden rounded-lg border border-line bg-white">
                     <table className="w-full text-sm">
                       <thead>
                         <tr>
                           <th className={`text-left ${th}`}>Employee</th>
                           <th className={`text-center ${th}`}>Annual</th>
                           <th className={`text-center ${th}`}>MC</th>
-                          <th className={`text-center ${th} text-rust`}>Unpaid</th>
+                          <th className={`text-center ${th}`}>Unpaid</th>
                           <th className={`text-center ${th}`}>Mat. / Pat.</th>
                           <th className={`text-left ${th}`}>Details & Dates</th>
                         </tr>
@@ -547,14 +528,14 @@ function DesktopReports() {
                           return (
                             <tr
                               key={r.emp.id}
-                              className={`transition-colors hover:bg-paper/40 ${!hasLeave ? 'opacity-70 hover:opacity-100' : ''}`}
+                              className={`transition-colors hover:bg-[#FAFAFA] ${!hasLeave ? 'opacity-70 hover:opacity-100' : ''}`}
                             >
                               <td className="px-3.5 py-3.5 whitespace-nowrap align-middle">
                                 {name(r.emp)}
                               </td>
                               <td className={tdNum}>
                                 {r.annual > 0 ? (
-                                  <span className="inline-flex items-center rounded-md border border-blue-100 bg-blue-50 px-2.5 py-0.5 font-bold text-blue-800">
+                                  <span className="inline-flex min-w-[2rem] justify-center rounded bg-brand-soft px-2 py-0.5 font-medium text-brand-deep">
                                     {fmt(r.annual)}
                                   </span>
                                 ) : (
@@ -563,7 +544,7 @@ function DesktopReports() {
                               </td>
                               <td className={tdNum}>
                                 {r.medical > 0 ? (
-                                  <span className="inline-flex items-center rounded-md border border-amber-200 bg-amber-50 px-2.5 py-0.5 font-bold text-amber-800">
+                                  <span className="inline-flex min-w-[2rem] justify-center rounded bg-st-pending-soft px-2 py-0.5 font-medium text-st-pending-text">
                                     {fmt(r.medical)}
                                   </span>
                                 ) : (
@@ -572,7 +553,7 @@ function DesktopReports() {
                               </td>
                               <td className={tdNum}>
                                 {r.unpaid > 0 ? (
-                                  <span className="inline-flex items-center rounded-md border border-red-200 bg-red-50 px-2.5 py-0.5 font-bold text-rust">
+                                  <span className="inline-flex min-w-[2rem] justify-center rounded bg-st-rejected-soft px-2 py-0.5 font-medium text-st-rejected-text">
                                     {fmt(r.unpaid)}
                                   </span>
                                 ) : (
@@ -581,7 +562,7 @@ function DesktopReports() {
                               </td>
                               <td className={tdNum}>
                                 {r.other > 0 ? (
-                                  <span className="inline-flex items-center rounded-md border border-purple-200 bg-purple-50 px-2.5 py-0.5 font-bold text-purple-800">
+                                  <span className="inline-flex min-w-[2rem] justify-center rounded bg-[#F9F0FF] px-2 py-0.5 font-medium text-[#531DAB]">
                                     {fmt(r.other)}
                                   </span>
                                 ) : (
@@ -602,7 +583,7 @@ function DesktopReports() {
                                   </ul>
                                 )}
                                 {r.cancellationRequested && (
-                                  <span className="mt-1 inline-block rounded-md bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700 ring-1 ring-amber-200">
+                                  <span className="mt-1 inline-block badge badge-pending">
                                     Cancellation requested
                                   </span>
                                 )}
@@ -612,11 +593,11 @@ function DesktopReports() {
                         })}
                       </tbody>
                       <tfoot>
-                        <tr className="bg-paper font-semibold text-ink border-t-2 border-line">
+                        <tr className="bg-[#FAFAFA] font-medium text-ink border-t border-line">
                           <td className="px-3.5 py-3.5">Total ({ftRows.length})</td>
                           <td className={tdNum}>{fmt(t.annual)}</td>
                           <td className={tdNum}>{fmt(t.medical)}</td>
-                          <td className={`${tdNum} text-rust font-bold`}>{fmt(t.unpaid)}</td>
+                          <td className={`${tdNum} text-st-rejected-text font-medium`}>{fmt(t.unpaid)}</td>
                           <td className={tdNum}>{fmt(t.other)}</td>
                           <td />
                         </tr>
@@ -635,10 +616,10 @@ function DesktopReports() {
               <div className="space-y-3 pt-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <h2 className="font-display text-base font-semibold text-ink">Part-time staff</h2>
+                    <h2 className="text-[15px] font-semibold text-ink">Part-time staff</h2>
                     <span className="text-xs text-ink-faint">({monthReport.partTime.length})</span>
                   </div>
-                  <Link href="/work-hours" className="text-xs font-semibold text-brand hover:underline">
+                  <Link href="/work-hours" className="text-[13px] text-pine transition-colors hover:text-pine-deep">
                     Enter hours in Work Hours &rarr;
                   </Link>
                 </div>
@@ -646,7 +627,7 @@ function DesktopReports() {
                 {monthReport.partTime.length === 0 ? (
                   <p className={emptyBox}>No part-time staff.</p>
                 ) : (
-                  <div className="overflow-hidden rounded-xl border border-line bg-surface shadow-xs">
+                  <div className="overflow-hidden rounded-lg border border-line bg-white">
                     <table className="w-full text-sm">
                       <thead>
                         <tr>
@@ -656,15 +637,15 @@ function DesktopReports() {
                       </thead>
                       <tbody className="divide-y divide-line">
                         {monthReport.partTime.map((r) => (
-                          <tr key={r.emp.id} className="transition-colors hover:bg-paper/40">
+                          <tr key={r.emp.id} className="transition-colors hover:bg-[#FAFAFA]">
                             <td className="px-3.5 py-3 font-medium text-ink">{name(r.emp)}</td>
                             <td className="px-3.5 py-3 text-right tabular-nums">
                               {r.hours === null ? (
-                                <span className="rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-700">
+                                <span className="badge badge-pending">
                                   Not entered
                                 </span>
                               ) : (
-                                <span className="rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-sm font-bold text-emerald-800">
+                                <span className="text-sm font-medium text-ink">
                                   {fmt(r.hours)} h
                                 </span>
                               )}
@@ -673,9 +654,9 @@ function DesktopReports() {
                         ))}
                       </tbody>
                       <tfoot>
-                        <tr className="bg-paper font-semibold text-ink border-t-2 border-line">
+                        <tr className="bg-[#FAFAFA] font-medium text-ink border-t border-line">
                           <td className="px-3.5 py-3">Total</td>
-                          <td className="px-3.5 py-3 text-right tabular-nums text-base font-bold text-ink">{fmt(t.hours)} h</td>
+                          <td className="px-3.5 py-3 text-right tabular-nums font-medium text-ink">{fmt(t.hours)} h</td>
                         </tr>
                       </tfoot>
                     </table>
@@ -691,32 +672,26 @@ function DesktopReports() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
-                    <h2 className="font-display text-base font-semibold text-ink">Full-time staff · Annual Ledger</h2>
+                    <h2 className="text-[15px] font-semibold text-ink">Full-time staff · Annual Ledger</h2>
                     <span className="text-xs text-ink-faint">({ftYearRows.length})</span>
                   </div>
 
                   <div className="flex items-center gap-1.5 print:hidden">
                     <button
                       onClick={() => setYearFilter('all')}
-                      className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
-                        yearFilter === 'all' ? 'bg-ink text-white shadow-xs' : 'bg-paper text-ink-soft hover:bg-gray-200'
-                      }`}
+                      className={`${chip} ${yearFilter === 'all' ? chipOn : chipOff}`}
                     >
                       All ({yearReport.fullTime.length})
                     </button>
                     <button
                       onClick={() => setYearFilter('overdrawn')}
-                      className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
-                        yearFilter === 'overdrawn' ? 'bg-rust text-white shadow-xs' : 'border border-rust/30 bg-rust-soft/40 text-rust hover:bg-rust-soft'
-                      }`}
+                      className={`${chip} ${yearFilter === 'overdrawn' ? chipOn : chipOff}`}
                     >
                       Overdrawn ({yearReport.fullTime.filter((r) => r.alBalance < 0).length})
                     </button>
                     <button
                       onClick={() => setYearFilter('mc')}
-                      className={`rounded-lg px-3 py-1 text-xs font-semibold transition-all ${
-                        yearFilter === 'mc' ? 'bg-amber-600 text-white shadow-xs' : 'border border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100'
-                      }`}
+                      className={`${chip} ${yearFilter === 'mc' ? chipOn : chipOff}`}
                     >
                       With MC ({yearReport.fullTime.filter((r) => r.mcTaken > 0).length})
                     </button>
@@ -726,7 +701,7 @@ function DesktopReports() {
                 {ftYearRows.length === 0 ? (
                   <p className={emptyBox}>No staff matched the selected filter.</p>
                 ) : (
-                  <div className="overflow-hidden rounded-xl border border-line bg-surface shadow-xs">
+                  <div className="overflow-hidden rounded-lg border border-line bg-white">
                     <table className="w-full text-sm">
                       <thead>
                         <tr>
@@ -742,7 +717,7 @@ function DesktopReports() {
                       </thead>
                       <tbody className="divide-y divide-line">
                         {ftYearRows.map((r) => (
-                          <tr key={r.emp.id} className={`transition-colors hover:bg-paper/40 ${r.alBalance < 0 ? 'bg-red-50/40' : ''}`}>
+                          <tr key={r.emp.id} className={`transition-colors hover:bg-[#FAFAFA] ${r.alBalance < 0 ? 'bg-st-rejected-soft/50' : ''}`}>
                             <td className="px-3.5 py-3 font-medium text-ink whitespace-nowrap">{name(r.emp)}</td>
                             <td className={tdNum}>
                               {fmt(r.alEntitled)}
@@ -752,18 +727,18 @@ function DesktopReports() {
                             <td className={tdNum}>
                               {fmt(r.alTaken)}
                               {r.alPending > 0 && (
-                                <span className="block text-xs font-normal text-amber-600">
+                                <span className="block text-xs font-normal text-st-pending-text">
                                   ({fmt(r.alPending)} pending)
                                 </span>
                               )}
                             </td>
                             <td className={tdNum}>
                               {r.alBalance < 0 ? (
-                                <span className="inline-flex items-center rounded-md border border-red-200 bg-red-100 px-2 py-0.5 font-bold text-rust">
+                                <span className="inline-flex items-center badge badge-rejected">
                                   {fmt(r.alBalance)} (Overdrawn)
                                 </span>
                               ) : (
-                                <span className="font-bold text-pine">
+                                <span className="font-medium text-pine">
                                   {fmt(r.alBalance)}
                                 </span>
                               )}
@@ -787,7 +762,7 @@ function DesktopReports() {
               <div className="space-y-3 pt-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <h2 className="font-display text-base font-semibold text-ink">Part-time staff · Annual Summary</h2>
+                    <h2 className="text-[15px] font-semibold text-ink">Part-time staff · Annual Summary</h2>
                     <span className="text-xs text-ink-faint">({yearReport.partTime.length})</span>
                   </div>
                 </div>
@@ -795,7 +770,7 @@ function DesktopReports() {
                 {yearReport.partTime.length === 0 ? (
                   <p className={emptyBox}>No part-time staff.</p>
                 ) : (
-                  <div className="overflow-hidden rounded-xl border border-line bg-surface shadow-xs">
+                  <div className="overflow-hidden rounded-lg border border-line bg-white">
                     <table className="w-full text-sm">
                       <thead>
                         <tr>
@@ -806,10 +781,10 @@ function DesktopReports() {
                       </thead>
                       <tbody className="divide-y divide-line">
                         {yearReport.partTime.map((r) => (
-                          <tr key={r.emp.id} className="transition-colors hover:bg-paper/40">
+                          <tr key={r.emp.id} className="transition-colors hover:bg-[#FAFAFA]">
                             <td className="px-3.5 py-3 font-medium text-ink">{name(r.emp)}</td>
                             <td className={tdNum}>{r.monthsEntered}</td>
-                            <td className="px-3.5 py-3 text-right tabular-nums font-bold text-ink">{fmt(r.totalHours)} h</td>
+                            <td className="px-3.5 py-3 text-right tabular-nums font-medium text-ink">{fmt(r.totalHours)} h</td>
                           </tr>
                         ))}
                       </tbody>
@@ -825,14 +800,14 @@ function DesktopReports() {
   )
 }
 
-// 手机(< md)用钉钉风格的新版页面;电脑(≥ md)保持原来的版面。
+// 手机/平板(< lg)用钉钉风格的新版页面;电脑(≥ lg,和 ManagerShell 一致)。
 export default function ReportsPage() {
   return (
     <>
-      <div className="md:hidden">
+      <div className="lg:hidden">
         <MobileReports />
       </div>
-      <div className="hidden md:block">
+      <div className="hidden lg:block">
         <DesktopReports />
       </div>
     </>
