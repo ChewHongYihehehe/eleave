@@ -592,8 +592,14 @@ export default function DashboardPage() {
   const today = toLocalDateStr(new Date())
   const initials = getInitials(employee.full_name)
 
-  // ── Stat cards: Keep original 4 leave types (Annual, Medical, Maternity, Paternity)
-  // Wording formatted as "18 days of 25 days this year" (no more "entitled")
+  // ── Balance calculations for DingTalk asset cards ──────────────────────────
+  const annualBase = getEntitlementForYear(employee, 'annual', thisYear) ?? 0
+  const annualCarry = Number(employee.annual_leave_carry_forward) || 0
+  const annualTotal = annualBase + annualCarry
+  const annualTaken = taken['annual'] || 0
+  const annualRemaining = Math.max(0, annualTotal - annualTaken)
+  const annualPercent = annualTotal > 0 ? Math.min(100, Math.round((annualTaken / annualTotal) * 100)) : 0
+
   const statCards = (
     [
       { type: 'annual', label: 'Annual Leave', Icon: CalendarGridIcon, accent: 'text-pine bg-pine-soft' },
@@ -603,17 +609,25 @@ export default function DashboardPage() {
     ] as const
   ).map(({ type, label, Icon, accent }) => {
     const base = getEntitlementForYear(employee, type, thisYear) ?? 0
-    const total = type === 'annual' ? base + (Number(employee.annual_leave_carry_forward) || 0) : base
-    const remaining = Math.max(0, total - (taken[type] || 0))
+    const total = type === 'annual' ? base + annualCarry : base
+    const used = taken[type] || 0
+    const remaining = Math.max(0, total - used)
     const formattedRemaining =
       remaining.toFixed(0) === remaining.toFixed(1)
         ? remaining.toFixed(0)
         : remaining.toFixed(1)
-    return { label, remaining: formattedRemaining, total, Icon, accent }
+    const percent = total > 0 ? Math.min(100, Math.round((used / total) * 100)) : 0
+    return { type, label, remaining: formattedRemaining, remainingNum: remaining, total, used, percent, Icon, accent }
   })
 
+  // ── Tab count statistics ───────────────────────────────────────────────────
+  const countAll = applications.length
+  const countPending = applications.filter((a) => a.status === 'pending').length
+  const countApproved = applications.filter((a) => a.status === 'approved' && a.cancellation_status !== 'requested').length
+  const countRejected = applications.filter((a) => a.status === 'rejected').length
+  const countCancelled = applications.filter((a) => a.status === 'cancelled' || a.cancellation_status === 'requested').length
+
   // ── Filtered & Paginated Applications ───────────────────────────────────────
-  // Includes separate tabs: All, Pending, Approved, Rejected, and Cancelled
   const filteredApps = applications.filter((app) => {
     if (filterTab === 'pending') return app.status === 'pending'
     if (filterTab === 'approved') return app.status === 'approved' && app.cancellation_status !== 'requested'
@@ -636,50 +650,78 @@ export default function DashboardPage() {
       </div>
 
       {/* ════════════════════════════════════════════
-          DESKTOP LAYOUT  (shown on screens >= md)
+          DESKTOP LAYOUT (shown on screens >= md)
+          钉钉专业版: 7:3 左右分栏工作台
           ════════════════════════════════════════════ */}
       <div className="hidden md:block">
-        {/* 电脑版顶部栏:白底通栏,左 logo,右 申请 + 用户菜单(和负责人电脑版一致) */}
-        <header className="sticky top-0 z-30 border-b border-line bg-white">
-          <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
-            <div className="flex items-center gap-2.5">
-              <img src="/logo.png" alt="Puro" width={32} height={32} className="h-8 w-8 shrink-0 rounded-lg" />
-              <span className="text-base font-semibold tracking-tight text-ink">eLeave</span>
-            </div>
+        {/* 电脑版顶部导航栏: 白底纯净、精细 1px 下边框、右侧操作与用户 */}
+        <header className="sticky top-0 z-30 border-b border-line bg-white shadow-2xs">
+          <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-6">
             <div className="flex items-center gap-3">
-              <button onClick={() => { setModalOpen(true); setFormError('') }}
-                className="inline-flex items-center gap-1.5 rounded-md bg-pine px-4 py-2 text-sm font-medium text-white transition hover:bg-pine-deep focus:outline-none focus:ring-2 focus:ring-pine/30">
+              <img src="/logo.png" alt="Logo" width={32} height={32} className="h-8 w-8 shrink-0 rounded-lg shadow-xs" />
+              <div className="flex items-center gap-2">
+                <span className="text-base font-semibold tracking-tight text-ink">eLeave</span>
+                <span className="rounded bg-pine-soft px-2 py-0.5 text-xs font-medium text-pine">员工工作台</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => { setModalOpen(true); setFormError('') }}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-pine px-4 py-2 text-sm font-medium text-white shadow-xs transition hover:bg-pine-deep focus:outline-none focus:ring-2 focus:ring-pine/20"
+              >
                 <PlusIcon className="h-4 w-4" /> Request Leave
               </button>
+
               <div className="relative" ref={userMenuRef}>
-                <button type="button" onClick={(e) => { e.stopPropagation(); setUserMenuOpen(v => !v) }}
-                  className="flex items-center gap-2 rounded-md py-1 pl-1 pr-2 transition hover:bg-paper focus:outline-none">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-pine text-xs font-semibold text-white">{initials}</div>
-                  <span className="text-sm font-medium text-ink">{employee.full_name}</span>
-                  <ChevronDownIcon className="h-4 w-4 text-ink-faint ml-0.5" />
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setUserMenuOpen((v) => !v) }}
+                  className="flex items-center gap-2 rounded-lg border border-line bg-surface py-1 pl-1.5 pr-2.5 transition hover:bg-paper focus:outline-none"
+                >
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-pine text-xs font-semibold text-white">
+                    {initials}
+                  </div>
+                  <span className="text-xs font-medium text-ink">{employee.full_name}</span>
+                  <ChevronDownIcon className="h-3.5 w-3.5 text-ink-faint" />
                 </button>
+
                 {userMenuOpen && (
-                  <div className="absolute right-0 z-40 mt-1.5 w-64 rounded-lg border border-line bg-surface p-2 shadow-lg" onClick={e => e.stopPropagation()}>
-                    <div className="mb-1 flex flex-col gap-0.5">
-                      <button onClick={() => { setUserMenuOpen(false); router.push('/change-password') }}
-                        className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-ink-soft transition-colors hover:bg-paper hover:text-ink">
-                        <KeyIcon className="h-4 w-4 text-ink-faint" /> Change Password
-                      </button>
-                      <button onClick={() => { setUserMenuOpen(false); router.push('/notifications') }}
-                        className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-ink-soft transition-colors hover:bg-paper hover:text-ink">
-                        <BellIcon className="h-4 w-4 text-ink-faint" /> Telegram Notifications
-                      </button>
-                      <button onClick={handleLogout}
-                        className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-ink-soft transition-colors hover:bg-rust-soft hover:text-rust">
-                        <LogoutIcon className="h-4 w-4 text-ink-faint" /> Log Out
-                      </button>
-                    </div>
-                    <div className="flex items-center gap-3 rounded-xl border border-line bg-paper px-3 py-2.5 mt-1">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-pine text-xs font-semibold text-white">{initials}</div>
+                  <div
+                    className="absolute right-0 z-40 mt-1.5 w-64 rounded-xl border border-line bg-surface p-1.5 shadow-lg"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="flex items-center gap-3 rounded-lg border border-line/60 bg-paper/60 px-3 py-2.5 mb-1">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-pine text-xs font-semibold text-white">
+                        {initials}
+                      </div>
                       <div className="min-w-0 text-left">
                         <p className="truncate text-sm font-medium text-ink">{employee.full_name}</p>
-                        <p className="text-xs text-ink-faint capitalize">{employee.employment_type || 'Employee'}</p>
+                        <p className="text-xs text-ink-faint">
+                          {employee.employee_no ? `#${employee.employee_no} · ` : ''}{employee.employment_type || 'Employee'}
+                        </p>
                       </div>
+                    </div>
+                    <div className="flex flex-col gap-0.5">
+                      <button
+                        onClick={() => { setUserMenuOpen(false); router.push('/change-password') }}
+                        className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-ink-soft transition-colors hover:bg-paper hover:text-ink"
+                      >
+                        <KeyIcon className="h-4 w-4 text-ink-faint" /> Change Password
+                      </button>
+                      <button
+                        onClick={() => { setUserMenuOpen(false); router.push('/notifications') }}
+                        className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-ink-soft transition-colors hover:bg-paper hover:text-ink"
+                      >
+                        <BellIcon className="h-4 w-4 text-ink-faint" /> Telegram Notifications
+                      </button>
+                      <div className="my-1 border-t border-line" />
+                      <button
+                        onClick={handleLogout}
+                        className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-rust transition-colors hover:bg-rust-soft"
+                      >
+                        <LogoutIcon className="h-4 w-4 text-rust" /> Log Out
+                      </button>
                     </div>
                   </div>
                 )}
@@ -688,324 +730,508 @@ export default function DashboardPage() {
           </div>
         </header>
 
-        <div className="mx-auto max-w-6xl px-6 py-6 space-y-5 pb-16">
+        {/* ── 主体工作台 (7:3 栅格) ── */}
+        <div className="mx-auto max-w-7xl px-6 py-6 pb-20">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
 
-          {/* ── "You have updates" banner ── */}
-          {unseenCount > 0 && !noticeDismissed && (
-            <div className="flex items-center justify-between gap-3 rounded-xl border border-gold/40 bg-gold-soft px-4 py-3 text-sm text-st-pending-text">
-              <span>You have {unseenCount} update{unseenCount > 1 ? 's' : ''} on your leave application{unseenCount > 1 ? 's' : ''} below.</span>
-              <button onClick={() => setNoticeDismissed(true)} className="shrink-0 text-xs font-medium underline decoration-dotted hover:no-underline">Dismiss</button>
-            </div>
-          )}
+            {/* ══ 左侧主要区域 (8 栏 / 约 67%) ══ */}
+            <div className="space-y-6 lg:col-span-8">
 
-          {/* ── 欢迎卡片(蓝色渐变,和负责人电脑版的工作台一致)── */}
-          <section className="rounded-xl px-7 py-6 text-white" style={{ background: 'linear-gradient(120deg, #1677FF 0%, #4096FF 100%)' }}>
-            <h1 className="text-2xl font-semibold tracking-tight">Hi, {employee.full_name.split(' ')[0]}</h1>
-            <p className="mt-1 text-sm text-blue-100">
-              {employee.employee_no ? `#${employee.employee_no} · ` : ''}{years.toFixed(1)} years of service
-            </p>
-          </section>
-
-          {loadError && (
-            <div className="rounded-xl border border-rust/30 bg-rust-soft px-4 py-3 text-sm text-rust">{loadError}</div>
-          )}
-
-          {/* ── 4 Stat Cards ── */}
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            {statCards.map(({ label, remaining, total, Icon, accent }) => (
-              <div key={label} className="rounded-xl border border-line bg-surface p-5 shadow-sm transition hover:shadow-md">
-                <div className="flex items-start justify-between">
-                  <span className="text-xs sm:text-sm font-medium text-ink-soft">{label}</span>
-                  <div className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${accent}`}><Icon className="h-5 w-5" /></div>
-                </div>
-                <div className="mt-3.5 flex items-baseline">
-                  <span className="text-3xl font-bold tracking-tight text-ink sm:text-4xl">{remaining}</span>
-                  <span className="ml-1.5 text-sm font-normal text-ink-soft">days</span>
-                </div>
-                <p className="mt-1 text-xs text-ink-soft">of {total} days this year</p>
-              </div>
-            ))}
-          </div>
-
-          {/* ── Upcoming Public Holidays (desktop) ── */}
-          {upcomingHolidays.length > 0 && (
-            <div className="rounded-xl border border-line bg-surface shadow-sm overflow-hidden">
-              <div className="border-b border-line px-5 py-4">
-                <h2 className="text-base font-semibold text-ink">Upcoming Public Holidays</h2>
-                <p className="mt-0.5 text-xs text-ink-soft">Next {upcomingHolidays.length} upcoming holiday{upcomingHolidays.length > 1 ? 's' : ''}</p>
-              </div>
-              <div className="divide-y divide-line">
-                {upcomingHolidays.map((h) => {
-                  const d = new Date(h.holiday_date + 'T00:00:00')
-                  const isToday = h.holiday_date === today
-                  return (
-                    <div key={h.holiday_date} className="flex items-center gap-3.5 px-5 py-3.5 transition hover:bg-paper/40">
-                      <div className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl border border-line bg-paper">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-ink-faint">
-                          {d.toLocaleDateString('en-MY', { month: 'short' })}
+              {/* 1. 钉钉标准员工身份名片栏 (取代原先巨大粗暴的渐变Banner) */}
+              <div className="rounded-xl border border-line bg-surface p-5 shadow-xs">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-3.5">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-pine to-pine-deep text-base font-bold text-white shadow-xs">
+                      {initials}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h1 className="text-lg font-semibold tracking-tight text-ink">
+                          {employee.full_name}
+                        </h1>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                          在职
                         </span>
-                        <span className="text-sm font-bold text-ink">{d.getDate()}</span>
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-ink">{h.name}</p>
-                        <p className="mt-0.5 text-xs text-ink-faint">
-                          {d.toLocaleDateString('en-MY', { weekday: 'long' })}
-                          {isToday && <span className="ml-2 font-semibold text-st-pending-text">· Today</span>}
-                        </p>
+                      <p className="mt-0.5 text-xs text-ink-faint">
+                        {employee.employee_no ? <span className="font-mono text-ink-soft font-medium">#{employee.employee_no}</span> : null}
+                        {employee.employee_no ? ' · ' : ''}
+                        <span className="capitalize">{employee.employment_type?.replace('_', ' ') || 'Full Time'}</span>
+                        {' · '}
+                        <span>{years.toFixed(1)} 年司龄</span>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 self-end sm:self-auto border-t sm:border-t-0 border-line/60 pt-3 sm:pt-0">
+                    <div className="rounded-lg bg-paper px-3 py-1.5 text-right">
+                      <p className="text-[11px] text-ink-faint">今日日期</p>
+                      <p className="font-mono text-xs font-semibold text-ink">{today}</p>
+                    </div>
+                    <button
+                      onClick={() => { setModalOpen(true); setFormError('') }}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-pine-soft px-3.5 py-2 text-xs font-semibold text-pine transition hover:bg-pine hover:text-white"
+                    >
+                      <PlusIcon className="h-3.5 w-3.5" /> 发起请假
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* ── 有更新提示通知条 ── */}
+              {unseenCount > 0 && !noticeDismissed && (
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-gold/40 bg-gold-soft px-4 py-3 text-xs font-medium text-st-pending-text shadow-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gold text-white text-[11px] font-bold">!</span>
+                    <span>你有 {unseenCount} 笔请假申请有最新审批变动。</span>
+                  </div>
+                  <button onClick={() => setNoticeDismissed(true)} className="text-xs underline decoration-dotted hover:no-underline">
+                    我知道了
+                  </button>
+                </div>
+              )}
+
+              {loadError && (
+                <div className="rounded-xl border border-rust/30 bg-rust-soft px-4 py-3 text-xs text-rust">{loadError}</div>
+              )}
+
+              {/* 2. 假期额度看板 (主次分级 + 年假精细进度条) */}
+              <div className="rounded-xl border border-line bg-surface p-5 shadow-xs">
+                <div className="mb-4 flex items-center justify-between border-b border-line pb-3">
+                  <div>
+                    <h2 className="text-sm font-semibold text-ink">假期额度看板 ({thisYear})</h2>
+                    <p className="mt-0.5 text-xs text-ink-faint">年假与各类带薪假资产明细</p>
+                  </div>
+                  <span className="rounded-md bg-paper px-2 py-1 text-[11px] font-medium text-ink-soft">
+                    法定计算口径
+                  </span>
+                </div>
+
+                {/* 年假核心主资产高亮条 */}
+                <div className="rounded-xl border border-pine/20 bg-gradient-to-r from-pine-soft/40 to-surface p-4 mb-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-pine uppercase tracking-wider">Annual Leave · 年假</span>
+                        {annualCarry > 0 && (
+                          <span className="rounded bg-white px-1.5 py-0.5 text-[10px] font-medium text-pine border border-pine/30">
+                            含结转 {annualCarry} 天
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-1 flex items-baseline gap-1.5">
+                        <span className="text-3xl font-bold tracking-tight text-ink font-mono">{annualRemaining.toFixed(1).replace(/\.0$/, '')}</span>
+                        <span className="text-xs font-medium text-ink-soft">天剩余可用</span>
+                        <span className="text-xs text-ink-faint">/ 共 {annualTotal} 天额度</span>
                       </div>
                     </div>
-                  )
-                })}
+
+                    <div className="flex items-center gap-4 text-right">
+                      <div className="text-right">
+                        <p className="text-[11px] text-ink-faint">已休天数</p>
+                        <p className="font-mono text-sm font-semibold text-ink">{annualTaken} 天</p>
+                      </div>
+                      <div className="h-8 w-px bg-line/80" />
+                      <div className="text-right">
+                        <p className="text-[11px] text-ink-faint">额度使用率</p>
+                        <p className="font-mono text-sm font-semibold text-pine">{annualPercent}%</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 进度条 */}
+                  <div className="mt-3">
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-line/60">
+                      <div
+                        className="h-full rounded-full bg-pine transition-all duration-500"
+                        style={{ width: `${annualPercent}%` }}
+                      />
+                    </div>
+                    <div className="mt-1.5 flex justify-between text-[11px] text-ink-faint">
+                      <span>已用 {annualTaken} 天</span>
+                      <span>剩余 {annualRemaining.toFixed(1).replace(/\.0$/, '')} 天</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 次要假期网格 (病假 / 产假 / 陪产假) */}
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  {statCards.filter((c) => c.type !== 'annual').map(({ label, remaining, total, used, percent, Icon, accent }) => (
+                    <div key={label} className="rounded-lg border border-line bg-paper/40 p-3.5 transition hover:border-line hover:bg-surface">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-ink-soft">{label}</span>
+                        <div className={`grid h-7 w-7 place-items-center rounded-lg ${accent}`}>
+                          <Icon className="h-4 w-4" />
+                        </div>
+                      </div>
+                      <div className="mt-2 flex items-baseline gap-1">
+                        <span className="text-xl font-bold tracking-tight text-ink font-mono">{remaining}</span>
+                        <span className="text-xs text-ink-faint">/ {total} 天</span>
+                      </div>
+                      <div className="mt-2">
+                        <div className="h-1 w-full overflow-hidden rounded-full bg-line/60">
+                          <div
+                            className="h-full rounded-full bg-ink-faint"
+                            style={{ width: `${percent}%` }}
+                          />
+                        </div>
+                        <p className="mt-1 text-[10px] text-ink-faint">已休 {used} 天</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* 3. 我的申请记录表 (剔除冗余姓名列，增加钉钉状态标签与筛选计数) */}
+              <div className="rounded-xl border border-line bg-surface shadow-xs overflow-hidden">
+                {/* 标题栏与状态筛选 Tab */}
+                <div className="border-b border-line p-5">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <h2 className="text-base font-semibold text-ink">我的请假申请</h2>
+                      <p className="mt-0.5 text-xs text-ink-faint">查看个人请假申请审批进度及历史单据</p>
+                    </div>
+
+                    {/* Segmented Status Tabs 带计数 */}
+                    <div className="inline-flex flex-wrap rounded-lg border border-line bg-paper p-1 gap-0.5">
+                      {[
+                        { key: 'all' as const, label: '全部', count: countAll },
+                        { key: 'pending' as const, label: '待审批', count: countPending },
+                        { key: 'approved' as const, label: '已通过', count: countApproved },
+                        { key: 'rejected' as const, label: '已驳回', count: countRejected },
+                        { key: 'cancelled' as const, label: '已撤销', count: countCancelled },
+                      ].map(({ key, label, count }) => (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => { setFilterTab(key); setCurrentPage(1) }}
+                          className={`rounded-md px-2.5 py-1 text-xs font-medium transition ${
+                            filterTab === key
+                              ? 'bg-surface text-pine font-semibold shadow-2xs'
+                              : 'text-ink-soft hover:text-ink'
+                          }`}
+                        >
+                          {label} <span className="font-mono text-[11px] opacity-80">({count})</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 钉钉专业表格视图 (去除个人名片重复列) */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead>
+                      <tr className="border-b border-line bg-paper/60 text-xs font-medium text-ink-soft">
+                        <th className="py-3 pl-6 pr-4">请假类型 / 事由</th>
+                        <th className="py-3 px-4">请假周期</th>
+                        <th className="py-3 px-4 text-center">时长</th>
+                        <th className="py-3 px-4">审批状态</th>
+                        <th className="py-3 pl-4 pr-6 text-right">操作</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-line">
+                      {paginatedApps.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="py-12 text-center text-xs text-ink-faint">
+                            <div className="flex flex-col items-center justify-center gap-1.5">
+                              <span className="text-2xl">📋</span>
+                              <p className="text-sm font-medium text-ink-soft">该分类下暂无请假单据</p>
+                              <button
+                                onClick={() => { setModalOpen(true); setFormError('') }}
+                                className="mt-1 text-xs font-medium text-pine hover:underline"
+                              >
+                                + 立即发起请假申请
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
+                        paginatedApps.map((app) => {
+                          const isUpcomingApproved =
+                            app.status === 'approved' &&
+                            app.cancellation_status === 'none' &&
+                            app.start_date > today
+
+                          return (
+                            <tr key={app.id} className="transition hover:bg-paper/40">
+                              {/* 1. 请假类型与事由 */}
+                              <td className="py-3.5 pl-6 pr-4">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium text-ink">
+                                    {LEAVE_TYPE_LABELS[app.leave_type] || app.leave_type}
+                                  </span>
+                                  {app.is_half_day && app.half_day_period && (
+                                    <span className="rounded bg-paper px-1.5 py-0.5 text-[10px] font-medium text-ink-soft">
+                                      半天 · {app.half_day_period.toUpperCase()}
+                                    </span>
+                                  )}
+                                </div>
+                                {app.remarks && (
+                                  <p className="mt-0.5 line-clamp-1 text-xs text-ink-faint" title={app.remarks}>
+                                    备注: {app.remarks}
+                                  </p>
+                                )}
+                                {app.mc_attachment_path && (
+                                  <button
+                                    onClick={() => handleViewMc(app.mc_attachment_path as string)}
+                                    className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-pine hover:underline"
+                                  >
+                                    📎 查看病假条 (MC)
+                                  </button>
+                                )}
+                                {!app.mc_attachment_path && app.leave_type === 'medical' && (app.status === 'pending' || app.status === 'approved') && (
+                                  <button
+                                    onClick={() => handleAttachMcClick(app.id)}
+                                    disabled={attachingId === app.id}
+                                    className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-ink-soft underline hover:text-ink disabled:opacity-50"
+                                  >
+                                    {attachingId === app.id ? '上传中...' : '+ 补交病假条 (MC)'}
+                                  </button>
+                                )}
+                              </td>
+
+                              {/* 2. 请假时间 */}
+                              <td className="py-3.5 px-4 whitespace-nowrap text-xs text-ink-soft">
+                                <div className="font-medium text-ink">
+                                  {formatLeaveDates(app.start_date, app.end_date, app.remarks)}
+                                </div>
+                                <p className="mt-0.5 text-[11px] text-ink-faint">
+                                  {app.start_date === app.end_date ? app.start_date : `${app.start_date} ~ ${app.end_date}`}
+                                </p>
+                              </td>
+
+                              {/* 3. 请假时长 */}
+                              <td className="py-3.5 px-4 whitespace-nowrap text-center">
+                                <span className="font-mono font-semibold text-ink text-sm">
+                                  {app.total_days}
+                                </span>
+                                <span className="text-xs text-ink-faint ml-1">天</span>
+                              </td>
+
+                              {/* 4. 审批状态 */}
+                              <td className="py-3.5 px-4 whitespace-nowrap">
+                                <StatusBadge
+                                  status={app.status}
+                                  cancellationStatus={app.cancellation_status}
+                                />
+                                {app.status === 'approved' && app.cancellation_status === 'requested' && (
+                                  <p className="mt-1 text-[10px] text-amber-700 font-medium">
+                                    等待负责人确认撤销
+                                  </p>
+                                )}
+                                {app.status === 'approved' && app.cancellation_status === 'none' && app.cancellation_decision_reason && (
+                                  <p className="mt-1 text-[10px] text-rust font-medium">
+                                    撤销已驳回: {app.cancellation_decision_reason}
+                                  </p>
+                                )}
+                                {app.status === 'cancelled' && app.cancellation_decision_reason && (
+                                  <p className="mt-1 text-[10px] text-ink-faint">
+                                    原因: {app.cancellation_decision_reason}
+                                  </p>
+                                )}
+                                {app.status === 'rejected' && app.remarks && (
+                                  <p className="mt-1 text-[10px] text-rust font-medium">
+                                    驳回理由: {app.remarks}
+                                  </p>
+                                )}
+                              </td>
+
+                              {/* 5. 操作 */}
+                              <td className="py-3.5 pl-4 pr-6 text-right relative">
+                                <div className="inline-flex items-center justify-end gap-2">
+                                  {app.status === 'pending' && (
+                                    <button
+                                      onClick={() => handleCancel(app.id)}
+                                      className="rounded-md border border-rust/30 bg-rust-soft px-2.5 py-1 text-xs font-medium text-rust transition hover:bg-rust/20"
+                                    >
+                                      撤回申请
+                                    </button>
+                                  )}
+
+                                  {isUpcomingApproved && (
+                                    <button
+                                      onClick={() => handleRequestCancellation(app.id)}
+                                      className="rounded-md border border-gold/40 bg-gold-soft px-2.5 py-1 text-xs font-medium text-st-pending-text transition hover:bg-gold/30"
+                                    >
+                                      申请取消
+                                    </button>
+                                  )}
+
+                                  {app.status === 'approved' && app.cancellation_status === 'requested' && (
+                                    <button
+                                      onClick={() => handleWithdrawCancellation(app.id)}
+                                      className="rounded-md border border-line bg-paper px-2.5 py-1 text-xs font-medium text-ink-soft transition hover:bg-line/40"
+                                    >
+                                      放弃取消
+                                    </button>
+                                  )}
+
+                                  {/* 更多动作下拉菜单 */}
+                                  <div className="relative">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        setActiveMenuId(activeMenuId === app.id ? null : app.id)
+                                      }}
+                                      className="rounded-md p-1.5 text-ink-faint transition hover:bg-paper hover:text-ink"
+                                      title="更多"
+                                    >
+                                      <MoreHorizontalIcon className="h-4 w-4" />
+                                    </button>
+
+                                    {activeMenuId === app.id && (
+                                      <div
+                                        className="absolute right-0 z-20 mt-1 w-44 rounded-xl border border-line bg-surface py-1 text-left shadow-lg"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <div className="px-3 py-1.5 text-[11px] text-ink-faint border-b border-line/60">
+                                          提交于 {new Date(app.created_at).toLocaleDateString('zh-CN')}
+                                        </div>
+                                        {app.status === 'pending' && (
+                                          <button
+                                            onClick={() => { setActiveMenuId(null); handleCancel(app.id) }}
+                                            className="flex w-full items-center px-3 py-2 text-xs font-medium text-rust hover:bg-rust-soft"
+                                          >
+                                            撤回申请
+                                          </button>
+                                        )}
+                                        {isUpcomingApproved && (
+                                          <button
+                                            onClick={() => { setActiveMenuId(null); handleRequestCancellation(app.id) }}
+                                            className="flex w-full items-center px-3 py-2 text-xs font-medium text-st-pending-text hover:bg-gold-soft"
+                                          >
+                                            申请取消
+                                          </button>
+                                        )}
+                                        {app.status === 'approved' && app.cancellation_status === 'requested' && (
+                                          <button
+                                            onClick={() => { setActiveMenuId(null); handleWithdrawCancellation(app.id) }}
+                                            className="flex w-full items-center px-3 py-2 text-xs font-medium text-ink-soft hover:bg-paper"
+                                          >
+                                            放弃取消
+                                          </button>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* 分页控制 */}
+                <div className="flex items-center justify-between border-t border-line px-5 py-3 bg-surface">
+                  <span className="text-xs text-ink-faint">
+                    {filteredApps.length === 0 ? '共 0 笔记录' : `显示 ${Math.min(filteredApps.length, paginatedApps.length)} / 共 ${filteredApps.length} 笔申请`}
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={safeCurrentPage <= 1}
+                      className="flex h-7 w-7 items-center justify-center rounded-md border border-line bg-surface text-ink-soft transition hover:bg-paper hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <ChevronLeftIcon className="h-3.5 w-3.5" />
+                    </button>
+                    <span className="px-2 text-xs font-medium text-ink-soft font-mono">
+                      {safeCurrentPage} / {totalPages}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={safeCurrentPage >= totalPages}
+                      className="flex h-7 w-7 items-center justify-center rounded-md border border-line bg-surface text-ink-soft transition hover:bg-paper hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <ChevronRightIcon className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
-          )}
 
-          {/* ── Your leave requests (desktop) ── */}
-          <div className="rounded-xl border border-line bg-surface shadow-sm">
-            {/* Card Header with Title and Segmented Status Tabs */}
-            <div className="flex flex-col gap-4 border-b border-line p-5 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-ink">Your leave requests</h2>
-                <p className="mt-0.5 text-xs sm:text-sm text-ink-soft">View the status of your time-off requests.</p>
-              </div>
-              <div className="inline-flex flex-wrap self-start rounded-xl border border-line bg-paper p-1 gap-0.5">
-                {(['all', 'pending', 'approved', 'rejected', 'cancelled'] as const).map((tab) => (
-                  <button key={tab} type="button" onClick={() => { setFilterTab(tab); setCurrentPage(1) }}
-                    className={`rounded-lg px-3 py-1.5 text-xs sm:text-sm font-medium transition ${
-                      filterTab === tab ? 'bg-surface text-ink font-semibold shadow-sm' : 'text-ink-soft hover:text-ink'
-                    }`}>
-                    {tab === 'all' ? 'All requests' : tab.charAt(0).toUpperCase() + tab.slice(1)}
-                  </button>
-                ))}
-              </div>
-            </div>
+            {/* ══ 右侧辅助小组件区域 (4 栏 / 约 33%) ══ */}
+            <div className="space-y-6 lg:col-span-4">
 
-            {/* Table View */}
-            <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-line text-xs font-semibold uppercase tracking-wider text-ink-soft">
-                <th className="py-3.5 pl-6 pr-4">Employee</th>
-                <th className="py-3.5 px-4">Leave type</th>
-                <th className="py-3.5 px-4">Dates</th>
-                <th className="py-3.5 px-4">Duration</th>
-                <th className="py-3.5 px-4">Status</th>
-                <th className="py-3.5 pl-4 pr-6 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line">
-              {paginatedApps.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-12 text-center text-sm text-ink-faint">
-                    No leave requests found in this category.
-                  </td>
-                </tr>
-              ) : (
-                paginatedApps.map((app) => {
-                  const itemInitials = getInitials(employee.full_name)
-                  const isUpcomingApproved =
-                    app.status === 'approved' &&
-                    app.cancellation_status === 'none' &&
-                    app.start_date > today
+              {/* 1. 法定节假日日历小组件 (移至右侧，首屏不再遮挡申请表格) */}
+              {upcomingHolidays.length > 0 && (
+                <div className="rounded-xl border border-line bg-surface shadow-xs overflow-hidden">
+                  <div className="border-b border-line px-4 py-3.5 flex items-center justify-between">
+                    <div>
+                      <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-soft">Upcoming Holidays</h2>
+                      <p className="text-xs font-medium text-ink">近期法定节假日</p>
+                    </div>
+                    <span className="rounded-full bg-paper px-2 py-0.5 text-[11px] font-mono text-ink-faint">
+                      近 {upcomingHolidays.length} 个
+                    </span>
+                  </div>
 
-                  return (
-                    <tr key={app.id} className="transition hover:bg-paper/40">
-                      {/* Employee */}
-                      <td className="py-4 pl-6 pr-4">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-pine/20 font-bold text-xs text-pine">
-                            {itemInitials}
+                  <div className="divide-y divide-line/60">
+                    {upcomingHolidays.map((h) => {
+                      const d = new Date(h.holiday_date + 'T00:00:00')
+                      const isToday = h.holiday_date === today
+                      return (
+                        <div key={h.holiday_date} className="flex items-center gap-3 px-4 py-3 transition hover:bg-paper/40">
+                          <div className={`flex h-10 w-10 shrink-0 flex-col items-center justify-center rounded-lg border ${
+                            isToday ? 'border-pine bg-pine-soft text-pine' : 'border-line bg-paper text-ink'
+                          }`}>
+                            <span className="text-[9px] font-bold uppercase tracking-wider">
+                              {d.toLocaleDateString('en-MY', { month: 'short' })}
+                            </span>
+                            <span className="text-xs font-bold leading-tight font-mono">{d.getDate()}</span>
                           </div>
-                          <div>
-                            <p className="font-medium text-ink">{employee.full_name}</p>
-                            <p className="text-xs text-ink-faint">
-                              {employee.employment_type || (employee.employee_no ? `#${employee.employee_no}` : 'Staff')}
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-xs font-semibold text-ink">{h.name}</p>
+                            <p className="mt-0.5 text-[11px] text-ink-faint">
+                              {d.toLocaleDateString('en-MY', { weekday: 'long' })}
+                              {isToday && <span className="ml-1.5 font-bold text-pine">· 今日放假</span>}
                             </p>
                           </div>
                         </div>
-                      </td>
-
-                      {/* Leave Type */}
-                      <td className="py-4 px-4">
-                        <p className="text-sm font-medium text-ink">
-                          {LEAVE_TYPE_LABELS[app.leave_type] || app.leave_type}
-                          {app.is_half_day && app.half_day_period && (
-                            <span className="ml-1.5 text-xs text-ink-faint">
-                              ({app.half_day_period.toUpperCase()})
-                            </span>
-                          )}
-                        </p>
-                        {app.remarks && (
-                          <p className="mt-0.5 line-clamp-1 text-xs text-ink-soft" title={app.remarks}>
-                            Note: {app.remarks}
-                          </p>
-                        )}
-                        {app.mc_attachment_path && (
-                          <button
-                            onClick={() => handleViewMc(app.mc_attachment_path as string)}
-                            className="mt-0.5 text-xs font-medium text-pine underline decoration-dotted hover:text-pine-deep"
-                          >
-                            View MC
-                          </button>
-                        )}
-                        {!app.mc_attachment_path && app.leave_type === 'medical' && (app.status === 'pending' || app.status === 'approved') && (
-                          <button
-                            onClick={() => handleAttachMcClick(app.id)}
-                            disabled={attachingId === app.id}
-                            className="mt-0.5 block text-xs font-medium text-ink-soft underline decoration-dotted hover:text-ink disabled:opacity-50"
-                          >
-                            {attachingId === app.id ? 'Uploading...' : 'Attach MC'}
-                          </button>
-                        )}
-                      </td>
-
-                      {/* Dates */}
-                      <td className="py-4 px-4 whitespace-nowrap text-sm text-ink-soft">
-                        {formatLeaveDates(app.start_date, app.end_date, app.remarks)}
-                      </td>
-
-                      {/* Duration */}
-                      <td className="py-4 px-4 whitespace-nowrap text-sm text-ink-soft">
-                        {app.total_days} {app.total_days === 1 ? 'day' : 'days'}
-                      </td>
-
-                      {/* Status badge matching ManagerShell/Approve */}
-                      <td className="py-4 px-4 whitespace-nowrap">
-                        <StatusBadge
-                          status={app.status}
-                          cancellationStatus={app.cancellation_status}
-                        />
-                        {app.status === 'approved' && app.cancellation_status === 'requested' && (
-                          <p className="mt-1 text-[11px] text-amber-700 font-medium">
-                            Waiting for manager confirmation
-                          </p>
-                        )}
-                        {app.status === 'approved' && app.cancellation_status === 'none' && app.cancellation_decision_reason && (
-                          <p className="mt-1 text-[11px] text-rust font-medium">
-                            Cancel declined: {app.cancellation_decision_reason}
-                          </p>
-                        )}
-                        {app.status === 'cancelled' && app.cancellation_decision_reason && (
-                          <p className="mt-1 text-[11px] text-ink-soft">
-                            Cancelled reason: {app.cancellation_decision_reason}
-                          </p>
-                        )}
-                        {app.status === 'rejected' && app.remarks && (
-                          <p className="mt-1 text-[11px] text-rust font-medium">
-                            Reason: {app.remarks}
-                          </p>
-                        )}
-                      </td>
-
-                      {/* Action menu */}
-                      <td className="py-4 pl-4 pr-6 text-right relative">
-                        <div className="inline-flex items-center justify-end gap-2">
-                          {app.status === 'pending' && (
-                            <button
-                              onClick={() => handleCancel(app.id)}
-                              className="rounded-lg border border-rust/30 bg-rust-soft px-2.5 py-1 text-xs font-medium text-rust transition hover:bg-rust/20"
-                            >
-                              Cancel
-                            </button>
-                          )}
-
-                          {isUpcomingApproved && (
-                            <button
-                              onClick={() => handleRequestCancellation(app.id)}
-                              className="rounded-lg border border-gold/40 bg-gold-soft px-2.5 py-1 text-xs font-medium text-st-pending-text transition hover:bg-gold/30"
-                            >
-                              Request cancel
-                            </button>
-                          )}
-
-                          {app.status === 'approved' && app.cancellation_status === 'requested' && (
-                            <button
-                              onClick={() => handleWithdrawCancellation(app.id)}
-                              className="rounded-lg border border-line bg-paper px-2.5 py-1 text-xs font-medium text-ink-soft transition hover:bg-line/40"
-                            >
-                              Withdraw
-                            </button>
-                          )}
-
-                          {/* Dropdown toggle for extra details */}
-                          <div className="relative">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                setActiveMenuId(activeMenuId === app.id ? null : app.id)
-                              }}
-                              className="rounded-lg p-1.5 text-ink-faint transition hover:bg-paper hover:text-ink"
-                              title="Actions"
-                            >
-                              <MoreHorizontalIcon className="h-5 w-5" />
-                            </button>
-
-                            {activeMenuId === app.id && (
-                              <div
-                                className="absolute right-0 z-20 mt-1 w-48 rounded-xl border border-line bg-surface py-1 text-left shadow-xl"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                {app.status === 'pending' && (
-                                  <button
-                                    onClick={() => { setActiveMenuId(null); handleCancel(app.id) }}
-                                    className="flex w-full items-center px-4 py-2 text-xs font-medium text-rust hover:bg-rust-soft"
-                                  >
-                                    Cancel request
-                                  </button>
-                                )}
-                                {isUpcomingApproved && (
-                                  <button
-                                    onClick={() => { setActiveMenuId(null); handleRequestCancellation(app.id) }}
-                                    className="flex w-full items-center px-4 py-2 text-xs font-medium text-st-pending-text hover:bg-gold-soft"
-                                  >
-                                    Request cancellation
-                                  </button>
-                                )}
-                                {app.status === 'approved' && app.cancellation_status === 'requested' && (
-                                  <button
-                                    onClick={() => { setActiveMenuId(null); handleWithdrawCancellation(app.id) }}
-                                    className="flex w-full items-center px-4 py-2 text-xs font-medium text-ink-soft hover:bg-paper"
-                                  >
-                                    Withdraw cancellation
-                                  </button>
-                                )}
-                                <div className="border-t border-line my-1" />
-                                <div className="px-4 py-1.5 text-[11px] text-ink-faint">
-                                  Submitted {new Date(app.created_at).toLocaleDateString('en-MY')}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })
+                      )
+                    })}
+                  </div>
+                </div>
               )}
-            </tbody>
-            </table>
-            </div>
 
-
-            {/* Footer Pagination */}
-            <div className="flex items-center justify-between border-t border-line px-5 py-3.5">
-              <span className="text-xs sm:text-sm text-ink-soft">
-                {filteredApps.length === 0 ? 'Showing 0 of 0 requests' : `Showing ${Math.min(filteredApps.length, paginatedApps.length)} of ${filteredApps.length} requests`}
-              </span>
-              <div className="flex items-center gap-1.5">
-                <button type="button" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={safeCurrentPage <= 1} aria-label="Previous page"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-surface text-ink-soft transition hover:bg-paper hover:text-ink disabled:cursor-not-allowed disabled:opacity-40">
-                  <ChevronLeftIcon className="h-4 w-4" />
-                </button>
-                <button type="button" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={safeCurrentPage >= totalPages} aria-label="Next page"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-surface text-ink-soft transition hover:bg-paper hover:text-ink disabled:cursor-not-allowed disabled:opacity-40">
-                  <ChevronRightIcon className="h-4 w-4" />
-                </button>
+              {/* 2. 钉钉标准请假小贴士与企业指引卡片 */}
+              <div className="rounded-xl border border-line bg-surface p-4 shadow-xs">
+                <div className="mb-3 flex items-center gap-2 text-xs font-semibold text-ink">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-pine-soft text-pine text-[11px]">💡</span>
+                  请假与考勤指引
+                </div>
+                <div className="space-y-2.5 text-xs text-ink-soft">
+                  <div className="rounded-lg bg-paper/60 p-2.5">
+                    <p className="font-medium text-ink">🌴 年假扣除规则</p>
+                    <p className="mt-0.5 text-[11px] text-ink-faint leading-relaxed">
+                      公休日（周末）和法定节假日不计入年假扣除天数，系统自动排期剔除。
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-paper/60 p-2.5">
+                    <p className="font-medium text-ink">🏥 病假条 (MC) 提交</p>
+                    <p className="mt-0.5 text-[11px] text-ink-faint leading-relaxed">
+                      申请病假需上传医生假条照片或 PDF。如申请时未拿到，可在批准后点击表格内“补交假条”进行上传。
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-paper/60 p-2.5">
+                    <p className="font-medium text-ink">⏳ 已批准单据撤销</p>
+                    <p className="mt-0.5 text-[11px] text-ink-faint leading-relaxed">
+                      对于尚未开始的已通过请假，发起撤销申请后需等待负责人确认后方可退还假期额度。
+                    </p>
+                  </div>
+                </div>
               </div>
+
             </div>
           </div>
-        </div>{/* end desktop space-y-7 */}
+        </div>{/* end desktop max-w-7xl */}
       </div>{/* end desktop md:block */}
 
       {/* ── Request Leave Modal (shared for mobile & desktop) ── */}
