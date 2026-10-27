@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import ManagerShell from '@/components/ManagerShell'
+import PageHeader from '@/components/PageHeader'
 import { useEmployee } from '@/lib/useEmployee'
 import AuthStatus from '@/components/AuthStatus'
 import MobileAuditLog from '@/components/manager/MobileAuditLog'
@@ -71,6 +72,9 @@ function formatWhen(iso: string): string {
   })
 }
 
+const sel = 'h-8 min-w-[180px] rounded-md border border-line bg-white px-2.5 text-[13px] text-ink transition-colors hover:border-pine focus:border-pine focus:outline-none focus:ring-2 focus:ring-pine/15'
+const sqBtn = 'flex h-8 w-8 items-center justify-center rounded-md border border-line bg-white text-ink-soft transition-colors hover:border-pine hover:text-pine'
+
 function DesktopAuditLog() {
   const auth = useEmployee({ requireManager: true })
   const [logs, setLogs] = useState<LogRow[]>([])
@@ -132,19 +136,17 @@ function DesktopAuditLog() {
 
   return (
     <ManagerShell>
-      <div className="space-y-6 pb-10">
-        <div>
-          <h1 className="font-display text-2xl font-semibold text-ink">Audit Log</h1>
-          <p className="mt-0.5 text-sm text-ink-soft">
-            Who did what, and when — approvals, rejections, cancellations, password resets, and employee record changes.
-          </p>
-        </div>
+      <div className="mx-auto max-w-[1360px] space-y-4 pb-10">
+        <PageHeader
+          title="Audit Log"
+          subtitle="Who did what, and when — approvals, rejections, cancellations, password resets, and employee record changes."
+        />
 
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <select
             value={employeeFilter}
-            onChange={(e) => setEmployeeFilter(e.target.value)}
-            className="field-input w-auto min-w-[180px]"
+            onChange={(e) => { setEmployeeFilter(e.target.value); setPage(1) }}
+            className={sel}
           >
             <option value="">All employees</option>
             {employeeOptions.map((emp) => (
@@ -153,19 +155,24 @@ function DesktopAuditLog() {
           </select>
           <select
             value={actionFilter}
-            onChange={(e) => setActionFilter(e.target.value)}
-            className="field-input w-auto min-w-[200px]"
+            onChange={(e) => { setActionFilter(e.target.value); setPage(1) }}
+            className={sel}
           >
             <option value="">All actions</option>
             {Object.entries(ACTION_LABELS).map(([key, label]) => (
               <option key={key} value={key}>{label}</option>
             ))}
           </select>
+          {(employeeFilter || actionFilter) && (
+            <button type="button" onClick={() => { setEmployeeFilter(''); setActionFilter(''); setPage(1) }} className="text-[13px] text-pine transition-colors hover:text-pine-deep">
+              Reset
+            </button>
+          )}
         </div>
 
-        {loadError && <p className="rounded-xl border border-rust/30 bg-rust-soft p-3.5 text-sm text-rust">{loadError}</p>}
+        {loadError && <p className="rounded-md border border-rust/30 bg-rust-soft px-4 py-2.5 text-[13px] text-rust">{loadError}</p>}
 
-        <div className="overflow-hidden rounded-xl border border-line bg-surface">
+        <div className="overflow-hidden rounded-lg border border-line bg-white">
           {loading ? (
             <p className="p-8 text-center text-sm text-ink-faint">Loading...</p>
           ) : paginated.length === 0 ? (
@@ -175,7 +182,7 @@ function DesktopAuditLog() {
               {/* ── Desktop table ── */}
               <table className="hidden md:table w-full text-sm">
                 <thead>
-                  <tr className="border-b border-line bg-paper/60 text-left text-[13px] font-medium text-ink-faint">
+                  <tr className="border-b border-line bg-[#FAFAFA] text-left text-[13px] font-medium text-ink-soft">
                     <th className="px-4 py-2.5">When</th>
                     <th className="px-4 py-2.5">Who</th>
                     <th className="px-4 py-2.5">Action</th>
@@ -185,7 +192,7 @@ function DesktopAuditLog() {
                 </thead>
                 <tbody>
                   {paginated.map((log) => (
-                    <tr key={log.id} className="border-b border-line last:border-b-0">
+                    <tr key={log.id} className="border-b border-line transition-colors last:border-b-0 hover:bg-[#FAFAFA]">
                       <td className="whitespace-nowrap px-4 py-3 text-xs text-ink-soft">{formatWhen(log.created_at)}</td>
                       <td className="px-4 py-3 font-medium text-ink">{log.actor?.full_name || '—'}</td>
                       <td className="px-4 py-3 text-ink-soft">{ACTION_LABELS[log.action] || log.action}</td>
@@ -197,27 +204,30 @@ function DesktopAuditLog() {
               </table>
             </>
           )}
+          {!loading && logs.length > 0 && (
+            <div className="flex items-center justify-between border-t border-line px-5 py-3">
+              <span className="text-[13px] text-ink-soft">{logs.length} entries · Page {page} of {totalPages}</span>
+              {totalPages > 1 && (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    disabled={page <= 1}
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    aria-label="Previous page"
+                    className={`${sqBtn} disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-line disabled:hover:text-ink-soft`}
+                  >‹</button>
+                  <button
+                    type="button"
+                    disabled={page >= totalPages}
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    aria-label="Next page"
+                    className={`${sqBtn} disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-line disabled:hover:text-ink-soft`}
+                  >›</button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
-
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-3 text-sm text-ink-soft">
-            <button
-              disabled={page <= 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="rounded-md bg-paper px-3 py-1.5 ring-1 ring-line disabled:opacity-40"
-            >
-              Previous
-            </button>
-            <span>Page {page} of {totalPages}</span>
-            <button
-              disabled={page >= totalPages}
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              className="rounded-md bg-paper px-3 py-1.5 ring-1 ring-line disabled:opacity-40"
-            >
-              Next
-            </button>
-          </div>
-        )}
       </div>
     </ManagerShell>
   )
@@ -227,10 +237,10 @@ function DesktopAuditLog() {
 export default function AuditLogPage() {
   return (
     <>
-      <div className="md:hidden">
+      <div className="lg:hidden">
         <MobileAuditLog />
       </div>
-      <div className="hidden md:block">
+      <div className="hidden lg:block">
         <DesktopAuditLog />
       </div>
     </>
