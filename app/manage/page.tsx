@@ -1,11 +1,12 @@
 'use client'
 
 import MobileEmployees from '@/components/manager/MobileEmployees'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import ManagerShell from '@/components/ManagerShell'
 import { useEmployee } from '@/lib/useEmployee'
 import AuthStatus from '@/components/AuthStatus'
+import { getYearsOfService } from '@/lib/leaveRules'
 
 type Employee = {
   id: string
@@ -20,17 +21,83 @@ type Employee = {
 }
 
 type Tab = 'full_time' | 'part_time'
+type StatusFilter = 'all' | 'active' | 'inactive'
 
+function getInitials(name: string) {
+  if (!name) return 'U'
+  const parts = name.trim().split(/\s+/)
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+}
+
+// ── Icons ────────────────────────────────────────────────────────────────────
+function SearchIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+    </svg>
+  )
+}
+
+function PlusIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+    </svg>
+  )
+}
+
+function XIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+    </svg>
+  )
+}
+
+function KeyIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
+    </svg>
+  )
+}
+
+function EditIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+    </svg>
+  )
+}
+
+function UserIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+    </svg>
+  )
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// 电脑版: 钉钉企业花名册风格 (Desktop Employees Roster)
+// ═════════════════════════════════════════════════════════════════════════════
 function DesktopEmployees() {
   const auth = useEmployee({ requireManager: true })
   const [employees, setEmployees] = useState<Employee[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<Tab>('full_time')
-  const [showAddForm, setShowAddForm] = useState(false)
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [searchQuery, setSearchQuery] = useState('')
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
-  const managerId = auth.status === 'ready' ? auth.employee.id : null
 
+  // Modals state
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
+  const [resettingEmployee, setResettingEmployee] = useState<{ id: string; name: string } | null>(null)
+
+  // Add Form state
   const [staffId, setStaffId] = useState('')
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
@@ -38,6 +105,17 @@ function DesktopEmployees() {
   const [employmentType, setEmploymentType] = useState('full_time')
   const [role, setRole] = useState('staff')
   const [submitting, setSubmitting] = useState(false)
+
+  // Edit Form state
+  const [editCommencement, setEditCommencement] = useState('')
+  const [editRole, setEditRole] = useState('staff')
+  const [editOverride, setEditOverride] = useState('')
+  const [editCarry, setEditCarry] = useState('')
+  const [savingEdit, setSavingEdit] = useState(false)
+
+  // Reset Password state
+  const [newPassword, setNewPassword] = useState('')
+  const [resetting, setResetting] = useState(false)
 
   const isPartTime = employmentType === 'part_time'
 
@@ -87,34 +165,81 @@ function DesktopEmployees() {
     if (!res.ok) { setError(result.error || 'Failed to add employee.'); return }
 
     if (isPartTime) {
-      setMessage(`Part-time employee "${fullName}" added. Their work hours can be recorded from the Work Hours page.`)
+      setMessage(`兼职员工 "${fullName}" 已创建。`)
     } else {
-      setMessage(`Added! Staff ID: ${staffId} — share their password separately.`)
+      setMessage(`员工 "${fullName}" 创建成功！工号: ${staffId}，请将初始密码通知员工。`)
     }
 
     setStaffId(''); setPassword(''); setFullName('')
     setDateOfCommencement(''); setEmploymentType('full_time'); setRole('staff')
-    setShowAddForm(false)
+    setShowAddModal(false)
     loadEmployees()
   }
 
-  async function handleUpdateField(id: string, field: string, value: string | number) {
+  async function handleSaveEdit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!editingEmployee) return
+    setSavingEdit(true)
     setError('')
+
     const { data: { session } } = await supabase.auth.getSession()
-    const res = await fetch('/api/employees', {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${session?.access_token}`,
-      },
-      body: JSON.stringify({ id, field, value }),
-    })
-    const result = await res.json().catch(() => ({}))
-    if (!res.ok) setError(result.error || `Failed to update: ${field}`)
+    const token = session?.access_token
+
+    const isFull = editingEmployee.employment_type === 'full_time'
+
+    const tasks: Promise<Response>[] = []
+
+    if (editCommencement !== editingEmployee.date_of_commencement) {
+      tasks.push(
+        fetch('/api/employees', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ id: editingEmployee.id, field: 'date_of_commencement', value: editCommencement }),
+        })
+      )
+    }
+
+    if (isFull) {
+      if (editRole !== editingEmployee.role) {
+        tasks.push(
+          fetch('/api/employees', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ id: editingEmployee.id, field: 'role', value: editRole }),
+          })
+        )
+      }
+
+      const ov = editOverride.trim() === '' ? null : Number(editOverride)
+      if (ov !== editingEmployee.annual_leave_entitlement_override) {
+        tasks.push(
+          fetch('/api/employees', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ id: editingEmployee.id, field: 'annual_leave_entitlement_override', value: ov }),
+          })
+        )
+      }
+
+      const carry = Number(editCarry) || 0
+      if (carry !== editingEmployee.annual_leave_carry_forward) {
+        tasks.push(
+          fetch('/api/employees', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ id: editingEmployee.id, field: 'annual_leave_carry_forward', value: carry }),
+          })
+        )
+      }
+    }
+
+    await Promise.all(tasks)
+    setSavingEdit(false)
+    setEditingEmployee(null)
+    setMessage(`员工 ${editingEmployee.full_name} 资料已成功更新。`)
     loadEmployees()
   }
 
-  // 启用 / 停用要同时处理登录账号(封禁 / 解除封禁),必须走服务器 API。
   async function handleToggleActive(id: string, current: boolean) {
     setError(''); setMessage('')
     const { data: { session } } = await supabase.auth.getSession()
@@ -127,17 +252,20 @@ function DesktopEmployees() {
       body: JSON.stringify({ id, is_active: !current }),
     })
     const result = await res.json().catch(() => ({}))
-    if (!res.ok) setError(result.error || 'Failed to update status.')
+    if (!res.ok) setError(result.error || '更新在职状态失败。')
     loadEmployees()
   }
 
-  // 重置员工密码:负责人输入新密码,走服务器 API 覆盖旧密码。
-  async function handleResetPassword(id: string, name: string) {
-    setError(''); setMessage('')
-    const newPassword = window.prompt(`Enter a new password for ${name} (at least 6 characters):`)
-    if (newPassword === null) return // 按了取消
-    if (newPassword.length < 6) { setError('Password must be at least 6 characters.'); return }
+  async function handleConfirmResetPassword(e: React.FormEvent) {
+    e.preventDefault()
+    if (!resettingEmployee) return
+    if (newPassword.length < 6) {
+      setError('密码长度至少需要 6 个字符。')
+      return
+    }
 
+    setResetting(true)
+    setError('')
     const { data: { session } } = await supabase.auth.getSession()
     const res = await fetch('/api/employees', {
       method: 'PUT',
@@ -145,384 +273,671 @@ function DesktopEmployees() {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${session?.access_token}`,
       },
-      body: JSON.stringify({ id, password: newPassword }),
+      body: JSON.stringify({ id: resettingEmployee.id, password: newPassword }),
     })
     const result = await res.json().catch(() => ({}))
-    if (!res.ok) { setError(result.error || 'Failed to reset password.'); return }
-    setMessage(`Password for ${name} has been reset. Share the new password with them separately.`)
+    setResetting(false)
+
+    if (!res.ok) {
+      setError(result.error || '重置密码失败。')
+      return
+    }
+
+    setMessage(`已重置员工 ${resettingEmployee.name} 的登录密码，请单独将新密码告知该员工。`)
+    setResettingEmployee(null)
+    setNewPassword('')
+  }
+
+  function openEditModal(emp: Employee) {
+    setEditingEmployee(emp)
+    setEditCommencement(emp.date_of_commencement || '')
+    setEditRole(emp.role || 'staff')
+    setEditOverride(emp.annual_leave_entitlement_override == null ? '' : String(emp.annual_leave_entitlement_override))
+    setEditCarry(String(emp.annual_leave_carry_forward ?? 0))
   }
 
   if (auth.status !== 'ready') return <AuthStatus state={auth} />
-  if (loading) return <div className="p-6 text-center text-ink-soft">Loading...</div>
+  if (loading) return <div className="p-12 text-center text-xs text-ink-faint">Loading employee roster...</div>
 
+  // Statistics
+  const totalEmployees = employees.length
+  const activeCount = employees.filter((e) => e.is_active).length
   const fullTimeEmployees = employees.filter((e) => e.employment_type === 'full_time')
   const partTimeEmployees = employees.filter((e) => e.employment_type === 'part_time')
 
+  // Search & Filter
+  const currentTabList = activeTab === 'full_time' ? fullTimeEmployees : partTimeEmployees
+  const filteredList = currentTabList.filter((emp) => {
+    if (statusFilter === 'active' && !emp.is_active) return false
+    if (statusFilter === 'inactive' && emp.is_active) return false
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim()
+      const matchName = emp.full_name.toLowerCase().includes(q)
+      const matchNo = emp.employee_no ? String(emp.employee_no).includes(q) : false
+      return matchName || matchNo
+    }
+    return true
+  })
+
   return (
     <ManagerShell>
-      <div className="space-y-6 pb-10"><h1 className="font-display text-2xl font-semibold text-ink">Manage Employees</h1>
+      <div className="space-y-6 pb-16">
 
-        <button onClick={() => setShowAddForm(!showAddForm)} className="btn-primary">
-          {showAddForm ? 'Cancel' : '+ Add New Employee'}
-        </button>
-
-        {showAddForm && (
-          <form onSubmit={handleAddEmployee} className="panel space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="field-label">Employment Type</label>
-                <select
-                  value={employmentType}
-                  onChange={(e) => {
-                    setEmploymentType(e.target.value)
-                    setRole('staff')
-                    setStaffId('')
-                    setPassword('')
-                  }}
-                  className="field-input"
-                >
-                  <option value="full_time">Full-time</option>
-                  <option value="part_time">Part-time</option>
-                </select>
-              </div>
-              <div>
-                <label className="field-label">Role</label>
-                <select
-                  value={role}
-                  onChange={(e) => setRole(e.target.value)}
-                  className="field-input"
-                  disabled={isPartTime}
-                >
-                  <option value="staff">Staff</option>
-                  {!isPartTime && <option value="manager">Manager</option>}
-                </select>
-              </div>
+        {/* ── 顶部操作栏与概览 ── */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-line pb-5">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-xl font-bold tracking-tight text-ink">员工花名册</h1>
+              <span className="rounded-full bg-pine-soft px-2.5 py-0.5 text-xs font-semibold text-pine">
+                {totalEmployees} 人
+              </span>
             </div>
+            <p className="mt-1 text-xs text-ink-faint">
+              管理全公司正式员工与兼职人员档案、假额特批与系统访问权限
+            </p>
+          </div>
 
-            {!isPartTime && (
-              <>
-                <div>
-                  <label className="field-label">Staff ID (number)</label>
-                  <input type="text" required inputMode="numeric" pattern="[0-9]{1,9}" title="Digits only" value={staffId} onChange={(e) => setStaffId(e.target.value)} placeholder="e.g. 003" className="field-input" />
-                </div>
-                <div>
-                  <label className="field-label">Initial Password</label>
-                  <input type="text" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 6 characters" className="field-input" />
-                </div>
-              </>
-            )}
-
-            {isPartTime && (
-              <div className="rounded-md border border-line bg-paper px-4 py-3 text-sm text-ink-soft">
-                <p className="font-medium text-ink">ℹ️ Part-time — no login account</p>
-                <p className="mt-0.5">
-                  Part-time employees don&apos;t have system access. Their work hours are recorded
-                  by the manager from the <strong>Work Hours</strong> page.
-                </p>
-              </div>
-            )}
-
-            {isPartTime && (
-              <div>
-                <label className="field-label">Staff ID (optional, digits only)</label>
-                <input type="text" inputMode="numeric" pattern="[0-9]{1,9}" title="Digits only" value={staffId} onChange={(e) => setStaffId(e.target.value)} placeholder="e.g. 101 (optional)" className="field-input" />
-              </div>
-            )}
-
-            <div>
-              <label className="field-label">Full Name</label>
-              <input type="text" required value={fullName} onChange={(e) => setFullName(e.target.value)} className="field-input" />
-            </div>
-            <div>
-              <label className="field-label">Date of Commencement</label>
-              <input type="date" required value={dateOfCommencement} onChange={(e) => setDateOfCommencement(e.target.value)} className="field-input" />
-            </div>
-
-            {error && <p className="text-sm text-rust">{error}</p>}
-
-            <button type="submit" disabled={submitting} className="btn-primary">
-              {submitting ? 'Adding...' : isPartTime ? 'Add Part-time Employee' : 'Add Employee'}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                setError('')
+                setShowAddModal(true)
+              }}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-pine px-4 py-2 text-sm font-medium text-white shadow-xs transition hover:bg-pine-deep focus:outline-none focus:ring-2 focus:ring-pine/20"
+            >
+              <PlusIcon className="h-4 w-4" /> 新增员工
             </button>
-          </form>
-        )}
-
-        {message && <p className="rounded-md bg-st-approved-soft p-3 text-sm text-st-approved-text">{message}</p>}
-        {!showAddForm && error && <p className="rounded-md bg-rust-soft p-3 text-sm text-rust">{error}</p>}
-
-        {/* ── Tabs ── */}
-        <div className="border-b border-line">
-          <div className="flex gap-0">
-            <TabButton label="Full-time" count={fullTimeEmployees.length} active={activeTab === 'full_time'} onClick={() => setActiveTab('full_time')} />
-            <TabButton label="Part-time" count={partTimeEmployees.length} active={activeTab === 'part_time'} onClick={() => setActiveTab('part_time')} />
           </div>
         </div>
 
-        {/* ── Full-time tab ── */}
-        {activeTab === 'full_time' && (
-          fullTimeEmployees.length === 0
-            ? <p className="text-sm text-ink-faint">No full-time employees.</p>
-            : <FullTimeTable employees={fullTimeEmployees} managerId={managerId} onToggleActive={handleToggleActive} onUpdateField={handleUpdateField} onResetPassword={handleResetPassword} />
-        )}
-
-        {/* ── Part-time tab ── */}
-        {activeTab === 'part_time' && (
-          <div className="space-y-3">
-            <p className="text-xs text-ink-faint">
-              Part-time employees have no system login. Their hours are tracked on the Work Hours page.
-            </p>
-            {partTimeEmployees.length === 0
-              ? <p className="text-sm text-ink-faint">No part-time employees.</p>
-              : <PartTimeTable employees={partTimeEmployees} onToggleActive={handleToggleActive} onUpdateField={handleUpdateField} />
-            }
+        {/* ── 提示消息通知 ── */}
+        {message && (
+          <div className="flex items-center justify-between rounded-xl border border-st-approved/30 bg-st-approved-soft px-4 py-3 text-xs font-medium text-st-approved-text">
+            <span>✓ {message}</span>
+            <button onClick={() => setMessage('')} className="text-xs font-bold hover:opacity-70">✕</button>
           </div>
         )}
-      </div>
-    </ManagerShell>
-  )
-}
+        {error && (
+          <div className="flex items-center justify-between rounded-xl border border-rust/30 bg-rust-soft px-4 py-3 text-xs font-medium text-rust">
+            <span>⚠ {error}</span>
+            <button onClick={() => setError('')} className="text-xs font-bold hover:opacity-70">✕</button>
+          </div>
+        )}
 
-// ─── Tab button ───────────────────────────────────────────────────────────────
+        {/* ── 钉钉概览卡片 (4 栏指标) ── */}
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <div className="rounded-xl border border-line bg-surface p-4 shadow-2xs">
+            <p className="text-xs font-medium text-ink-faint">在册员工总数</p>
+            <p className="mt-1 font-mono text-2xl font-bold text-ink">{totalEmployees}</p>
+            <p className="mt-0.5 text-[11px] text-ink-faint">涵盖所有用工类型</p>
+          </div>
+          <div className="rounded-xl border border-line bg-surface p-4 shadow-2xs">
+            <p className="text-xs font-medium text-ink-faint">在职生效账号</p>
+            <p className="mt-1 font-mono text-2xl font-bold text-emerald-600">{activeCount}</p>
+            <p className="mt-0.5 text-[11px] text-emerald-700">正常登录与考勤</p>
+          </div>
+          <div className="rounded-xl border border-line bg-surface p-4 shadow-2xs">
+            <p className="text-xs font-medium text-ink-faint">全职正式员工</p>
+            <p className="mt-1 font-mono text-2xl font-bold text-pine">{fullTimeEmployees.length}</p>
+            <p className="mt-0.5 text-[11px] text-pine-deep">拥有独立年假额度</p>
+          </div>
+          <div className="rounded-xl border border-line bg-surface p-4 shadow-2xs">
+            <p className="text-xs font-medium text-ink-faint">兼职人员</p>
+            <p className="mt-1 font-mono text-2xl font-bold text-amber-600">{partTimeEmployees.length}</p>
+            <p className="mt-0.5 text-[11px] text-amber-700">按工时模块记录</p>
+          </div>
+        </div>
 
-function TabButton({ label, count, active, onClick }: { label: string; count: number; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className={[
-        'flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors',
-        active ? 'border-pine text-pine' : 'border-transparent text-ink-soft hover:text-ink hover:border-line',
-      ].join(' ')}
-    >
-      {label}
-      <span className={['rounded-full px-1.5 py-0.5 text-xs font-semibold tabular-nums', active ? 'bg-pine-soft text-pine-deep' : 'bg-paper text-ink-faint'].join(' ')}>
-        {count}
-      </span>
-    </button>
-  )
-}
-
-// ─── Full-time table ──────────────────────────────────────────────────────────
-
-function FullTimeTable({ employees, managerId, onToggleActive, onUpdateField, onResetPassword }: {
-  employees: Employee[]
-  managerId: string | null
-  onToggleActive: (id: string, current: boolean) => void
-  onUpdateField: (id: string, field: string, value: string | number) => void
-  onResetPassword: (id: string, name: string) => void
-}) {
-  const th = 'px-3 py-2.5 text-[13px] font-medium text-ink-faint whitespace-nowrap'
-  return (
-    <>
-      {/* ── Desktop table ── */}
-      <div className="hidden md:block overflow-x-auto rounded-lg border border-line">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-line bg-paper">
-              <th className={`sticky left-0 z-10 bg-paper text-left ${th}`}>Employee</th>
-              <th className={`text-left ${th}`}>Commencement</th>
-              <th className={`text-left ${th}`}>Entitled (Override)</th>
-              <th className={`text-left ${th}`}>Leave Carry-Fwd</th>
-              <th className={`text-left ${th}`}>Role</th>
-              <th className={`text-center ${th}`}>Status</th>
-              <th className={`text-center ${th}`}>Password</th>
-            </tr>
-          </thead>
-          <tbody>
-            {employees.map((emp, idx) => {
-              const bg = idx % 2 === 0 ? 'bg-surface' : 'bg-paper/40'
-              return (
-                <tr key={emp.id} className={`border-b border-line last:border-b-0 ${bg} ${!emp.is_active ? 'opacity-50' : ''}`}>
-                  <td className={`sticky left-0 z-10 px-3 py-2.5 whitespace-nowrap ${bg}`}>
-                    <span className="mr-1.5 text-xs text-ink-faint">{emp.employee_no ? `#${emp.employee_no}` : '—'}</span>
-                    <span className="font-medium text-ink">{emp.full_name}</span>
-                  </td>
-                  <td className="px-3 py-2">
-                    <input type="date" defaultValue={emp.date_of_commencement} onBlur={(e) => onUpdateField(emp.id, 'date_of_commencement', e.target.value)} className="field-input py-1 text-xs" />
-                  </td>
-                  <td className="px-3 py-2">
-                    <input type="number" step="0.5" defaultValue={emp.annual_leave_entitlement_override ?? ''} placeholder="auto" onBlur={(e) => {
-                      const v = e.target.value.trim()
-                      onUpdateField(emp.id, 'annual_leave_entitlement_override', v === '' ? (null as unknown as number) : Number(v))
-                    }} className="field-input w-20 py-1 text-xs" />
-                  </td>
-                  <td className="px-3 py-2">
-                    <input type="number" step="0.5" defaultValue={emp.annual_leave_carry_forward} onBlur={(e) => onUpdateField(emp.id, 'annual_leave_carry_forward', Number(e.target.value))} className="field-input w-20 py-1 text-xs" />
-                  </td>
-                  <td className="px-3 py-2">
-                    <select value={emp.role} onChange={(e) => onUpdateField(emp.id, 'role', e.target.value)} className="field-input py-1 text-xs">
-                      <option value="staff">Staff</option>
-                      <option value="manager">Manager</option>
-                    </select>
-                  </td>
-                  <td className="px-3 py-2 text-center">
-                    <button onClick={() => onToggleActive(emp.id, emp.is_active)} className={`badge ${emp.is_active ? 'bg-paper text-ink-soft' : 'badge-rejected'}`}>
-                      {emp.is_active ? 'Active' : 'Inactive'}
-                    </button>
-                  </td>
-                  <td className="px-3 py-2 text-center">
-                    <button onClick={() => onResetPassword(emp.id, emp.full_name)} className="rounded-md bg-paper px-2.5 py-1 text-xs font-medium text-ink-soft ring-1 ring-line hover:bg-pine-soft/40">
-                      Reset
-                    </button>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      {/* ── Mobile cards ── */}
-      <div className="md:hidden space-y-3">
-        {employees.map((emp) => (
-          <div key={emp.id} className={`rounded-xl border border-line bg-surface p-4 space-y-3 ${!emp.is_active ? 'opacity-60' : ''}`}>
-            {/* Header */}
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-semibold text-ink">{emp.full_name}</p>
-                <p className="text-xs text-ink-faint">{emp.employee_no ? `#${emp.employee_no}` : 'No ID'} · {emp.role === 'manager' ? 'Manager' : 'Staff'}</p>
-              </div>
+        {/* ── 列表筛选与搜索控制栏 ── */}
+        <div className="rounded-xl border border-line bg-surface shadow-2xs overflow-hidden">
+          <div className="flex flex-col gap-4 border-b border-line p-4 sm:flex-row sm:items-center sm:justify-between bg-paper/30">
+            {/* Tabs */}
+            <div className="flex items-center gap-1">
               <button
-                onClick={() => onToggleActive(emp.id, emp.is_active)}
-                className={`rounded-full px-3 py-1 text-xs font-medium ${emp.is_active ? 'bg-st-approved-soft text-st-approved-text' : 'bg-rust-soft text-rust'}`}
+                onClick={() => { setActiveTab('full_time'); setStatusFilter('all') }}
+                className={`flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition ${
+                  activeTab === 'full_time'
+                    ? 'bg-surface text-pine shadow-2xs border border-line'
+                    : 'text-ink-soft hover:text-ink'
+                }`}
               >
-                {emp.is_active ? 'Active' : 'Inactive'}
+                全职正式员工
+                <span className="rounded-full bg-paper px-1.5 py-0.5 text-[10px] font-mono text-ink-faint">
+                  {fullTimeEmployees.length}
+                </span>
+              </button>
+
+              <button
+                onClick={() => { setActiveTab('part_time'); setStatusFilter('all') }}
+                className={`flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition ${
+                  activeTab === 'part_time'
+                    ? 'bg-surface text-pine shadow-2xs border border-line'
+                    : 'text-ink-soft hover:text-ink'
+                }`}
+              >
+                兼职人员
+                <span className="rounded-full bg-paper px-1.5 py-0.5 text-[10px] font-mono text-ink-faint">
+                  {partTimeEmployees.length}
+                </span>
               </button>
             </div>
 
-            {/* Fields grid */}
-            <div className="grid grid-cols-2 gap-3">
+            {/* 搜索与在职状态过滤 */}
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ink-faint" />
+                <input
+                  type="text"
+                  placeholder="搜索姓名或工号..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="h-8 w-48 sm:w-60 rounded-lg border border-line bg-surface pl-8 pr-3 text-xs text-ink placeholder:text-ink-faint focus:border-pine focus:outline-none focus:ring-1 focus:ring-pine/20"
+                />
+                {searchQuery && (
+                  <button onClick={() => setSearchQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-faint hover:text-ink">
+                    <XIcon className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+
+              {/* Status filter pills */}
+              <div className="inline-flex rounded-lg border border-line bg-surface p-0.5">
+                {(['all', 'active', 'inactive'] as const).map((st) => (
+                  <button
+                    key={st}
+                    onClick={() => setStatusFilter(st)}
+                    className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition ${
+                      statusFilter === st ? 'bg-pine-soft text-pine font-semibold' : 'text-ink-soft hover:text-ink'
+                    }`}
+                  >
+                    {st === 'all' ? '全部' : st === 'active' ? '在职' : '已停用'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* ── 表格区域 ── */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-line bg-paper/60 text-xs font-medium text-ink-soft">
+                  <th className="py-3 pl-6 pr-4">员工信息</th>
+                  <th className="py-3 px-4">入职时间 / 司龄</th>
+                  {activeTab === 'full_time' && <th className="py-3 px-4">年假额度口径</th>}
+                  {activeTab === 'full_time' && <th className="py-3 px-4">结转天数</th>}
+                  {activeTab === 'full_time' && <th className="py-3 px-4">系统权限</th>}
+                  <th className="py-3 px-4 text-center">账号状态</th>
+                  <th className="py-3 pl-4 pr-6 text-right">操作管理</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {filteredList.length === 0 ? (
+                  <tr>
+                    <td colSpan={activeTab === 'full_time' ? 7 : 4} className="py-12 text-center text-xs text-ink-faint">
+                      未找到符合筛选条件的员工记录。
+                    </td>
+                  </tr>
+                ) : (
+                  filteredList.map((emp) => {
+                    const initials = getInitials(emp.full_name)
+                    const years = getYearsOfService(emp.date_of_commencement)
+
+                    return (
+                      <tr key={emp.id} className={`transition hover:bg-paper/40 ${!emp.is_active ? 'bg-paper/30 opacity-70' : ''}`}>
+                        {/* 1. 员工信息 */}
+                        <td className="py-3.5 pl-6 pr-4">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-pine/90 to-pine text-xs font-bold text-white shadow-2xs">
+                              {initials}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-ink">{emp.full_name}</span>
+                                {emp.employee_no && (
+                                  <span className="font-mono text-[11px] text-ink-faint bg-paper px-1.5 py-0.5 rounded border border-line/60">
+                                    #{emp.employee_no}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-ink-faint">
+                                {emp.employment_type === 'full_time' ? '全职员工' : '兼职人员'}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* 2. 入职时间与司龄 */}
+                        <td className="py-3.5 px-4 whitespace-nowrap text-xs text-ink">
+                          <span className="font-mono">{emp.date_of_commencement}</span>
+                          <span className="ml-2 rounded bg-paper px-1.5 py-0.5 text-[10px] text-ink-faint font-medium">
+                            {years.toFixed(1)} 年
+                          </span>
+                        </td>
+
+                        {/* 3. 年假额度 */}
+                        {activeTab === 'full_time' && (
+                          <td className="py-3.5 px-4 whitespace-nowrap text-xs text-ink">
+                            {emp.annual_leave_entitlement_override != null ? (
+                              <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700 border border-amber-200">
+                                特批 {emp.annual_leave_entitlement_override} 天
+                              </span>
+                            ) : (
+                              <span className="text-ink-soft">按司龄自动计算</span>
+                            )}
+                          </td>
+                        )}
+
+                        {/* 4. 结转天数 */}
+                        {activeTab === 'full_time' && (
+                          <td className="py-3.5 px-4 whitespace-nowrap text-xs font-mono text-ink">
+                            {emp.annual_leave_carry_forward > 0 ? (
+                              <span className="font-semibold text-pine">{emp.annual_leave_carry_forward} 天</span>
+                            ) : (
+                              <span className="text-ink-faint">0 天</span>
+                            )}
+                          </td>
+                        )}
+
+                        {/* 5. 角色 */}
+                        {activeTab === 'full_time' && (
+                          <td className="py-3.5 px-4 whitespace-nowrap text-xs">
+                            <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[11px] font-medium ${
+                              emp.role === 'manager'
+                                ? 'bg-pine-soft text-pine border border-pine/30'
+                                : 'bg-paper text-ink-soft border border-line'
+                            }`}>
+                              {emp.role === 'manager' ? '负责人 (Manager)' : '普通员工 (Staff)'}
+                            </span>
+                          </td>
+                        )}
+
+                        {/* 6. 状态 */}
+                        <td className="py-3.5 px-4 whitespace-nowrap text-center">
+                          <button
+                            onClick={() => handleToggleActive(emp.id, emp.is_active)}
+                            title="点击快速切换在职/停用状态"
+                            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold transition ${
+                              emp.is_active
+                                ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                                : 'bg-rust-soft text-rust hover:bg-rust/20'
+                            }`}
+                          >
+                            <span className={`h-1.5 w-1.5 rounded-full ${emp.is_active ? 'bg-emerald-500' : 'bg-rust'}`} />
+                            {emp.is_active ? '在职' : '已停用'}
+                          </button>
+                        </td>
+
+                        {/* 7. 操作 */}
+                        <td className="py-3.5 pl-4 pr-6 text-right whitespace-nowrap">
+                          <div className="inline-flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => openEditModal(emp)}
+                              className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium text-ink-soft hover:bg-paper hover:text-ink transition"
+                            >
+                              <EditIcon className="h-3.5 w-3.5 text-ink-faint" />
+                              编辑
+                            </button>
+
+                            {emp.employment_type === 'full_time' && (
+                              <button
+                                onClick={() => {
+                                  setError('')
+                                  setNewPassword('')
+                                  setResettingEmployee({ id: emp.id, name: emp.full_name })
+                                }}
+                                className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium text-pine hover:bg-pine-soft/60 transition"
+                              >
+                                <KeyIcon className="h-3.5 w-3.5" />
+                                重置密码
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* 表格底部信息 */}
+          <div className="flex items-center justify-between border-t border-line px-5 py-3 bg-surface text-xs text-ink-faint">
+            <span>
+              显示 {filteredList.length} / 共 {currentTabList.length} 位员工
+            </span>
+            <span>💡 提示：点击状态胶囊可直接切换账户启停</span>
+          </div>
+        </div>
+
+      </div>
+
+      {/* ════════════════════════════════════════════
+          MODAL 1: 新增员工模态框 (替代原先笨重下拉)
+          ════════════════════════════════════════════ */}
+      {showAddModal && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4 backdrop-blur-xs"
+          onClick={() => setShowAddModal(false)}
+        >
+          <div
+            className="w-full max-w-lg rounded-2xl border border-line bg-surface p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-5 flex items-start justify-between border-b border-line pb-4">
               <div>
-                <p className="mb-1 text-xs font-medium text-ink-faint">Commencement</p>
+                <h2 className="text-base font-bold text-ink">新增员工账号</h2>
+                <p className="mt-0.5 text-xs text-ink-faint">为新入职人员建立组织人事档案</p>
+              </div>
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="rounded-lg p-1.5 text-ink-faint hover:bg-paper hover:text-ink transition"
+              >
+                <XIcon className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddEmployee} className="space-y-4 text-xs">
+              {/* 用工类型切换 */}
+              <div>
+                <label className="field-label">用工类型</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setEmploymentType('full_time'); setRole('staff') }}
+                    className={`rounded-lg border py-2 text-center text-xs font-medium transition ${
+                      employmentType === 'full_time'
+                        ? 'border-pine bg-pine-soft text-pine font-semibold'
+                        : 'border-line text-ink-soft hover:bg-paper'
+                    }`}
+                  >
+                    全职正式员工
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setEmploymentType('part_time'); setRole('staff') }}
+                    className={`rounded-lg border py-2 text-center text-xs font-medium transition ${
+                      employmentType === 'part_time'
+                        ? 'border-pine bg-pine-soft text-pine font-semibold'
+                        : 'border-line text-ink-soft hover:bg-paper'
+                    }`}
+                  >
+                    兼职人员
+                  </button>
+                </div>
+              </div>
+
+              {/* 姓名与入职日期 */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="field-label">员工姓名 *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="如：张三 / John Doe"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className="field-input"
+                  />
+                </div>
+                <div>
+                  <label className="field-label">入职日期 *</label>
+                  <input
+                    type="date"
+                    required
+                    value={dateOfCommencement}
+                    onChange={(e) => setDateOfCommencement(e.target.value)}
+                    className="field-input"
+                  />
+                </div>
+              </div>
+
+              {/* 全职员工专属信息 (工号、初始密码、角色) */}
+              {!isPartTime ? (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="field-label">系统工号 (纯数字) *</label>
+                      <input
+                        type="text"
+                        required
+                        inputMode="numeric"
+                        pattern="[0-9]{1,9}"
+                        title="只能填数字"
+                        placeholder="例如：003"
+                        value={staffId}
+                        onChange={(e) => setStaffId(e.target.value)}
+                        className="field-input font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="field-label">系统权限角色</label>
+                      <select
+                        value={role}
+                        onChange={(e) => setRole(e.target.value)}
+                        className="field-input"
+                      >
+                        <option value="staff">普通员工 (Staff)</option>
+                        <option value="manager">主管/负责人 (Manager)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="field-label">初始登录密码 (至少 6 位) *</label>
+                    <input
+                      type="text"
+                      required
+                      minLength={6}
+                      placeholder="设置默认初始密码"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="field-input font-mono"
+                    />
+                    <p className="mt-1 text-[11px] text-ink-faint">
+                      员工首次登录后可在个人菜单自行修改密码。
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <div className="rounded-lg border border-line bg-paper/60 p-3 text-ink-soft">
+                  <p className="font-semibold text-ink">ℹ️ 兼职人员无系统登录账号</p>
+                  <p className="mt-0.5 text-[11px] text-ink-faint">
+                    兼职人员不需要独立系统账户，工时由负责人在【工时记录】页面统一登记核算。
+                  </p>
+                </div>
+              )}
+
+              {error && <p className="text-xs text-rust">{error}</p>}
+
+              <div className="mt-6 flex justify-end gap-2.5 pt-3 border-t border-line">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="rounded-lg border border-line bg-surface px-4 py-2 text-xs font-medium text-ink-soft hover:bg-paper transition"
+                >
+                  取消
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="rounded-lg bg-pine px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-pine-deep disabled:opacity-50 transition"
+                >
+                  {submitting ? '保存中...' : '确认添加'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════
+          MODAL 2: 编辑员工档案抽屉 / 模态框
+          ════════════════════════════════════════════ */}
+      {editingEmployee && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4 backdrop-blur-xs"
+          onClick={() => setEditingEmployee(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-line bg-surface p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-5 flex items-start justify-between border-b border-line pb-4">
+              <div>
+                <h2 className="text-base font-bold text-ink">编辑员工档案</h2>
+                <p className="mt-0.5 text-xs text-ink-faint">
+                  {editingEmployee.full_name} {editingEmployee.employee_no ? `(#${editingEmployee.employee_no})` : ''}
+                </p>
+              </div>
+              <button
+                onClick={() => setEditingEmployee(null)}
+                className="rounded-lg p-1.5 text-ink-faint hover:bg-paper hover:text-ink transition"
+              >
+                <XIcon className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit} className="space-y-4 text-xs">
+              <div>
+                <label className="field-label">入职日期 (Commencement Date)</label>
                 <input
                   type="date"
-                  defaultValue={emp.date_of_commencement}
-                  onBlur={(e) => onUpdateField(emp.id, 'date_of_commencement', e.target.value)}
-                  className="field-input w-full py-1.5 text-xs"
+                  required
+                  value={editCommencement}
+                  onChange={(e) => setEditCommencement(e.target.value)}
+                  className="field-input"
                 />
               </div>
-              <div>
-                <p className="mb-1 text-xs font-medium text-ink-faint">Role</p>
-                <select
-                  value={emp.role}
-                  onChange={(e) => onUpdateField(emp.id, 'role', e.target.value)}
-                  className="field-input w-full py-1.5 text-xs"
+
+              {editingEmployee.employment_type === 'full_time' && (
+                <>
+                  <div>
+                    <label className="field-label">系统权限角色</label>
+                    <select
+                      value={editRole}
+                      onChange={(e) => setEditRole(e.target.value)}
+                      className="field-input"
+                    >
+                      <option value="staff">普通员工 (Staff)</option>
+                      <option value="manager">主管/负责人 (Manager)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="field-label">年假额度特批覆盖 (Override)</label>
+                    <input
+                      type="number"
+                      step="0.5"
+                      placeholder="留空则按法定年资自动计算"
+                      value={editOverride}
+                      onChange={(e) => setEditOverride(e.target.value)}
+                      className="field-input"
+                    />
+                    <p className="mt-1 text-[11px] text-ink-faint">
+                      留空表示自动按马来西亚劳工法排期计算；填写数字则固定为该天数。
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="field-label">年假结转天数 (Carry Forward)</label>
+                    <input
+                      type="number"
+                      step="0.5"
+                      value={editCarry}
+                      onChange={(e) => setEditCarry(e.target.value)}
+                      className="field-input"
+                    />
+                    <p className="mt-1 text-[11px] text-ink-faint">从去年结转至今年的年假天数。</p>
+                  </div>
+                </>
+              )}
+
+              <div className="mt-6 flex justify-end gap-2.5 pt-3 border-t border-line">
+                <button
+                  type="button"
+                  onClick={() => setEditingEmployee(null)}
+                  className="rounded-lg border border-line bg-surface px-4 py-2 text-xs font-medium text-ink-soft hover:bg-paper transition"
                 >
-                  <option value="staff">Staff</option>
-                  <option value="manager">Manager</option>
-                </select>
+                  取消
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingEdit}
+                  className="rounded-lg bg-pine px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-pine-deep disabled:opacity-50 transition"
+                >
+                  {savingEdit ? '保存中...' : '保存更改'}
+                </button>
               </div>
-              <div>
-                <p className="mb-1 text-xs font-medium text-ink-faint">Entitled Override</p>
-                <input
-                  type="number"
-                  step="0.5"
-                  defaultValue={emp.annual_leave_entitlement_override ?? ''}
-                  placeholder="auto"
-                  onBlur={(e) => {
-                    const v = e.target.value.trim()
-                    onUpdateField(emp.id, 'annual_leave_entitlement_override', v === '' ? (null as unknown as number) : Number(v))
-                  }}
-                  className="field-input w-full py-1.5 text-xs"
-                />
-              </div>
-              <div>
-                <p className="mb-1 text-xs font-medium text-ink-faint">Leave Carry-Fwd</p>
-                <input
-                  type="number"
-                  step="0.5"
-                  defaultValue={emp.annual_leave_carry_forward}
-                  onBlur={(e) => onUpdateField(emp.id, 'annual_leave_carry_forward', Number(e.target.value))}
-                  className="field-input w-full py-1.5 text-xs"
-                />
-              </div>
-            </div>
-
-            {/* Reset password button */}
-            <button
-              onClick={() => onResetPassword(emp.id, emp.full_name)}
-              className="w-full rounded-lg border border-line bg-paper py-2 text-xs font-medium text-ink-soft hover:bg-pine-soft/30"
-            >
-              Reset Password
-            </button>
+            </form>
           </div>
-        ))}
-      </div>
-    </>
-  )
-}
+        </div>
+      )}
 
-// ─── Part-time table ──────────────────────────────────────────────────────────
-
-function PartTimeTable({ employees, onToggleActive, onUpdateField }: {
-  employees: Employee[]
-  onToggleActive: (id: string, current: boolean) => void
-  onUpdateField: (id: string, field: string, value: string | number) => void
-}) {
-  const th = 'px-3 py-2.5 text-[13px] font-medium text-ink-faint whitespace-nowrap'
-  return (
-    <>
-      {/* ── Desktop table ── */}
-      <div className="hidden md:block overflow-x-auto rounded-lg border border-line">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-line bg-paper">
-              <th className={`sticky left-0 z-10 bg-paper text-left ${th}`}>Employee</th>
-              <th className={`text-left ${th}`}>Commencement</th>
-              <th className={`text-center ${th}`}>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {employees.map((emp, idx) => {
-              const bg = idx % 2 === 0 ? 'bg-surface' : 'bg-paper/40'
-              return (
-                <tr key={emp.id} className={`border-b border-line last:border-b-0 ${bg} ${!emp.is_active ? 'opacity-50' : ''}`}>
-                  <td className={`sticky left-0 z-10 px-3 py-2.5 whitespace-nowrap ${bg}`}>
-                    <span className="mr-1.5 text-xs text-ink-faint">{emp.employee_no ? `#${emp.employee_no}` : '—'}</span>
-                    <span className="font-medium text-ink">{emp.full_name}</span>
-                  </td>
-                  <td className="px-3 py-2">
-                    <input type="date" defaultValue={emp.date_of_commencement} onBlur={(e) => onUpdateField(emp.id, 'date_of_commencement', e.target.value)} className="field-input py-1 text-xs" />
-                  </td>
-                  <td className="px-3 py-2 text-center">
-                    <button onClick={() => onToggleActive(emp.id, emp.is_active)} className={`badge ${emp.is_active ? 'bg-paper text-ink-soft' : 'badge-rejected'}`}>
-                      {emp.is_active ? 'Active' : 'Inactive'}
-                    </button>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      {/* ── Mobile cards ── */}
-      <div className="md:hidden space-y-3">
-        {employees.map((emp) => (
-          <div key={emp.id} className={`rounded-xl border border-line bg-surface p-4 space-y-3 ${!emp.is_active ? 'opacity-60' : ''}`}>
-            <div className="flex items-center justify-between">
+      {/* ════════════════════════════════════════════
+          MODAL 3: 重置员工密码模态框 (告别 window.prompt)
+          ════════════════════════════════════════════ */}
+      {resettingEmployee && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4 backdrop-blur-xs"
+          onClick={() => setResettingEmployee(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl border border-line bg-surface p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-start justify-between border-b border-line pb-3">
               <div>
-                <p className="font-semibold text-ink">{emp.full_name}</p>
-                <p className="text-xs text-ink-faint">{emp.employee_no ? `#${emp.employee_no}` : 'No ID'} · Part-time</p>
+                <h2 className="text-base font-bold text-ink">重置员工密码</h2>
+                <p className="mt-0.5 text-xs text-ink-faint">员工: {resettingEmployee.name}</p>
               </div>
               <button
-                onClick={() => onToggleActive(emp.id, emp.is_active)}
-                className={`rounded-full px-3 py-1 text-xs font-medium ${emp.is_active ? 'bg-st-approved-soft text-st-approved-text' : 'bg-rust-soft text-rust'}`}
+                onClick={() => setResettingEmployee(null)}
+                className="rounded-lg p-1.5 text-ink-faint hover:bg-paper hover:text-ink transition"
               >
-                {emp.is_active ? 'Active' : 'Inactive'}
+                <XIcon className="h-4 w-4" />
               </button>
             </div>
-            <div>
-              <p className="mb-1 text-xs font-medium text-ink-faint">Commencement Date</p>
-              <input
-                type="date"
-                defaultValue={emp.date_of_commencement}
-                onBlur={(e) => onUpdateField(emp.id, 'date_of_commencement', e.target.value)}
-                className="field-input w-full py-1.5 text-xs"
-              />
-            </div>
+
+            <form onSubmit={handleConfirmResetPassword} className="space-y-4 text-xs">
+              <div>
+                <label className="field-label">输入新密码 (至少 6 位)</label>
+                <input
+                  type="text"
+                  required
+                  minLength={6}
+                  autoFocus
+                  placeholder="请输入新密码"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="field-input font-mono"
+                />
+              </div>
+
+              {error && <p className="text-xs text-rust">{error}</p>}
+
+              <div className="mt-5 flex justify-end gap-2.5 pt-3 border-t border-line">
+                <button
+                  type="button"
+                  onClick={() => setResettingEmployee(null)}
+                  className="rounded-lg border border-line bg-surface px-4 py-2 text-xs font-medium text-ink-soft hover:bg-paper transition"
+                >
+                  取消
+                </button>
+                <button
+                  type="submit"
+                  disabled={resetting || newPassword.length < 6}
+                  className="rounded-lg bg-pine px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-pine-deep disabled:opacity-40 transition"
+                >
+                  {resetting ? '重置中...' : '确认重置'}
+                </button>
+              </div>
+            </form>
           </div>
-        ))}
-      </div>
-    </>
+        </div>
+      )}
+    </ManagerShell>
   )
 }
 
