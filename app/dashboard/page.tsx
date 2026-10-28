@@ -17,6 +17,7 @@ import { useEmployee } from '@/lib/useEmployee'
 import AuthStatus from '@/components/AuthStatus'
 import EmployeeHome from '@/components/employee/EmployeeHome'
 import { uploadMcFile, getMcSignedUrl, validateMcFile } from '@/lib/mcAttachments'
+import HelpDocModal from '@/components/HelpDocModal'
 
 type Employee = {
   id: string
@@ -317,6 +318,7 @@ export default function DashboardPage() {
 
   // User profile menu state (matching manage)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const [helpOpen, setHelpOpen] = useState(false)
 
   const userMenuRef = useRef<HTMLDivElement | null>(null)
 
@@ -667,6 +669,15 @@ export default function DashboardPage() {
 
             <div className="flex items-center gap-3">
               <button
+                type="button"
+                onClick={() => setHelpOpen(true)}
+                title="使用指南"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-2 text-xs font-semibold text-ink shadow-2xs transition hover:bg-paper focus:outline-none"
+              >
+                <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <span>使用指南</span>
+              </button>
+              <button
                 onClick={() => { setModalOpen(true); setFormError('') }}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-pine px-4 py-2 text-sm font-medium text-white shadow-xs transition hover:bg-pine-deep focus:outline-none focus:ring-2 focus:ring-pine/20"
               >
@@ -729,6 +740,8 @@ export default function DashboardPage() {
             </div>
           </div>
         </header>
+        <HelpDocModal isOpen={helpOpen} onClose={() => setHelpOpen(false)} defaultRole="employee" />
+        <HelpDocModal isOpen={helpOpen} onClose={() => setHelpOpen(false)} defaultRole="employee" />
 
         {/* ── 主体工作台 (7:3 栅格) ── */}
         <div className="mx-auto max-w-7xl px-6 py-6 pb-20">
