@@ -103,7 +103,14 @@ function Stat({ label, tone, children }: { label: string; tone?: 'rust'; childre
   )
 }
 
-// 数据卡:白底扁平,颜色只留在左边的小圆点和(需要强调时)数字上
+function getInitials(name: string) {
+  if (!name) return 'U'
+  const parts = name.trim().split(/\s+/)
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+}
+
+// 数据卡: 钉钉高质感白底卡片, 带轻微阴影与小圆角
 function StatCard({
   label, value, unit, hint, dot, tag, valueClass = 'text-ink',
 }: {
@@ -116,17 +123,17 @@ function StatCard({
   valueClass?: string
 }) {
   return (
-    <div className="rounded-lg border border-line bg-white p-5">
+    <div className="rounded-xl border border-line bg-white p-5 shadow-2xs transition hover:shadow-xs">
       <div className="flex items-center justify-between gap-2">
-        <span className="flex items-center gap-2 text-[13px] text-ink-soft">
+        <span className="flex items-center gap-2 text-xs font-medium text-ink-soft">
           <span className={`h-2 w-2 rounded-full ${dot}`} />
           {label}
         </span>
         {tag}
       </div>
-      <p className={`mt-3 text-[28px] font-semibold leading-none tabular-nums ${valueClass}`}>
+      <p className={`mt-3 font-mono text-2xl font-bold leading-none tabular-nums ${valueClass}`}>
         {value}
-        {unit && <span className="ml-1.5 text-[13px] font-normal text-ink-soft">{unit}</span>}
+        {unit && <span className="ml-1.5 font-sans text-xs font-normal text-ink-faint">{unit}</span>}
       </p>
       {hint && <div className="mt-3 text-xs text-ink-faint">{hint}</div>}
     </div>
@@ -142,6 +149,7 @@ function DesktopReports() {
   const [month, setMonth] = useState(new Date().getMonth() + 1)
   const [filter, setFilter] = useState<'all' | 'leave' | 'unpaid' | 'mc'>('all')
   const [yearFilter, setYearFilter] = useState<'all' | 'overdrawn' | 'mc'>('all')
+  const [searchQuery, setSearchQuery] = useState('')
 
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
@@ -251,45 +259,93 @@ function DesktopReports() {
 
   const ftRows = useMemo(() => {
     return monthReport.fullTime.filter((r) => {
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim()
+        const matchName = r.emp.full_name.toLowerCase().includes(q)
+        const matchNo = r.emp.employee_no ? String(r.emp.employee_no).includes(q) : false
+        if (!matchName && !matchNo) return false
+      }
       if (filter === 'leave') return r.annual + r.medical + r.unpaid + r.other > 0 || r.lines.length > 0
       if (filter === 'unpaid') return r.unpaid > 0
       if (filter === 'mc') return r.medical > 0
       return true
     })
-  }, [monthReport.fullTime, filter])
+  }, [monthReport.fullTime, filter, searchQuery])
+
+  const ptRows = useMemo(() => {
+    return monthReport.partTime.filter((r) => {
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim()
+        const matchName = r.emp.full_name.toLowerCase().includes(q)
+        const matchNo = r.emp.employee_no ? String(r.emp.employee_no).includes(q) : false
+        if (!matchName && !matchNo) return false
+      }
+      return true
+    })
+  }, [monthReport.partTime, searchQuery])
 
   const ftYearRows = useMemo(() => {
     return yearReport.fullTime.filter((r) => {
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim()
+        const matchName = r.emp.full_name.toLowerCase().includes(q)
+        const matchNo = r.emp.employee_no ? String(r.emp.employee_no).includes(q) : false
+        if (!matchName && !matchNo) return false
+      }
       if (yearFilter === 'overdrawn') return r.alBalance < 0
       if (yearFilter === 'mc') return r.mcTaken > 0
       return true
     })
-  }, [yearReport.fullTime, yearFilter])
+  }, [yearReport.fullTime, yearFilter, searchQuery])
+
+  const ptYearRows = useMemo(() => {
+    return yearReport.partTime.filter((r) => {
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim()
+        const matchName = r.emp.full_name.toLowerCase().includes(q)
+        const matchNo = r.emp.employee_no ? String(r.emp.employee_no).includes(q) : false
+        if (!matchName && !matchNo) return false
+      }
+      return true
+    })
+  }, [yearReport.partTime, searchQuery])
 
   if (auth.status !== 'ready') return <AuthStatus state={auth} />
 
-  const th = 'px-3.5 py-2.5 text-[13px] font-medium text-ink-soft whitespace-nowrap bg-[#FAFAFA] border-b border-line'
-  const tdNum = 'px-3.5 py-3 text-center tabular-nums text-sm text-ink-soft align-middle'
-  const emptyBox = 'rounded-lg border border-line py-10 text-center text-[13px] text-ink-faint bg-white'
-  const notice = 'rounded-md border border-st-pending/25 bg-st-pending-soft px-4 py-2.5 text-[13px] text-st-pending-text'
+  const th = 'px-3.5 py-2.5 text-xs font-semibold text-ink-soft whitespace-nowrap bg-[#FAFAFA] border-b border-line'
+  const tdNum = 'px-3.5 py-3 text-center tabular-nums text-xs text-ink-soft align-middle font-mono'
+  const emptyBox = 'rounded-xl border border-line py-12 text-center text-xs text-ink-faint bg-white'
+  const notice = 'rounded-xl border border-st-pending/25 bg-st-pending-soft px-4 py-2.5 text-xs text-st-pending-text shadow-2xs'
   // 下拉框 / 方形小按钮 / 过滤标签:和审批页同一套尺寸(32px 高)
-  const sel = 'h-8 rounded-md border border-line bg-white px-2.5 text-[13px] text-ink transition-colors hover:border-pine focus:border-pine focus:outline-none focus:ring-2 focus:ring-pine/15'
-  const sqBtn = 'flex h-8 w-8 items-center justify-center rounded-md border border-line bg-white text-ink-soft transition-colors hover:border-pine hover:text-pine'
-  const chip = 'rounded-md px-3 py-1 text-[13px] transition-colors'
-  const chipOn = 'bg-pine-soft font-medium text-pine'
+  const sel = 'h-8 rounded-lg border border-line bg-white px-2.5 text-xs text-ink transition-colors hover:border-pine focus:border-pine focus:outline-none focus:ring-2 focus:ring-pine/15'
+  const sqBtn = 'flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-white text-ink-soft transition-colors hover:border-pine hover:text-pine'
+  const chip = 'rounded-lg px-3 py-1 text-xs transition-colors'
+  const chipOn = 'bg-pine-soft font-semibold text-pine shadow-2xs'
   const chipOff = 'bg-paper text-ink-soft hover:text-ink'
 
-  const name = (e: ReportEmployee) => (
-    <div className="flex items-center gap-2">
-      <span className="font-medium text-ink">{e.full_name}</span>
-      {e.employee_no && (
-        <span className="text-xs text-ink-faint font-normal">#{e.employee_no}</span>
-      )}
-      {!e.is_active && (
-        <span className="rounded bg-paper px-1.5 py-0.5 text-[11px] font-normal text-ink-faint ring-1 ring-line">inactive</span>
-      )}
-    </div>
-  )
+  const name = (e: ReportEmployee) => {
+    const initials = getInitials(e.full_name)
+    return (
+      <div className="flex items-center gap-2.5">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-pine/10 text-xs font-bold text-pine border border-pine/20">
+          {initials}
+        </div>
+        <div>
+          <div className="flex items-center gap-1.5">
+            <span className="font-semibold text-ink text-xs">{e.full_name}</span>
+            {e.employee_no && (
+              <span className="rounded bg-paper px-1.5 py-0.5 text-[10px] font-mono text-ink-faint border border-line/60">
+                #{e.employee_no}
+              </span>
+            )}
+          </div>
+          {!e.is_active && (
+            <span className="mt-0.5 inline-block text-[10px] font-medium text-rust">已停用账号</span>
+          )}
+        </div>
+      </div>
+    )
+  }
 
   const detailsOf = (r: FtRow) => r.lines.map((l) => lineText(l, ym)).filter((x): x is string => Boolean(x))
   const t = monthReport.totals
@@ -312,7 +368,7 @@ function DesktopReports() {
         />
 
         {/* ── 视图标签 + 筛选条(和审批页同一种白色卡片)── */}
-        <div className="overflow-hidden rounded-lg border border-line bg-white print:hidden">
+        <div className="overflow-hidden rounded-xl border border-line bg-white shadow-2xs print:hidden">
           <div className="border-b border-line px-3">
             <UnderlineTabs
               scroll
@@ -327,28 +383,45 @@ function DesktopReports() {
 
           <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
             {/* 日期选择 */}
-            {view === 'month' ? (
-              <div className="flex items-center gap-2">
-                <button onClick={() => shiftMonth(-1)} className={sqBtn} aria-label="Previous month">‹</button>
-                <select value={month} onChange={(e) => setMonth(Number(e.target.value))} className={`${sel} w-32`}>
-                  {MONTH_NAMES.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
-                </select>
-                <select value={year} onChange={(e) => setYear(Number(e.target.value))} className={`${sel} w-24`}>
+            <div className="flex items-center gap-3">
+              {view === 'month' ? (
+                <div className="flex items-center gap-2">
+                  <button onClick={() => shiftMonth(-1)} className={sqBtn} aria-label="Previous month">‹</button>
+                  <select value={month} onChange={(e) => setMonth(Number(e.target.value))} className={`${sel} w-32`}>
+                    {MONTH_NAMES.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+                  </select>
+                  <select value={year} onChange={(e) => setYear(Number(e.target.value))} className={`${sel} w-24`}>
+                    {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
+                  </select>
+                  <button onClick={() => shiftMonth(1)} className={sqBtn} aria-label="Next month">›</button>
+                  {!isCurrentMonth && (
+                    <button onClick={goToday} className="ml-1 text-xs font-medium text-pine transition-colors hover:text-pine-deep">This month</button>
+                  )}
+                </div>
+              ) : (
+                <select value={year} onChange={(e) => setYear(Number(e.target.value))} className={`${sel} w-32`}>
                   {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
                 </select>
-                <button onClick={() => shiftMonth(1)} className={sqBtn} aria-label="Next month">›</button>
-                {!isCurrentMonth && (
-                  <button onClick={goToday} className="ml-1 text-[13px] text-pine transition-colors hover:text-pine-deep">This month</button>
+              )}
+
+              {/* 实时搜索框 */}
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="搜索姓名或工号..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="h-8 w-40 sm:w-48 rounded-lg border border-line bg-surface pl-7 pr-6 text-xs text-ink placeholder:text-ink-faint focus:border-pine focus:outline-none focus:ring-1 focus:ring-pine/20"
+                />
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-faint text-[11px]">🔍</span>
+                {searchQuery && (
+                  <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-ink-faint hover:text-ink">✕</button>
                 )}
               </div>
-            ) : (
-              <select value={year} onChange={(e) => setYear(Number(e.target.value))} className={`${sel} w-32`}>
-                {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
-              </select>
-            )}
+            </div>
 
             {/* 全职 / 兼职(和顶栏的中/EN 切换同一种样式)*/}
-            <div className="flex rounded-md bg-paper p-0.5 text-[13px]">
+            <div className="flex rounded-lg bg-paper p-0.5 text-xs">
               {([
                 ['ft', 'Full-time', ftCount],
                 ['pt', 'Part-time', ptCount],
@@ -357,10 +430,10 @@ function DesktopReports() {
                 <button
                   key={key}
                   onClick={() => setScope(key)}
-                  className={`flex items-center gap-1.5 rounded px-3 py-1 font-medium transition-colors ${scope === key ? 'bg-white text-pine shadow-xs' : 'text-ink-soft hover:text-ink'}`}
+                  className={`flex items-center gap-1.5 rounded-md px-3 py-1 font-medium transition-colors ${scope === key ? 'bg-white text-pine font-semibold shadow-2xs' : 'text-ink-soft hover:text-ink'}`}
                 >
                   {label}
-                  {n !== null && <span className={`text-xs tabular-nums ${scope === key ? 'text-pine' : 'text-ink-faint'}`}>{n}</span>}
+                  {n !== null && <span className={`text-[11px] font-mono tabular-nums ${scope === key ? 'text-pine' : 'text-ink-faint'}`}>{n}</span>}
                 </button>
               ))}
             </div>
@@ -571,16 +644,16 @@ function DesktopReports() {
                               </td>
                               <td className="px-3.5 py-3.5 text-xs text-ink-soft align-middle">
                                 {details.length === 0 ? (
-                                  <span className="text-ink-faint">No leave taken</span>
+                                  <span className="text-ink-faint/60">—</span>
                                 ) : (
-                                  <ul className="space-y-1">
+                                  <div className="flex flex-wrap gap-1.5">
                                     {details.map((d, i) => (
-                                      <li key={i} className="flex items-center gap-1.5 font-medium text-ink">
-                                        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-pine" />
-                                        <span>{d}</span>
-                                      </li>
+                                      <span key={i} className="inline-flex items-center gap-1 rounded bg-paper px-2 py-0.5 text-[11px] font-medium text-ink border border-line/60">
+                                        <span className="h-1.5 w-1.5 rounded-full bg-pine" />
+                                        {d}
+                                      </span>
                                     ))}
-                                  </ul>
+                                  </div>
                                 )}
                                 {r.cancellationRequested && (
                                   <span className="mt-1 inline-block badge badge-pending">
@@ -624,8 +697,8 @@ function DesktopReports() {
                   </Link>
                 </div>
 
-                {monthReport.partTime.length === 0 ? (
-                  <p className={emptyBox}>No part-time staff.</p>
+                {ptRows.length === 0 ? (
+                  <p className={emptyBox}>No part-time staff matched.</p>
                 ) : (
                   <div className="overflow-hidden rounded-lg border border-line bg-white">
                     <table className="w-full text-sm">
@@ -636,7 +709,7 @@ function DesktopReports() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-line">
-                        {monthReport.partTime.map((r) => (
+                        {ptRows.map((r) => (
                           <tr key={r.emp.id} className="transition-colors hover:bg-[#FAFAFA]">
                             <td className="px-3.5 py-3 font-medium text-ink">{name(r.emp)}</td>
                             <td className="px-3.5 py-3 text-right tabular-nums">
@@ -767,8 +840,8 @@ function DesktopReports() {
                   </div>
                 </div>
 
-                {yearReport.partTime.length === 0 ? (
-                  <p className={emptyBox}>No part-time staff.</p>
+                {ptYearRows.length === 0 ? (
+                  <p className={emptyBox}>No part-time staff matched.</p>
                 ) : (
                   <div className="overflow-hidden rounded-lg border border-line bg-white">
                     <table className="w-full text-sm">
@@ -780,7 +853,7 @@ function DesktopReports() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-line">
-                        {yearReport.partTime.map((r) => (
+                        {ptYearRows.map((r) => (
                           <tr key={r.emp.id} className="transition-colors hover:bg-[#FAFAFA]">
                             <td className="px-3.5 py-3 font-medium text-ink">{name(r.emp)}</td>
                             <td className={tdNum}>{r.monthsEntered}</td>
