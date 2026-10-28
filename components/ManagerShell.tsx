@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { useLang, type DictKey } from '@/lib/lang'
+import HelpDocModal from '@/components/HelpDocModal'
 
 export function SvgIcon({ d, size = 18 }: { d: string; size?: number }) {
   return (
@@ -87,6 +88,7 @@ export default function ManagerShell({
   const { lang, setLang, t } = useLang()
   const [user, setUser] = useState<{ name: string; initials: string } | null>(null)
   const [attentionCount, setAttentionCount] = useState<number | undefined>(pendingCount)
+  const [helpOpen, setHelpOpen] = useState(false)
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user: u } }) => {
@@ -191,6 +193,7 @@ export default function ManagerShell({
               </button>
             ))}
           </div>
+          <button onClick={() => setHelpOpen(true)} title="使用指南 / Help" aria-label="使用指南" className="flex h-9 w-9 items-center justify-center rounded-md text-ink-soft transition-colors hover:bg-paper hover:text-ink"><svg width="19" height="19" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></button>
           <Link href="/notifications" title={t('telegram')} aria-label={t('telegram')} className="flex h-9 w-9 items-center justify-center rounded-md text-ink-soft transition-colors hover:bg-paper hover:text-ink">
             <SvgIcon d={IC.bell} size={19} />
           </Link>
@@ -227,6 +230,7 @@ export default function ManagerShell({
           )}
         </div>
       </header>
+      <HelpDocModal isOpen={helpOpen} onClose={() => setHelpOpen(false)} defaultRole="manager" />
 
       <div className="flex min-h-screen lg:pt-14">
         {/* ══ 电脑版左侧菜单(钉钉后台:白底、选中项浅蓝底蓝字)══ */}
