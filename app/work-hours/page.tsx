@@ -1,7 +1,7 @@
 'use client'
 
 import MobileWorkHoursPage from '@/components/manager/MobileWorkHours'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import ManagerShell from '@/components/ManagerShell'
@@ -14,11 +14,115 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 const THIS_YEAR = new Date().getFullYear()
 const YEAR_OPTIONS = Array.from({ length: 5 }, (_, i) => THIS_YEAR - 2 + i) // 2 years back → 2 years ahead
 
+function getInitials(name: string) {
+  if (!name) return '?'
+  const parts = name.trim().split(/\s+/)
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+}
+
+function SearchIcon({ className = 'w-4 h-4' }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+    </svg>
+  )
+}
+
+function DownloadIcon({ className = 'w-4 h-4' }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+    </svg>
+  )
+}
+
+function ChevronLeftIcon({ className = 'w-4 h-4' }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+    </svg>
+  )
+}
+
+function ChevronRightIcon({ className = 'w-4 h-4' }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+    </svg>
+  )
+}
+
+function ClockIcon({ className = 'w-5 h-5' }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+      <circle cx="12" cy="12" r="10" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2" />
+    </svg>
+  )
+}
+
+function UsersIcon({ className = 'w-5 h-5' }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+    </svg>
+  )
+}
+
+function CalendarIcon({ className = 'w-5 h-5' }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+    </svg>
+  )
+}
+
+function MetricCard({
+  icon,
+  label,
+  value,
+  unit,
+  subtext,
+  tone = 'blue',
+}: {
+  icon: React.ReactNode
+  label: string
+  value: string | number
+  unit?: string
+  subtext?: string
+  tone?: 'blue' | 'teal' | 'amber' | 'slate'
+}) {
+  const toneClasses = {
+    blue: 'text-pine bg-pine-soft border-pine/20',
+    teal: 'text-emerald-600 bg-emerald-50 border-emerald-200/60',
+    amber: 'text-amber-600 bg-amber-50 border-amber-200/60',
+    slate: 'text-slate-700 bg-slate-100 border-slate-200',
+  }[tone]
+
+  return (
+    <div className="flex items-center justify-between rounded-xl border border-line bg-surface p-4 shadow-sm transition-all hover:shadow-md">
+      <div>
+        <p className="text-xs font-medium text-ink-faint">{label}</p>
+        <div className="mt-1 flex items-baseline gap-1.5">
+          <span className="text-2xl font-bold tracking-tight text-ink tabular-nums">{value}</span>
+          {unit && <span className="text-xs font-medium text-ink-soft">{unit}</span>}
+        </div>
+        {subtext && <p className="mt-1 text-[11px] text-ink-faint">{subtext}</p>}
+      </div>
+      <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border ${toneClasses}`}>
+        {icon}
+      </div>
+    </div>
+  )
+}
+
 function DesktopWorkHours() {
   const router = useRouter()
   const auth = useEmployee({ requireManager: true })
   const [employees, setEmployees] = useState<Employee[]>([])
   const [year, setYear] = useState(THIS_YEAR)
+  const [searchQuery, setSearchQuery] = useState('')
 
   // hours[`${employeeId}|${month}`] → string value of that cell (controlled input)
   const [hours, setHours] = useState<Record<string, string>>({})
@@ -127,181 +231,354 @@ function DesktopWorkHours() {
     return employees.reduce((s, emp) => s + rowTotal(emp.id), 0)
   }
 
+  // ── Filtered List ───────────────────────────────────────────────────────
+
+  const filteredEmployees = useMemo(() => {
+    if (!searchQuery.trim()) return employees
+    const q = searchQuery.toLowerCase().trim()
+    return employees.filter((e) => e.full_name.toLowerCase().includes(q))
+  }, [employees, searchQuery])
+
   // ── Export CSV ───────────────────────────────────────────────────────────
 
   function handleExportCsv() {
-    const header = ['Employee', ...MONTHS, 'Total']
+    const header = ['员工姓名 (Employee)', ...MONTHS, '全年累计 (Total Hours)']
     const rows = employees.map((emp) => [
       emp.full_name,
       ...Array.from({ length: 12 }, (_, i) => hours[key(emp.id, i + 1)] || '0'),
-      String(rowTotal(emp.id)),
+      String(rowTotal(emp.id).toFixed(1)),
     ])
     const csv = [header, ...rows]
       .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
       .join('\n')
 
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `work-hours-${year}.csv`
+    a.download = `兼职工时汇总-${year}.csv`
     a.click()
     URL.revokeObjectURL(url)
   }
 
   // ─────────────────────────────────────────────────────────────────────────
 
+  const isCurrentYear = year === THIS_YEAR
+  const currentMonthNumber = new Date().getMonth() + 1
+
   if (auth.status !== 'ready') return <AuthStatus state={auth} />
 
   return (
     <ManagerShell>
-      <div className="space-y-6 pb-10"><h1 className="font-display text-2xl font-semibold text-ink">Work Hours</h1>
+      <div className="space-y-6 pb-12">
+        {/* ── Top Header ────────────────────────────────────────── */}
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="font-display text-2xl font-bold tracking-tight text-ink">兼职工时管理</h1>
+              <span className="rounded-full bg-pine-soft px-2.5 py-0.5 text-xs font-semibold text-pine">
+                Work Hours
+              </span>
+            </div>
+            <p className="mt-1 text-sm text-ink-faint">
+              登记与核算兼职员工每月实际出勤工时，失焦即自动保存，支持按年度核算与导出。
+            </p>
+          </div>
 
-      {employees.length === 0 ? (
-        <div className="panel text-center space-y-2">
-          <p className="text-sm text-ink-faint">No active part-time employees found.</p>
-          <button
-            onClick={() => router.push('/manage')}
-            className="text-sm text-pine underline-offset-2 hover:underline"
-          >
-            Add part-time employees from the Employees page →
-          </button>
-        </div>
-      ) : (
-        <>
-          {/* ── Controls ────────────────────────────────────────── */}
-          <div className="flex items-center gap-3">
-            <select
-              value={year}
-              onChange={(e) => setYear(Number(e.target.value))}
-              className="field-input max-w-[110px]"
-            >
-              {YEAR_OPTIONS.map((y) => (
-                <option key={y} value={y}>{y}</option>
-              ))}
-            </select>
-
+          <div className="flex items-center gap-2 pt-2 sm:pt-0">
             <button
               onClick={handleExportCsv}
-              className="btn-ghost ml-auto"
+              disabled={employees.length === 0}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-2 text-xs font-semibold text-ink shadow-sm transition hover:bg-paper disabled:opacity-50"
             >
-              Export CSV
+              <DownloadIcon className="h-4 w-4 text-pine" />
+              <span>导出 Excel / CSV</span>
             </button>
           </div>
+        </div>
 
-          {/* ── Desktop: Full spreadsheet grid ───────────────────── */}
-          <div className="hidden md:block overflow-x-auto rounded-lg border border-line">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-line bg-paper">
-                  <th className="sticky left-0 z-10 bg-paper px-3 py-2.5 text-left text-[13px] font-medium text-ink-faint">
-                    Employee
-                  </th>
-                  {MONTHS.map((m) => (
-                    <th key={m} className="px-2 py-2.5 text-center text-[13px] font-medium text-ink-faint whitespace-nowrap">
-                      {m}
-                    </th>
-                  ))}
-                  <th className="px-3 py-2.5 text-right text-[13px] font-medium text-ink-faint">
-                    Total
-                  </th>
-                </tr>
-              </thead>
+        {/* ── Metric Cards ──────────────────────────────────────── */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <MetricCard
+            icon={<ClockIcon className="h-5 w-5" />}
+            label="年度兼职总工时"
+            value={grandTotal().toFixed(1)}
+            unit="h"
+            subtext={`${year} 全年累计总工时`}
+            tone="blue"
+          />
+          <MetricCard
+            icon={<UsersIcon className="h-5 w-5" />}
+            label="兼职在册人数"
+            value={employees.length}
+            unit="人"
+            subtext="目前激活的兼职员工"
+            tone="teal"
+          />
+          <MetricCard
+            icon={<CalendarIcon className="h-5 w-5" />}
+            label={`${isCurrentYear ? '当月' : `${year}年12月`}工时汇总`}
+            value={colTotal(isCurrentYear ? currentMonthNumber : 12).toFixed(1)}
+            unit="h"
+            subtext={isCurrentYear ? `第 ${currentMonthNumber} 月出勤总工时` : '年末月度工时'}
+            tone="amber"
+          />
+          <MetricCard
+            icon={<ClockIcon className="h-5 w-5" />}
+            label="兼职人均年工时"
+            value={employees.length > 0 ? (grandTotal() / employees.length).toFixed(1) : '0.0'}
+            unit="h"
+            subtext="全年人均工时贡献"
+            tone="slate"
+          />
+        </div>
 
-              <tbody>
-                {employees.map((emp, idx) => (
-                  <tr
-                    key={emp.id}
-                    className={`border-b border-line transition-colors ${idx % 2 === 0 ? 'bg-surface' : 'bg-paper/40'}`}
+        {employees.length === 0 ? (
+          <div className="rounded-xl border border-line bg-surface p-12 text-center shadow-sm">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-paper text-ink-faint">
+              <UsersIcon className="h-6 w-6" />
+            </div>
+            <h3 className="mt-3 text-base font-semibold text-ink">暂无兼职员工</h3>
+            <p className="mt-1 text-sm text-ink-faint">系统当前没有激活状态的兼职人员（Part-time）。</p>
+            <button
+              onClick={() => router.push('/manage')}
+              className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-pine px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-pine-deep"
+            >
+              前往员工管理页面添加兼职员工 →
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* ── Toolbar: Year stepper + Search box ──────────────── */}
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface p-3 shadow-sm">
+              <div className="flex items-center gap-2">
+                {/* Year Stepper */}
+                <div className="inline-flex items-center rounded-lg border border-line bg-paper/60 p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setYear((y) => y - 1)}
+                    className="rounded p-1 text-ink-soft transition hover:bg-surface hover:text-ink"
+                    title="上一年"
                   >
-                    <td className={`sticky left-0 z-10 px-3 py-2 font-medium text-ink whitespace-nowrap ${idx % 2 === 0 ? 'bg-surface' : 'bg-paper/40'}`}>
-                      {emp.full_name}
-                    </td>
+                    <ChevronLeftIcon className="h-4 w-4" />
+                  </button>
+                  <span className="px-3 text-sm font-bold text-ink tabular-nums">
+                    {year} 年
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setYear((y) => y + 1)}
+                    className="rounded p-1 text-ink-soft transition hover:bg-surface hover:text-ink"
+                    title="下一年"
+                  >
+                    <ChevronRightIcon className="h-4 w-4" />
+                  </button>
+                </div>
 
-                    {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => {
-                      const k = key(emp.id, m)
-                      const isSaving = saving.has(k)
-                      const hasValue = !!hours[k]
-                      return (
-                        <td key={m} className="px-1 py-1.5 text-center">
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.5"
-                            value={hours[k] ?? ''}
-                            onChange={(e) => handleChange(emp.id, m, e.target.value)}
-                            onBlur={(e) => handleBlur(emp.id, m, e.target.value)}
-                            placeholder="—"
-                            className={[
-                              'w-14 rounded border text-center text-sm py-1 focus:outline-none transition-all',
-                              isSaving
-                                ? 'border-pine bg-pine-soft text-pine-deep'
-                                : hasValue
-                                  ? 'border-line bg-surface text-ink focus:border-pine'
-                                  : 'border-transparent bg-transparent text-ink-faint placeholder-ink-faint/50 hover:border-line focus:border-pine focus:bg-surface',
-                            ].join(' ')}
-                          />
+                {!isCurrentYear && (
+                  <button
+                    type="button"
+                    onClick={() => setYear(THIS_YEAR)}
+                    className="rounded-lg border border-pine/30 bg-pine-soft px-2.5 py-1 text-xs font-semibold text-pine transition hover:bg-pine-soft/80"
+                  >
+                    返回今年
+                  </button>
+                )}
+
+                <span className="hidden text-xs text-ink-faint sm:inline">
+                  可在上方切换核算年份
+                </span>
+              </div>
+
+              {/* Search & Quick counts */}
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="搜索兼职员工姓名..."
+                    className="w-52 rounded-lg border border-line bg-paper/50 py-1.5 pl-8 pr-3 text-xs text-ink placeholder:text-ink-faint/60 transition focus:border-pine focus:bg-surface focus:outline-none focus:ring-2 focus:ring-pine/10 sm:w-64"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-ink-faint hover:text-ink"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+
+                <span className="hidden text-xs font-medium text-ink-faint lg:inline">
+                  显示 {filteredEmployees.length} / {employees.length} 人
+                </span>
+              </div>
+            </div>
+
+            {/* ── Desktop: Full spreadsheet grid ───────────────────── */}
+            <div className="overflow-hidden rounded-xl border border-line bg-surface shadow-sm">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-line bg-paper/60">
+                      <th className="sticky left-0 z-20 bg-paper/95 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-soft min-w-[200px]">
+                        员工姓名 / Employee
+                      </th>
+                      {MONTHS.map((m, idx) => {
+                        const monthNum = idx + 1
+                        const isCurrentMonth = isCurrentYear && monthNum === currentMonthNumber
+                        return (
+                          <th
+                            key={m}
+                            className={`px-2 py-2.5 text-center text-xs font-semibold whitespace-nowrap transition-colors min-w-[68px] ${
+                              isCurrentMonth
+                                ? 'bg-pine-soft/40 text-pine border-b-2 border-pine'
+                                : 'text-ink-soft'
+                            }`}
+                          >
+                            <div className="inline-flex flex-col items-center">
+                              <span>{m}</span>
+                              {isCurrentMonth && (
+                                <span className="mt-0.5 rounded-full bg-pine px-1.5 py-0.5 text-[9px] font-bold text-white leading-none">
+                                  本月
+                                </span>
+                              )}
+                            </div>
+                          </th>
+                        )
+                      })}
+                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-ink-soft min-w-[90px]">
+                        年度合计
+                      </th>
+                    </tr>
+                  </thead>
+
+                  <tbody className="divide-y divide-line">
+                    {filteredEmployees.length === 0 ? (
+                      <tr>
+                        <td colSpan={14} className="py-12 text-center text-sm text-ink-faint">
+                          未找到匹配 “{searchQuery}” 的兼职员工
                         </td>
-                      )
-                    })}
+                      </tr>
+                    ) : (
+                      filteredEmployees.map((emp, idx) => (
+                        <tr
+                          key={emp.id}
+                          className={`transition-colors hover:bg-pine-soft/10 ${
+                            idx % 2 === 0 ? 'bg-surface' : 'bg-paper/20'
+                          }`}
+                        >
+                          <td
+                            className={`sticky left-0 z-10 px-4 py-2.5 font-medium text-ink whitespace-nowrap transition-colors ${
+                              idx % 2 === 0 ? 'bg-surface' : 'bg-[#FAFAFB]'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-pine-soft text-xs font-bold text-pine shadow-sm">
+                                {getInitials(emp.full_name)}
+                              </div>
+                              <div>
+                                <div className="text-sm font-semibold text-ink leading-tight">
+                                  {emp.full_name}
+                                </div>
+                                <div className="text-[11px] text-ink-faint">
+                                  #兼职工时
+                                </div>
+                              </div>
+                            </div>
+                          </td>
 
-                    <td className="px-3 py-2 text-right font-semibold text-ink tabular-nums">
-                      {rowTotal(emp.id) > 0 ? `${rowTotal(emp.id).toFixed(1)}h` : '—'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
+                          {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => {
+                            const k = key(emp.id, m)
+                            const isSaving = saving.has(k)
+                            const hasValue = !!hours[k]
+                            const isCurrentMonth = isCurrentYear && m === currentMonthNumber
 
-              <tfoot>
-                <tr className="border-t-2 border-line bg-paper">
-                  <td className="sticky left-0 z-10 bg-paper px-3 py-2 text-xs font-semibold uppercase tracking-wide text-ink-faint">
-                    Total
-                  </td>
-                  {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => {
-                    const t = colTotal(m)
-                    return (
-                      <td key={m} className="px-2 py-2 text-center text-xs font-semibold text-ink tabular-nums">
-                        {t > 0 ? t.toFixed(1) : ''}
+                            return (
+                              <td
+                                key={m}
+                                className={`px-1 py-1.5 text-center transition-colors ${
+                                  isCurrentMonth ? 'bg-pine-soft/15' : ''
+                                }`}
+                              >
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.5"
+                                  value={hours[k] ?? ''}
+                                  onChange={(e) => handleChange(emp.id, m, e.target.value)}
+                                  onBlur={(e) => handleBlur(emp.id, m, e.target.value)}
+                                  placeholder="—"
+                                  className={[
+                                    'w-14 rounded-md border text-center text-xs py-1.5 font-medium transition-all focus:outline-none tabular-nums',
+                                    isSaving
+                                      ? 'border-pine bg-pine-soft text-pine-deep ring-2 ring-pine/20 animate-pulse font-bold'
+                                      : hasValue
+                                        ? 'border-line/70 bg-surface text-ink hover:border-pine/50 focus:border-pine focus:ring-2 focus:ring-pine/20'
+                                        : 'border-transparent bg-transparent text-ink-faint/60 placeholder-ink-faint/30 hover:border-line hover:bg-surface focus:border-pine focus:bg-surface focus:ring-2 focus:ring-pine/20',
+                                  ].join(' ')}
+                                />
+                              </td>
+                            )
+                          })}
+
+                          <td className="px-4 py-2.5 text-right font-bold text-ink tabular-nums">
+                            {rowTotal(emp.id) > 0 ? (
+                              <span className="inline-flex items-baseline gap-0.5 text-pine font-bold">
+                                <span>{rowTotal(emp.id).toFixed(1)}</span>
+                                <span className="text-[11px] text-ink-faint">h</span>
+                              </span>
+                            ) : (
+                              <span className="text-ink-faint font-normal">—</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+
+                  <tfoot>
+                    <tr className="border-t-2 border-line bg-paper/80 font-semibold">
+                      <td className="sticky left-0 z-10 bg-paper/95 px-4 py-3 text-xs font-bold uppercase tracking-wider text-ink-soft">
+                        月度总工时汇总
                       </td>
-                    )
-                  })}
-                  <td className="px-3 py-2 text-right font-bold text-ink tabular-nums">
-                    {grandTotal().toFixed(1)}h
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
+                      {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => {
+                        const t = colTotal(m)
+                        const isCurrentMonth = isCurrentYear && m === currentMonthNumber
+                        return (
+                          <td
+                            key={m}
+                            className={`px-2 py-3 text-center text-xs font-bold tabular-nums ${
+                              isCurrentMonth ? 'bg-pine-soft/30 text-pine' : 'text-ink'
+                            }`}
+                          >
+                            {t > 0 ? `${t.toFixed(1)}h` : '—'}
+                          </td>
+                        )
+                      })}
+                      <td className="px-4 py-3 text-right text-sm font-extrabold text-pine tabular-nums bg-paper/95">
+                        {grandTotal().toFixed(1)} h
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
 
-          {/* ── Mobile: Employee picker + month cards ─────────────── */}
-          <div className="md:hidden space-y-4">
-            {/* Employee selector */}
-            {(() => {
-              const [mobileEmpId, setMobileEmpId] = [
-                employees[0]?.id ?? '',
-                (v: string) => { /* handled by select below */ void v }
-              ] as const
-              return null
-            })()}
-            <MobileWorkHours
-              employees={employees}
-              hours={hours}
-              saving={saving}
-              months={MONTHS}
-              onChangeHours={handleChange}
-              onBlurHours={handleBlur}
-              rowTotal={rowTotal}
-              keyFn={key}
-            />
-          </div>
-
-          <p className="text-xs text-ink-faint">
-            Click any cell to enter hours for that month. Saves automatically when you click away.
-          </p>
-        </>
-      )}
-    </div>
-  </ManagerShell>
+            {/* Helper tips */}
+            <div className="flex items-center gap-2 rounded-lg border border-line/60 bg-paper/50 px-3.5 py-2 text-xs text-ink-faint">
+              <span className="text-pine font-bold">💡 提示：</span>
+              <span>
+                在对应月份输入工时后移开光标（失焦）将自动实时保存；输入 0 或清空将清除该月份的记录；本月所在的月份列已自动为您高亮显示。
+              </span>
+            </div>
+          </>
+        )}
+      </div>
+    </ManagerShell>
   )
 }
 
