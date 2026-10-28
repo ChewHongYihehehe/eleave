@@ -110,6 +110,43 @@ function getInitials(name: string) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
 }
 
+function MagnifierIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg className={`h-3.5 w-3.5 shrink-0 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+    </svg>
+  )
+}
+
+// 年假余额可视化进度条
+function LeaveProgressBar({ taken, entitled, bf }: { taken: number; entitled: number; bf: number }) {
+  const total = entitled + bf
+  if (total <= 0) return <span className="text-ink-faint tabular-nums">—</span>
+  const balance = total - taken
+  const pct = Math.min(Math.round((taken / total) * 100), 100)
+  const overdrawn = balance < 0
+
+  return (
+    <div className="min-w-[110px]">
+      <div className="flex items-baseline justify-between gap-1 mb-1">
+        <span className={`text-xs font-bold tabular-nums leading-none ${overdrawn ? 'text-st-rejected-text' : 'text-pine'}`}>
+          {overdrawn ? `${balance}d` : `${balance}d`}
+        </span>
+        <span className="text-[10px] text-ink-faint tabular-nums">{taken}/{total}</span>
+      </div>
+      <div className="h-1.5 w-full rounded-full bg-line overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all ${overdrawn ? 'bg-st-rejected' : pct >= 80 ? 'bg-amber-400' : 'bg-pine'}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      {overdrawn && (
+        <span className="mt-0.5 inline-block text-[10px] font-semibold text-st-rejected-text">透支</span>
+      )}
+    </div>
+  )
+}
+
 // 数据卡: 钉钉高质感白底卡片, 带轻微阴影与小圆角
 function StatCard({
   label, value, unit, hint, dot, tag, valueClass = 'text-ink',
@@ -150,6 +187,7 @@ function DesktopReports() {
   const [filter, setFilter] = useState<'all' | 'leave' | 'unpaid' | 'mc'>('all')
   const [yearFilter, setYearFilter] = useState<'all' | 'overdrawn' | 'mc'>('all')
   const [searchQuery, setSearchQuery] = useState('')
+  const [hideNoLeave, setHideNoLeave] = useState(false)
 
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
@@ -265,12 +303,13 @@ function DesktopReports() {
         const matchNo = r.emp.employee_no ? String(r.emp.employee_no).includes(q) : false
         if (!matchName && !matchNo) return false
       }
+      if (hideNoLeave && r.annual + r.medical + r.unpaid + r.other === 0 && r.lines.length === 0) return false
       if (filter === 'leave') return r.annual + r.medical + r.unpaid + r.other > 0 || r.lines.length > 0
       if (filter === 'unpaid') return r.unpaid > 0
       if (filter === 'mc') return r.medical > 0
       return true
     })
-  }, [monthReport.fullTime, filter, searchQuery])
+  }, [monthReport.fullTime, filter, searchQuery, hideNoLeave])
 
   const ptRows = useMemo(() => {
     return monthReport.partTime.filter((r) => {
@@ -406,6 +445,7 @@ function DesktopReports() {
 
               {/* 实时搜索框 */}
               <div className="relative">
+                <MagnifierIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-faint" />
                 <input
                   type="text"
                   placeholder="搜索姓名或工号..."
@@ -413,7 +453,6 @@ function DesktopReports() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="h-8 w-40 sm:w-48 rounded-lg border border-line bg-surface pl-7 pr-6 text-xs text-ink placeholder:text-ink-faint focus:border-pine focus:outline-none focus:ring-1 focus:ring-pine/20"
                 />
-                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-faint text-[11px]">🔍</span>
                 {searchQuery && (
                   <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-ink-faint hover:text-ink">✕</button>
                 )}
@@ -544,7 +583,7 @@ function DesktopReports() {
                   </div>
 
                   {/* 快捷过滤芯片按钮组 */}
-                  <div className="flex items-center gap-1.5 print:hidden">
+                  <div className="flex flex-wrap items-center gap-1.5 print:hidden">
                     <button
                       onClick={() => setFilter('all')}
                       className={`${chip} ${filter === 'all' ? chipOn : chipOff}`}
@@ -573,6 +612,17 @@ function DesktopReports() {
                         MC ({monthReport.fullTime.filter((r) => r.medical > 0).length})
                       </button>
                     )}
+
+                    {/* 隐藏无请假员工 toggle */}
+                    <label className="ml-1 flex cursor-pointer items-center gap-1.5 text-xs text-ink-soft select-none">
+                      <input
+                        type="checkbox"
+                        checked={hideNoLeave}
+                        onChange={(e) => setHideNoLeave(e.target.checked)}
+                        className="h-3.5 w-3.5 accent-pine rounded"
+                      />
+                      仅显示有假期
+                    </label>
                   </div>
                 </div>
 
@@ -590,6 +640,7 @@ function DesktopReports() {
                           <th className={`text-center ${th}`}>MC</th>
                           <th className={`text-center ${th}`}>Unpaid</th>
                           <th className={`text-center ${th}`}>Mat. / Pat.</th>
+                          <th className={`text-center ${th}`}>当月合计</th>
                           <th className={`text-left ${th}`}>Details & Dates</th>
                         </tr>
                       </thead>
@@ -597,6 +648,7 @@ function DesktopReports() {
                         {ftRows.map((r) => {
                           const details = detailsOf(r)
                           const hasLeave = r.lines.length > 0 || r.annual + r.medical + r.unpaid + r.other > 0
+                          const totalDays = r.annual + r.medical + r.unpaid + r.other
 
                           return (
                             <tr
@@ -642,6 +694,16 @@ function DesktopReports() {
                                   dash
                                 )}
                               </td>
+                              <td className={tdNum}>
+                                {totalDays > 0 ? (
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-pine-soft px-2.5 py-0.5 text-xs font-bold text-pine border border-pine/20">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-pine"></span>
+                                    {fmt(totalDays)}d
+                                  </span>
+                                ) : (
+                                  dash
+                                )}
+                              </td>
                               <td className="px-3.5 py-3.5 text-xs text-ink-soft align-middle">
                                 {details.length === 0 ? (
                                   <span className="text-ink-faint/60">—</span>
@@ -672,6 +734,7 @@ function DesktopReports() {
                           <td className={tdNum}>{fmt(t.medical)}</td>
                           <td className={`${tdNum} text-st-rejected-text font-medium`}>{fmt(t.unpaid)}</td>
                           <td className={tdNum}>{fmt(t.other)}</td>
+                          <td className={`${tdNum} text-pine font-bold`}>{fmt(t.annual + t.medical + t.unpaid + t.other)}d</td>
                           <td />
                         </tr>
                       </tfoot>
@@ -782,7 +845,7 @@ function DesktopReports() {
                           <th className={`text-center ${th}`}>Entitled</th>
                           <th className={`text-center ${th}`}>B/F</th>
                           <th className={`text-center ${th}`}>Taken</th>
-                          <th className={`text-center ${th}`}>Annual Balance</th>
+                          <th className={`text-center ${th} min-w-[140px]`}>Annual Balance</th>
                           <th className={`text-center ${th}`}>MC Taken</th>
                           <th className={`text-center ${th}`}>Unpaid</th>
                           <th className={`text-center ${th}`}>Mat. / Pat.</th>
@@ -805,16 +868,8 @@ function DesktopReports() {
                                 </span>
                               )}
                             </td>
-                            <td className={tdNum}>
-                              {r.alBalance < 0 ? (
-                                <span className="inline-flex items-center badge badge-rejected">
-                                  {fmt(r.alBalance)} (Overdrawn)
-                                </span>
-                              ) : (
-                                <span className="font-medium text-pine">
-                                  {fmt(r.alBalance)}
-                                </span>
-                              )}
+                            <td className="px-3.5 py-3 align-middle">
+                              <LeaveProgressBar taken={r.alTaken} entitled={r.alEntitled} bf={r.bf} />
                             </td>
                             <td className={tdNum}>{fmt(r.mcTaken)} <span className="text-ink-faint">/ {fmt(r.mcEntitled)}</span></td>
                             <td className={tdNum}>{num(r.unpaid)}</td>
