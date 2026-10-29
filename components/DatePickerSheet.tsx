@@ -3,9 +3,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { toLocalDateStr, parseLocalDate } from '@/lib/dateUtils'
 import { EI, Icon } from '@/components/employee/EmployeeShell'
+import type { Lang } from '@/lib/lang'
 
 const WEEKDAYS_ZH = ['日', '一', '二', '三', '四', '五', '六']
 const WEEKDAYS_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const WEEKDAYS_MS = ['Ahd', 'Isn', 'Sel', 'Rab', 'Kha', 'Jum', 'Sab']
 const MONTHS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 export interface DatePickerSheetProps {
@@ -15,7 +17,7 @@ export interface DatePickerSheetProps {
   min?: string // YYYY-MM-DD
   max?: string // YYYY-MM-DD
   holidayDates?: string[]
-  lang?: 'zh' | 'en'
+  lang?: Lang | 'zh' | 'en'
   onSelect: (date: string) => void
   onClose: () => void
 }
