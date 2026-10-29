@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
-import { useLang, type DictKey } from '@/lib/lang'
+import { useLang, type DictKey, LANG_OPTIONS } from '@/lib/lang'
 import HelpDocModal from '@/components/HelpDocModal'
 
 export function SvgIcon({ d, size = 18 }: { d: string; size?: number }) {
@@ -183,13 +183,13 @@ export default function ManagerShell({
 
         <div className="flex items-center gap-1">
           <div className="mr-2 flex rounded-md bg-paper p-0.5 text-xs">
-            {(['zh', 'en'] as const).map((l) => (
+            {LANG_OPTIONS.map(({ key: l, label }) => (
               <button
                 key={l}
                 onClick={() => setLang(l)}
                 className={`rounded px-2.5 py-1 font-medium transition-colors ${lang === l ? 'bg-white text-pine shadow-xs' : 'text-ink-soft hover:text-ink'}`}
               >
-                {l === 'zh' ? '中文' : 'EN'}
+                {label}
               </button>
             ))}
           </div>
