@@ -1,4 +1,5 @@
 'use client'
+import React from 'react'
 
 import MobileReports from '@/components/manager/MobileReports'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
@@ -22,15 +23,15 @@ import AuthStatus from '@/components/AuthStatus'
 import PageHeader, { DefaultButton } from '@/components/PageHeader'
 import { UnderlineTabs } from '@/components/employee/EmployeeShell'
 
-// 报表页,两个视图:
-//  · Month(预设)—— 给算薪水的人用:选一个月,全职看"谁请了什么假、几天、哪几号",
-//    兼职看"这个月几个小时"。只算已批准的假,待审批的会提醒但不计入。
-//  · Year —— 给负责人看:每个人今年的年假余额、病假用量、无薪假总数。
-// 所有计算都在 lib/reportData.ts(有测试),这里只负责取资料和排版。
+// ???,????:
+//  � Month(??)�� ???????:????,???"?????????????",
+//    ???"???????"????????,????????????
+//  � Year �� ?????:??????????????????????
+// ?????? lib/reportData.ts(???),????????????
 //
-// 排版规则:
-//  · 手机(<768px):全职员工用"一人一张卡片";电脑(≥768px):用表格。
-//  · 同一份资料,两种排法都渲染,用 md:hidden / hidden md:block 切换。
+// ????:
+//  � ??(<768px):?????"??????";??(=768px):????
+//  � ?????,???????,? md:hidden / hidden md:block ???
 
 const THIS_YEAR = new Date().getFullYear()
 const YEARS = Array.from({ length: 4 }, (_, i) => THIS_YEAR - 2 + i)
@@ -41,11 +42,11 @@ const TYPE_LABEL: Record<string, string> = { annual: 'Annual', medical: 'MC', un
 type View = 'month' | 'year'
 
 const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1))
-const dash = <span className="text-ink-faint/50">–</span>
+const dash = <span className="text-ink-faint/50">�</span>
 const num = (n: number) => (n > 0 ? fmt(n) : dash)
 
 function shortDate(iso?: string | null) {
-  if (!iso || typeof iso !== 'string') return '–'
+  if (!iso || typeof iso !== 'string') return '�'
   const parts = iso.split('-')
   if (parts.length < 3) return iso
   const [, m, d] = parts
@@ -53,13 +54,13 @@ function shortDate(iso?: string | null) {
 }
 
 function dateRange(a?: string | null, b?: string | null) {
-  if (!a && !b) return '–'
+  if (!a && !b) return '�'
   if (!a) return shortDate(b)
   if (!b || a === b) return shortDate(a)
   if (typeof a === 'string' && typeof b === 'string' && a.length >= 7 && b.length >= 7 && a.slice(0, 7) === b.slice(0, 7)) {
-    return `${Number(a.slice(8))}–${shortDate(b)}`
+    return `${Number(a.slice(8))}�${shortDate(b)}`
   }
-  return `${shortDate(a)} – ${shortDate(b)}`
+  return `${shortDate(a)} � ${shortDate(b)}`
 }
 
 function lineText(l: LeaveLine, ym: string): string | null {
@@ -69,13 +70,13 @@ function lineText(l: LeaveLine, ym: string): string | null {
   const isHistorical = a.remarks?.includes('Historical import')
   if (isHistorical) {
     if (a.leave_type === 'annual') return null
-    let t = `${label} · ${fmt(l.days || 0)}d`
+    let t = `${label} � ${fmt(l.days || 0)}d`
     if (a.is_half_day && a.half_day_period) t += ` (${String(a.half_day_period).toUpperCase()})`
     return t
   }
   let t = `${label} ${dateRange(a.start_date, a.end_date)}`
   if (a.is_half_day && a.half_day_period) t += ` (${String(a.half_day_period).toUpperCase()})`
-  t += ` · ${fmt(l.days || 0)}d`
+  t += ` � ${fmt(l.days || 0)}d`
   const sDate = a.start_date || ''
   const eDate = a.end_date || ''
   if (sDate.slice(0, 7) !== ym || eDate.slice(0, 7) !== ym) t += ' (this month)'
@@ -86,14 +87,14 @@ function exportCsv(filename: string, header: string[], rows: (string | number)[]
   const csv = [header, ...rows]
     .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(','))
     .join('\n')
-  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' }) // \ufeff 让 Excel 正确显示中文/特殊字符
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' }) // \ufeff ? Excel ??????/????
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url; a.download = filename; a.click()
   URL.revokeObjectURL(url)
 }
 
-// 手机卡片里的"一格数字":上面小标签,下面数字
+// ??????"????":?????,????
 function Stat({ label, tone, children }: { label: string; tone?: 'rust'; children: ReactNode }) {
   const rust = tone === 'rust'
   return (
@@ -119,10 +120,10 @@ function MagnifierIcon({ className = '' }: { className?: string }) {
   )
 }
 
-// 年假余额可视化进度条
+// ??????????
 function LeaveProgressBar({ taken, entitled, bf, lang }: { taken: number; entitled: number; bf: number; lang?: string }) {
   const total = entitled + bf
-  if (total <= 0) return <span className="text-ink-faint tabular-nums">—</span>
+  if (total <= 0) return <span className="text-ink-faint tabular-nums">�</span>
   const balance = total - taken
   const pct = Math.min(Math.round((taken / total) * 100), 100)
   const overdrawn = balance < 0
@@ -142,13 +143,13 @@ function LeaveProgressBar({ taken, entitled, bf, lang }: { taken: number; entitl
         />
       </div>
       {overdrawn && (
-        <span className="mt-0.5 inline-block text-[10px] font-semibold text-st-rejected-text">{lang === 'ms' ? 'Terlebih Had' : lang === 'zh' ? '透支' : 'Overdrawn'}</span>
+        <span className="mt-0.5 inline-block text-[10px] font-semibold text-st-rejected-text">{lang === 'ms' ? 'Terlebih Had' : lang === 'zh' ? '??' : 'Overdrawn'}</span>
       )}
     </div>
   )
 }
 
-// 数据卡: 钉钉高质感白底卡片, 带轻微阴影与小圆角
+// ???: ?????????, ?????????
 function StatCard({
   label, value, unit, hint, dot, tag, valueClass = 'text-ink',
 }: {
@@ -178,7 +179,7 @@ function StatCard({
   )
 }
 
-function DesktopReports() {
+function DesktopReports(): React.ReactElement | null {
   const auth = useEmployee({ requireManager: true })
 
   const [view, setView] = useState<View>('month')
@@ -357,7 +358,7 @@ function DesktopReports() {
   const tdNum = 'px-3.5 py-3 text-center tabular-nums text-xs text-ink-soft align-middle font-mono'
   const emptyBox = 'rounded-xl border border-line py-12 text-center text-xs text-ink-faint bg-white'
   const notice = 'rounded-xl border border-st-pending/25 bg-st-pending-soft px-4 py-2.5 text-xs text-st-pending-text shadow-2xs'
-  // 下拉框 / 方形小按钮 / 过滤标签:和审批页同一套尺寸(32px 高)
+  // ??? / ????? / ????:?????????(32px ?)
   const sel = 'h-8 rounded-lg border border-line bg-white px-2.5 text-xs text-ink transition-colors hover:border-pine focus:border-pine focus:outline-none focus:ring-2 focus:ring-pine/15'
   const sqBtn = 'flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-white text-ink-soft transition-colors hover:border-pine hover:text-pine'
   const chip = 'rounded-lg px-3 py-1 text-xs transition-colors'
@@ -381,7 +382,7 @@ function DesktopReports() {
             )}
           </div>
           {!e.is_active && (
-            <span className="mt-0.5 inline-block text-[10px] font-medium text-rust">{lang === 'ms' ? 'Akaun Dinyahaktifkan' : lang === 'zh' ? '已停用账号' : 'Inactive account'}</span>
+            <span className="mt-0.5 inline-block text-[10px] font-medium text-rust">{lang === 'ms' ? 'Akaun Dinyahaktifkan' : lang === 'zh' ? '?????' : 'Inactive account'}</span>
           )}
         </div>
       </div>
@@ -399,7 +400,7 @@ function DesktopReports() {
       <div className="mx-auto max-w-[1360px] space-y-4 pb-12">
         <PageHeader
           title="Reports"
-          subtitle={view === 'month' ? `Monthly leave & work hours breakdown · ${monthLabel}` : `Annual leave balance ledger · ${year}`}
+          subtitle={view === 'month' ? `Monthly leave & work hours breakdown � ${monthLabel}` : `Annual leave balance ledger � ${year}`}
           actions={
             <div className="flex gap-2 print:hidden">
               <DefaultButton onClick={handleExport} disabled={loading}>Export CSV</DefaultButton>
@@ -408,7 +409,7 @@ function DesktopReports() {
           }
         />
 
-        {/* ── 视图标签 + 筛选条(和审批页同一种白色卡片)── */}
+        {/* -- ???? + ???(???????????)-- */}
         <div className="overflow-hidden rounded-xl border border-line bg-white shadow-2xs print:hidden">
           <div className="border-b border-line px-3">
             <UnderlineTabs
@@ -416,25 +417,25 @@ function DesktopReports() {
               value={view}
               onChange={setView}
               items={[
-                { key: 'month' as const, label: lang === 'ms' ? 'Paparan Bulanan' : lang === 'zh' ? '月度明细' : 'Month View' },
-                { key: 'year' as const, label: lang === 'ms' ? 'Baki Cuti Tahunan' : lang === 'zh' ? '年度总账' : 'Year Balances' },
+                { key: 'month' as const, label: lang === 'ms' ? 'Paparan Bulanan' : lang === 'zh' ? '????' : 'Month View' },
+                { key: 'year' as const, label: lang === 'ms' ? 'Baki Cuti Tahunan' : lang === 'zh' ? '????' : 'Year Balances' },
               ]}
             />
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
-            {/* 日期选择 */}
+            {/* ???? */}
             <div className="flex items-center gap-3">
               {view === 'month' ? (
                 <div className="flex items-center gap-2">
-                  <button onClick={() => shiftMonth(-1)} className={sqBtn} aria-label="Previous month">‹</button>
+                  <button onClick={() => shiftMonth(-1)} className={sqBtn} aria-label="Previous month">�</button>
                   <select value={month} onChange={(e) => setMonth(Number(e.target.value))} className={`${sel} w-32`}>
                     {MONTH_NAMES.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
                   </select>
                   <select value={year} onChange={(e) => setYear(Number(e.target.value))} className={`${sel} w-24`}>
                     {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
                   </select>
-                  <button onClick={() => shiftMonth(1)} className={sqBtn} aria-label="Next month">›</button>
+                  <button onClick={() => shiftMonth(1)} className={sqBtn} aria-label="Next month">�</button>
                   {!isCurrentMonth && (
                     <button onClick={goToday} className="ml-1 text-xs font-medium text-pine transition-colors hover:text-pine-deep">This month</button>
                   )}
@@ -445,28 +446,28 @@ function DesktopReports() {
                 </select>
               )}
 
-              {/* 实时搜索框 */}
+              {/* ????? */}
               <div className="relative">
                 <MagnifierIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-faint" />
                 <input
                   type="text"
-                  placeholder={lang === 'ms' ? 'Cari nama atau No. Pekerja...' : lang === 'zh' ? '搜索姓名或工号...' : 'Search name or staff ID...'}
+                  placeholder={lang === 'ms' ? 'Cari nama atau No. Pekerja...' : lang === 'zh' ? '???????...' : 'Search name or staff ID...'}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="h-8 w-40 sm:w-48 rounded-lg border border-line bg-surface pl-7 pr-6 text-xs text-ink placeholder:text-ink-faint focus:border-pine focus:outline-none focus:ring-1 focus:ring-pine/20"
                 />
                 {searchQuery && (
-                  <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-ink-faint hover:text-ink">✕</button>
+                  <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-ink-faint hover:text-ink">?</button>
                 )}
               </div>
             </div>
 
-            {/* 全职 / 兼职(和顶栏的中/EN 切换同一种样式)*/}
+            {/* ?? / ??(?????/EN ???????)*/}
             <div className="flex rounded-lg bg-paper p-0.5 text-xs">
               {([
-                ['ft', lang === 'ms' ? 'Sepenuh Masa' : lang === 'zh' ? '全职员工' : 'Full-time', ftCount],
-                ['pt', lang === 'ms' ? 'Sambilan' : lang === 'zh' ? '兼职员工' : 'Part-time', ptCount],
-                ['all', lang === 'ms' ? 'Semua' : lang === 'zh' ? '全员' : 'All staff', null],
+                ['ft', lang === 'ms' ? 'Sepenuh Masa' : lang === 'zh' ? '????' : 'Full-time', ftCount],
+                ['pt', lang === 'ms' ? 'Sambilan' : lang === 'zh' ? '????' : 'Part-time', ptCount],
+                ['all', lang === 'ms' ? 'Semua' : lang === 'zh' ? '??' : 'All staff', null],
               ] as [typeof scope, string, number | null][]).map(([key, label, n]) => (
                 <button
                   key={key}
@@ -487,7 +488,7 @@ function DesktopReports() {
           <p className="py-16 text-center text-sm text-ink-soft">Loading report data...</p>
         ) : view === 'month' ? (
           <>
-            {/* ── 核心指标(白底扁平;只有"无薪假 > 0"时数字变红)── */}
+            {/* -- ????(????;??"??? > 0"?????)-- */}
             {scope === 'ft' && (
               <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
                 <StatCard
@@ -506,7 +507,7 @@ function DesktopReports() {
                 <StatCard
                   label="Annual Leave" dot="bg-brand" unit="days"
                   value={fmt(totals.annual)}
-                  hint={`${monthReport.fullTime.filter((r) => r.annual > 0).length} staff · working days`}
+                  hint={`${monthReport.fullTime.filter((r) => r.annual > 0).length} staff � working days`}
                 />
                 <StatCard
                   label="Maternity / Paternity" dot="bg-leave-paternity" unit="days"
@@ -553,7 +554,7 @@ function DesktopReports() {
               </div>
             )}
 
-            {/* ── 待办提醒通知 ── */}
+            {/* -- ?????? -- */}
             {monthReport.pendingCount > 0 && (
               <p className={notice}>
                 <strong>{monthReport.pendingCount}</strong> leave application{monthReport.pendingCount > 1 ? 's' : ''} in {monthLabel} {monthReport.pendingCount > 1 ? 'are' : 'is'} still
@@ -575,7 +576,7 @@ function DesktopReports() {
               </p>
             )}
 
-            {/* ── 全职员工表格 ── */}
+            {/* -- ?????? -- */}
             {(scope === 'ft' || scope === 'all') && (
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-3">
@@ -584,7 +585,7 @@ function DesktopReports() {
                     <span className="text-xs text-ink-faint">({ftRows.length})</span>
                   </div>
 
-                  {/* 快捷过滤芯片按钮组 */}
+                  {/* ????????? */}
                   <div className="flex flex-wrap items-center gap-1.5 print:hidden">
                     <button
                       onClick={() => setFilter('all')}
@@ -615,7 +616,7 @@ function DesktopReports() {
                       </button>
                     )}
 
-                    {/* 隐藏无请假员工 toggle */}
+                    {/* ??????? toggle */}
                     <label className="ml-1 flex cursor-pointer items-center gap-1.5 text-xs text-ink-soft select-none">
                       <input
                         type="checkbox"
@@ -623,7 +624,7 @@ function DesktopReports() {
                         onChange={(e) => setHideNoLeave(e.target.checked)}
                         className="h-3.5 w-3.5 accent-pine rounded"
                       />
-                      {lang === 'ms' ? 'Hanya cuti aktif' : lang === 'zh' ? '仅显示有假期' : 'Leave only'}
+                      {lang === 'ms' ? 'Hanya cuti aktif' : lang === 'zh' ? '??????' : 'Leave only'}
                     </label>
                   </div>
                 </div>
@@ -642,7 +643,7 @@ function DesktopReports() {
                           <th className={`text-center ${th}`}>MC</th>
                           <th className={`text-center ${th}`}>Unpaid</th>
                           <th className={`text-center ${th}`}>Mat. / Pat.</th>
-                          <th className={`text-center ${th}`}>{lang === 'ms' ? 'Jumlah Bulan Ini' : lang === 'zh' ? '当月合计' : 'Month Total'}</th>
+                          <th className={`text-center ${th}`}>{lang === 'ms' ? 'Jumlah Bulan Ini' : lang === 'zh' ? '????' : 'Month Total'}</th>
                           <th className={`text-left ${th}`}>Details & Dates</th>
                         </tr>
                       </thead>
@@ -708,7 +709,7 @@ function DesktopReports() {
                               </td>
                               <td className="px-3.5 py-3.5 text-xs text-ink-soft align-middle">
                                 {details.length === 0 ? (
-                                  <span className="text-ink-faint/60">—</span>
+                                  <span className="text-ink-faint/60">�</span>
                                 ) : (
                                   <div className="flex flex-wrap gap-1.5">
                                     {details.map((d, i) => (
@@ -749,7 +750,7 @@ function DesktopReports() {
               </div>
             )}
 
-            {/* ── 兼职员工表格 ── */}
+            {/* -- ?????? -- */}
             {(scope === 'pt' || scope === 'all') && (
               <div className="space-y-3 pt-2">
                 <div className="flex items-center justify-between">
@@ -804,13 +805,13 @@ function DesktopReports() {
             )}
           </>
         ) : (
-          /* ── 年度余额视图 ── */
+          /* -- ?????? -- */
           <>
             {(scope === 'ft' || scope === 'all') && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
-                    <h2 className="text-[15px] font-semibold text-ink">Full-time staff · Annual Ledger</h2>
+                    <h2 className="text-[15px] font-semibold text-ink">Full-time staff � Annual Ledger</h2>
                     <span className="text-xs text-ink-faint">({ftYearRows.length})</span>
                   </div>
 
@@ -883,7 +884,7 @@ function DesktopReports() {
                   </div>
                 )}
                 <p className="text-xs leading-relaxed text-ink-faint">
-                  Annual balance = Entitled + B/F − Taken. Includes pending applications (same as what staff see on their dashboard).
+                  Annual balance = Entitled + B/F - Taken. Includes pending applications (same as what staff see on their dashboard).
                 </p>
               </div>
             )}
@@ -892,7 +893,7 @@ function DesktopReports() {
               <div className="space-y-3 pt-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <h2 className="text-[15px] font-semibold text-ink">Part-time staff · Annual Summary</h2>
+                    <h2 className="text-[15px] font-semibold text-ink">Part-time staff � Annual Summary</h2>
                     <span className="text-xs text-ink-faint">({yearReport.partTime.length})</span>
                   </div>
                 </div>
@@ -930,7 +931,7 @@ function DesktopReports() {
   )
 }
 
-// 手机/平板(< lg)用钉钉风格的新版页面;电脑(≥ lg,和 ManagerShell 一致)。
+// ??/??(< lg)??????????;??(= lg,? ManagerShell ??)?
 export default function ReportsPage() {
   return (
     <>
