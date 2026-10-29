@@ -3,8 +3,8 @@
 import { useCallback } from 'react'
 import { useLang } from '@/lib/lang'
 
-// 负责人手机版的文字(中 / 英)。单独放一个文件,不动 lib/lang.ts。
-// 想改哪个词,直接改下面 zh / en 里对应那一行。
+// 负责人手机版的文字(中 / 英 / 马来文)。单独放一个文件,不动 lib/lang.ts。
+// 想改哪个词,直接改下面 zh / en / ms 里对应那一行。
 
 const zh = {
   afterApprove: '批准后剩余', overdrawWarn: '额度不足,批准后将超出额度', retry: '重试', emptyTodoHint: '所有申请都已处理',
@@ -113,11 +113,65 @@ const en: typeof zh = {
   recalcFailed: 'Saved, but recalculating leave days failed: ', close: 'Close', yearSuffix: '', holidayOn: 'On', holidayOff: 'Off',
 }
 
+const ms: typeof zh = {
+  afterApprove: 'Baki selepas kelulusan', overdrawWarn: 'Melebihi kuota: kelulusan akan melebihi kelayakan', retry: 'Cuba semula', emptyTodoHint: 'Semua telah diselesaikan',
+  workspace: 'Ruang Kerja', approvals: 'Kelulusan', calendar: 'Kalendar', me: 'Saya', back: 'Kembali',
+  toApprove: 'Untuk diluluskan', processed: 'Diproses', all: 'Semua', approved: 'Diluluskan', rejected: 'Ditolak', cancelled: 'Dibatalkan',
+  allStaff: 'Semua pekerja', selectStaff: 'Pilih pekerja', batch: 'Pilih', done: 'Selesai', selected: 'Dipilih',
+  approve: 'Lulus', reject: 'Tolak', recordLeave: 'Rekod cuti', cancelReq: 'Batal permohonan',
+  emptyTodo: 'Tiada permohonan untuk diluluskan', noItems: 'Tiada rekod', loadMore: 'Muat lagi', loading: 'Memuatkan...',
+  details: 'Butiran permohonan', applicant: 'Pekerja', leaveType: 'Jenis cuti', dates: 'Tarikh', duration: 'Tempoh', reason: 'Sebab',
+  submittedAt: 'Dihantar', sameTime: 'Turut bercuti', noneSame: 'Tiada', balance: 'Baki cuti', quota: 'Kelayakan', usedDays: 'Digunakan',
+  pendingDays: 'Menunggu (termasuk ini)', remainingDays: 'Baki', daysUnit: 'hari', halfAm: 'Pagi', halfPm: 'Petang',
+  confirmApprove: 'Luluskan permohonan ini?', confirmApproveBatch: 'Luluskan permohonan yang dipilih?', confirm: 'Sahkan', cancel: 'Batal',
+  rejectTitle: 'Tolak permohonan', rejectHint: 'Sila nyatakan sebab. Pekerja akan melihatnya.', reasonPh: 'Masukkan sebab', required: 'Wajib',
+  q1: 'Terlalu ramai pekerja bercuti', q2: 'Baki tidak mencukupi', q3: 'Sila tukar tarikh dan mohon semula',
+  confirmCancellation: 'Luluskan pembatalan', keepLeave: 'Kekalkan cuti', declineTitle: 'Kekalkan cuti ini', declineHint: 'Sila jelaskan mengapa pembatalan ditolak.',
+  confirmCancelTitle: 'Luluskan pembatalan cuti ini?', managerCancel: 'Batalkan cuti ini', managerCancelTitle: 'Batalkan cuti ini', managerCancelHint: 'Pilihan: tulis sebab. Pekerja akan dimaklumkan.',
+  sPending: 'Menunggu', sApproved: 'Diluluskan', sRejected: 'Ditolak', sCancelled: 'Dibatalkan', sCancelReq: 'Pembatalan dipohon',
+  flowTitle: 'Kemajuan', tlSubmitted: 'Dihantar', tlReviewing: 'Menunggu kelulusan', tlApproved: 'Diluluskan', tlRejected: 'Ditolak', tlCancelReq: 'Pekerja memohon pembatalan',
+  tlCancelled: 'Dibatalkan', cancelDeclined: 'Pembatalan ditolak', rejectReason: 'Sebab penolakan',
+  viewMc: 'Lihat MC', mcMissing: 'Belum dimuat naik', toastOk: 'Berjaya', toastFail: 'Sesuatu tidak kena. Sila cuba lagi.', imported: 'Diimport', notFound: 'Rekod tidak dijumpai.',
+  hello: 'Hai', todo: 'Perlu diurus', pendingCount: 'Menunggu', onLeaveToday: 'Bercuti hari ini', staffUnit: 'orang', viewAll: 'Lihat semua', allFeatures: 'Semua fungsi',
+  employees: 'Pekerja', reports: 'Laporan', holidays: 'Cuti Umum', workHours: 'Jam Kerja', auditLog: 'Log Audit', today: 'Hari ini',
+  nOnLeave: 'bercuti', nobodyOnLeave: 'Tiada yang bercuti', publicHoliday: 'Cuti umum', amOnly: 'Pagi sahaja', pmOnly: 'Petang sahaja',
+  manager: 'Pengurus', language: 'Bahasa', changePassword: 'Tukar kata laluan', telegram: 'Notifikasi Telegram', logout: 'Log keluar',
+  fullTime: 'Sepenuh masa', partTime: 'Sambilan', addEmployee: 'Tambah pekerja', active: 'Aktif', inactive: 'Tidak aktif',
+  roleManager: 'Pengurus', roleStaff: 'Kakitangan', commencement: 'Tarikh mula kerja', override: 'Kelayakan tahunan (kosong = auto)', carryFwd: 'Dibawa ke hadapan',
+  resetPassword: 'Tetap semula kata laluan', save: 'Simpan', saved: 'Disimpan', newPassword: 'Kata laluan baharu', min6: 'Kata laluan mesti sekurang-kurangnya 6 aksara', status: 'Status',
+  deactivate: 'Nyahaktifkan akaun', activate: 'Aktifkan akaun', confirmDeactivate: 'Nyahaktifkan akaun ini? Mereka tidak boleh log masuk.', confirmActivate: 'Aktifkan semula akaun ini?',
+  employmentType: 'Jenis pekerjaan', staffId: 'ID pekerja', initialPassword: 'Kata laluan awal', fullName: 'Nama penuh', roleLabel: 'Peranan',
+  noLogin: 'Pekerja sambilan tiada akaun log masuk. Jam direkod di halaman Jam Kerja.', add: 'Tambah', adding: 'Menambah...', noEmployees: 'Tiada pekerja',
+  pwdDone: 'Kata laluan telah ditetapkan semula. Maklumkan mereka secara berasingan.', addedOk: 'Ditambah', digitsOnly: 'Nombor sahaja', optional: 'Pilihan',
+  legendAnnual: 'Tahunan', legendMedical: 'Sakit', legendMaternity: 'Bersalin', legendPaternity: 'Paterniti', legendUnpaid: 'Tanpa gaji',
+  weekdays: 'Ahd,Isn,Sel,Rab,Kha,Jum,Sab',
+  // ── Laporan / Jam kerja / Cuti umum (mudah alih) ──
+  tabMonth: 'Bulan', tabYear: 'Baki tahunan', exportCsv: 'Eksport', backThisMonth: 'Bulan ini',
+  unpaidLeave: 'Tanpa gaji', medicalLeave: 'MC', ptHours: 'Jam sambilan', paidTag: 'Bergaji', hoursUnit: 'jam', peopleUnit: 'orang',
+  noticePending: '{n} permohonan bulan ini masih menunggu dan tidak dikira di bawah', noticeCancel: '{n} cuti diluluskan mempunyai permohonan pembatalan. Masih dikira di bawah sehingga diputuskan', noticeHours: '{n} pekerja sambilan belum memasukkan jam bulan ini',
+  ftStaff: 'Pekerja sepenuh masa', ptStaff: 'Pekerja sambilan', filterAll: 'Semua', filterLeave: 'Ada cuti', noLeave: 'Tiada cuti',
+  filterUnpaid: 'Tanpa gaji sahaja', filterMc: 'MC sahaja', scopeAll: 'Semua', scopeFt: 'Sepenuh masa', scopePt: 'Sambilan', salaryDeduct: 'Potong gaji', workDays: 'Hari bekerja', overdrawn: 'Terlebih had',
+  matPat: 'Bersalin/Pat.', total: 'Jumlah', notEntered: 'Belum dimasukkan', noFullTime: 'Tiada pekerja sepenuh masa', noPartTime: 'Tiada pekerja sambilan', loadFail: 'Tidak dapat memuatkan data. Sila muat semula dan cuba lagi.',
+  monthNote: 'Cuti diluluskan sahaja. Cuti tahunan dikira hari bekerja (tidak termasuk hujung minggu dan cuti umum); MC, tanpa gaji, bersalin dan paterniti dikira hari kalendar. Cuti merentas dua bulan hanya mengira hari dalam bulan ini.',
+  yearNote: 'Baki tahunan = Kelayakan + Bawa hadapan − Digunakan. Digunakan termasuk permohonan menunggu (sama seperti yang dilihat pekerja). Bawa hadapan hanya sah untuk tahun semasa. * = kelayakan ditetapkan secara manual.',
+  entitled: 'Kelayakan', carriedFwd: 'B/F', taken: 'Digunakan', annualBalance: 'Baki tahunan', mcUsed: 'MC digunakan', pendingIncluded: 'hari cuti tahunan menunggu (termasuk dalam Digunakan)',
+  monthsEntered: 'Bulan dimasukkan', monthsUnit: 'bulan',
+  enterHours: 'Masukkan jam', hoursHint: 'Biarkan kosong dan simpan untuk memadam rekod bulan ini.', monthTotal: 'Jumlah bulan', yearTotal: 'Jumlah tahun', enteredCount: 'Dimasukkan',
+  noPartActive: 'Tiada pekerja sambilan aktif', goAddPart: 'Tambah di halaman Pekerja', hoursSaved: 'Disimpan', hoursInvalid: 'Sila masukkan bilangan jam yang sah',
+  workWeek: 'Minggu bekerja', workWeekHint: 'Cuti tahunan hanya mengira hari bekerja. Ketik hari untuk menukar: Penuh → Separuh → Cuti.',
+  dayFull: 'Penuh', dayHalf: 'Separuh', dayOff: 'Cuti', saveWorkWeek: 'Simpan minggu bekerja', weekPrefix: '',
+  addHoliday: 'Tambah cuti umum', holidayName: 'Nama', holidayDate: 'Tarikh', holidayNamePh: 'cth: Hari Raya', delete: 'Padam', deleteHoliday: 'Padam cuti umum ini',
+  confirmDeleteHoliday: 'Permohonan cuti tahunan berkaitan akan dikira semula.', noHolidays: 'Belum ada cuti umum untuk tahun ini',
+  holidayNote: 'Hanya cuti umum yang diaktifkan akan dikecualikan daripada hari cuti tahunan. Perubahan akan mengira semula permohonan berkaitan secara automatik.',
+  recalcDone: '{n} permohonan cuti tahunan telah dikira semula', weekSaved: 'Minggu bekerja disimpan', dupDate: 'Cuti umum sudah wujud pada tarikh ini', failUpdate: 'Kemas kini gagal. Sila cuba lagi.', failAdd: 'Tidak dapat menambah. Sila cuba lagi.', failRemove: 'Tidak dapat memadam. Sila cuba lagi.',
+  recalcFailed: 'Disimpan, tetapi pengiraan semula hari cuti gagal: ', close: 'Tutup', yearSuffix: '', holidayOn: 'Aktif', holidayOff: 'Mati',
+}
+
 export type MgrKey = keyof typeof zh
 
 export function useMgrT() {
   const { lang } = useLang()
-  const t = useCallback((k: MgrKey) => (lang === 'zh' ? zh : en)[k] ?? zh[k] ?? en[k] ?? '', [lang])
+  const t = useCallback((k: MgrKey) => (lang === 'zh' ? zh : lang === 'ms' ? ms : en)[k] ?? zh[k] ?? en[k] ?? '', [lang])
   return { t, lang }
 }
 
@@ -132,4 +186,28 @@ export function leaveName(type: string, lang: Lang | 'zh' | 'en') {
     paternity: { ms: 'Cuti Paterniti', en: 'Paternity Leave', zh: '陪产假' },
   }
   return m[type]?.[lang as Lang] ?? m[type]?.['en'] ?? type
+}
+
+// ── 三语小工具(手机版共用)──
+export const MONTH_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+export const MONTH_MS = ['Jan', 'Feb', 'Mac', 'Apr', 'Mei', 'Jun', 'Jul', 'Ogo', 'Sep', 'Okt', 'Nov', 'Dis']
+
+/** 按语言挑一句:pick(lang, '中文', 'English', 'Bahasa Melayu') */
+export function pick(lang: Lang | 'zh' | 'en' | 'ms', zhText: string, enText: string, msText: string) {
+  return lang === 'zh' ? zhText : lang === 'ms' ? msText : enText
+}
+
+/** 月份简称:中文 "3月",英文 "Mar",马来文 "Mac" */
+export function monthShort(m: number, lang: Lang | 'zh' | 'en' | 'ms') {
+  return lang === 'zh' ? `${m}月` : (lang === 'ms' ? MONTH_MS : MONTH_EN)[m - 1] || ''
+}
+
+/** "2026年3月" / "Mar 2026" / "Mac 2026" */
+export function monthYear(y: number, m: number, lang: Lang | 'zh' | 'en' | 'ms') {
+  return lang === 'zh' ? `${y}年${m}月` : `${monthShort(m, lang)} ${y}`
+}
+
+/** 给 toLocaleDateString / toLocaleTimeString 用 */
+export function localeOf(lang: Lang | 'zh' | 'en' | 'ms') {
+  return lang === 'zh' ? 'zh-CN' : lang === 'ms' ? 'ms-MY' : 'en-MY'
 }
