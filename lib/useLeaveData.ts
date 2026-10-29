@@ -11,6 +11,7 @@ import {
 } from '@/lib/leaveRules'
 import { loadWorkWeek } from '@/lib/settings'
 import { useEmployee } from '@/lib/useEmployee'
+import { useTr } from '@/lib/tr'
 
 // 员工端手机版所有页面共用的数据:员工资料、今年的申请、余额、即将到来的公假。
 // 数据逻辑和电脑版 dashboard 保持一致(同样的额度、同样的天数算法)。
@@ -68,7 +69,12 @@ export function useLeaveData() {
   const [workWeek, setWorkWeek] = useState<WorkWeek>(DEFAULT_WORK_WEEK)
   const [sums, setSums] = useState<{ used: Record<string, number>; pending: Record<string, number> }>({ used: {}, pending: {} })
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const { tr } = useTr()
+  const [errKey, setErrKey] = useState<'' | 'holidays' | 'apps'>('')
+  const error =
+    errKey === 'holidays' ? tr('无法加载公假。', 'Could not load public holidays.', 'Tidak dapat memuatkan cuti umum.')
+    : errKey === 'apps' ? tr('无法加载你的请假记录。', 'Could not load your applications.', 'Tidak dapat memuatkan permohonan anda.')
+    : ''
   // 进页面那一刻"上次看通知"的时间;整个访问期间保持不变,这样红点不会一下子消失
   const [seenAt, setSeenAt] = useState<string | null>(null)
 
@@ -76,7 +82,7 @@ export function useLeaveData() {
 
   const load = useCallback(async () => {
     if (!employee) return
-    setError('')
+    setErrKey('')
     const today = toLocalDateStr(new Date())
 
     const { data: holidays, error: hErr } = await supabase
@@ -84,7 +90,7 @@ export function useLeaveData() {
       .select('holiday_date, name')
       .eq('is_enabled', true)
       .order('holiday_date', { ascending: true })
-    if (hErr) { setError('Could not load public holidays.'); setLoading(false); return }
+    if (hErr) { setErrKey('holidays'); setLoading(false); return }
 
     const dates = (holidays || []).map((h) => h.holiday_date)
     setHolidayDates(dates)
@@ -101,7 +107,7 @@ export function useLeaveData() {
       .lte('start_date', `${year}-12-31`)
       .gte('end_date', `${year}-01-01`)
       .order('created_at', { ascending: false })
-    if (aErr) { setError('Could not load your applications.'); setLoading(false); return }
+    if (aErr) { setErrKey('apps'); setLoading(false); return }
 
     const list = (data || []) as LeaveApp[]
     setApps(list)

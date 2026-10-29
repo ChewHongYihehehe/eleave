@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabaseClient'
-import { uploadMcFile, getMcSignedUrl, validateMcFile } from '@/lib/mcAttachments'
+import { uploadMcFile, getMcSignedUrl, validateMcFile, pickLang } from '@/lib/mcAttachments'
+import type { Lang } from '@/lib/lang'
 
 // 员工端的写操作。成功回传 null,失败回传错误文字。
 // 真正的额度 / 重叠检查都在服务器 /api/leave-applications 里,这里不重复。
@@ -29,10 +30,10 @@ export async function withdrawCancellation(id: string): Promise<string | null> {
   return error ? error.message : null
 }
 
-export async function attachMc(employeeId: string, appId: string, file: File): Promise<string | null> {
-  const bad = validateMcFile(file)
+export async function attachMc(employeeId: string, appId: string, file: File, lang?: Lang): Promise<string | null> {
+  const bad = validateMcFile(file, lang)
   if (bad) return bad
-  const { path, error } = await uploadMcFile(employeeId, file)
+  const { path, error } = await uploadMcFile(employeeId, file, lang)
   if (error) return error
   const { error: dbErr } = await supabase.from('leave_applications').update({ mc_attachment_path: path }).eq('id', appId)
   return dbErr ? dbErr.message : null
@@ -62,10 +63,11 @@ export async function submitApplication(p: {
   halfDayPeriod: 'am' | 'pm'
   reason: string
   mcFile: File | null
+  lang?: Lang
 }): Promise<string | null> {
   let mcAttachmentPath: string | undefined
   if (p.leaveType === 'medical' && p.mcFile) {
-    const { path, error } = await uploadMcFile(p.employeeId, p.mcFile)
+    const { path, error } = await uploadMcFile(p.employeeId, p.mcFile, p.lang)
     if (error) return error
     mcAttachmentPath = path || undefined
   }
@@ -84,5 +86,5 @@ export async function submitApplication(p: {
     }),
   })
   const result = await res.json().catch(() => ({}))
-  return res.ok ? null : result.error || 'Failed to submit. Please try again.'
+  return res.ok ? null : result.error || pickLang(p.lang, '提交失败,请重试。', 'Failed to submit. Please try again.', 'Gagal menghantar. Sila cuba lagi.')
 }
