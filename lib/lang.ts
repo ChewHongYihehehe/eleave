@@ -2,15 +2,20 @@
 
 import { useCallback, useEffect, useState } from 'react'
 
-// 中文 / English 切换。
-// · 默认中文;选择会记在这台手机/电脑的浏览器里(localStorage)。
-// · 所有文字都集中在这个文件,想改哪个词的中文,直接改下面 zh 里的那一行就好。
-// · 之后每翻译一个页面,就在这里加新的词条(en 和 zh 各加一行)。
+// 三语切换支持：BM (Bahasa Melayu) | EN (English) | 中文 (华语)
+// · 顺序严格按要求：'ms' (BM) | 'en' (EN) | 'zh' (中文)
+// · 语言选择保存在浏览器的 localStorage ('eleave-lang') 中，并在标签页与窗口间实时同步。
 
-export type Lang = 'zh' | 'en'
+export type Lang = 'ms' | 'en' | 'zh'
+
+export const LANG_OPTIONS: { key: Lang; label: string }[] = [
+  { key: 'ms', label: 'BM' },
+  { key: 'en', label: 'EN' },
+  { key: 'zh', label: '中文' },
+]
 
 const en = {
-  // 导航
+  // 导航 Navigation
   workspace: 'Workspace',
   approvals: 'Approvals',
   calendarTab: 'Calendar',
@@ -26,16 +31,19 @@ const en = {
   logout: 'Log Out',
   manager: 'Manager',
   back: 'Back',
-  // 工作台
+
+  // 工作台 Workspace
   needsAttention: 'Needs attention',
   pendingApprovals: 'Pending approvals',
   onLeaveToday: 'On leave today',
   staffUnit: 'staff',
   allFeatures: 'All features',
-  // 我的
+
+  // 我的 Account / Me
   language: 'Language',
   account: 'Account',
-  // 员工端
+
+  // 员工端 Employee Dashboard
   hello: 'Hi',
   yearsOfService: 'years of service',
   quickActions: 'Quick actions',
@@ -71,9 +79,9 @@ const en = {
   endDate: 'End date',
   duration: 'Duration',
   halfDay: 'Half day',
-  am: 'Morning',
-  pm: 'Afternoon',
-  note: 'Note',
+  am: 'Morning (AM)',
+  pm: 'Afternoon (PM)',
+  note: 'Note / Reason',
   notePh: 'Optional note for your manager',
   submittedAt: 'Submitted',
   submit: 'Submit request',
@@ -91,9 +99,9 @@ const en = {
   cancelRequest: 'Cancel request',
   requestCancel: 'Request cancellation',
   withdraw: 'Withdraw cancellation',
-  viewMc: 'View MC',
+  viewMc: 'View MC document',
   attachMc: 'Attach MC',
-  mcLabel: 'MC (photo or PDF, max 5MB)',
+  mcLabel: 'MC document (Photo or PDF, max 5MB)',
   uploading: 'Uploading...',
   thisRequest: 'This request',
   afterwards: 'Remaining afterwards',
@@ -117,7 +125,8 @@ const en = {
   notFound: 'Record not found.',
   imported: 'Imported',
   yearRecords: 'records this year',
-  // 电脑版 · 审批 / 日历 / 登录(新增)
+
+  // 审批 / 日历 / 登录
   apprTitle: 'Leave approvals',
   apprSub: 'Review and process leave requests for all employees.',
   recordForEmployee: 'Record leave for employee',
@@ -141,7 +150,7 @@ const en = {
   calMore: 'more',
   calPublicHoliday: 'Public holiday',
   legendAnnual: 'Annual',
-  legendMedical: 'Medical',
+  legendMedical: 'Medical (MC)',
   legendMaternity: 'Maternity',
   legendPaternity: 'Paternity',
   legendUnpaid: 'Unpaid',
@@ -166,9 +175,171 @@ const en = {
   quickEntry: 'Quick access',
 }
 
+const ms: Record<keyof typeof en, string> = {
+  // 导航 Navigation
+  workspace: 'Ruang Kerja',
+  approvals: 'Kelulusan',
+  calendarTab: 'Kalendar',
+  calendar: 'Kalendar Pasukan',
+  me: 'Profil Saya',
+  employees: 'Pekerja',
+  reports: 'Laporan',
+  holidays: 'Cuti Umum',
+  workHours: 'Jam Kerja Sambilan',
+  auditLog: 'Log Audit',
+  changePassword: 'Tukar Kata Laluan',
+  telegram: 'Notifikasi Telegram',
+  logout: 'Log Keluar',
+  manager: 'Pengurus',
+  back: 'Kembali',
+
+  // 工作台 Workspace
+  needsAttention: 'Perlu Tindakan',
+  pendingApprovals: 'Menunggu Kelulusan',
+  onLeaveToday: 'Bercuti Hari Ini',
+  staffUnit: 'orang',
+  allFeatures: 'Semua Fungsi',
+
+  // 我的 Account / Me
+  language: 'Bahasa',
+  account: 'Akaun',
+
+  // 员工端 Employee Dashboard
+  hello: 'Salam Sejahtera',
+  yearsOfService: 'tahun perkhidmatan',
+  quickActions: 'Tindakan Pantas',
+  applyLeave: 'Mohon Cuti',
+  myRecords: 'Rekod Saya',
+  records: 'Rekod',
+  pendingTile: 'Menunggu',
+  leaveBalance: 'Baki Cuti',
+  upcomingHolidays: 'Cuti Umum Akan Datang',
+  today: 'Hari Ini',
+  daysLeft: 'hari baki',
+  daysUnit: 'hari',
+  total: 'Jumlah Kelayakan',
+  carryForward: 'Bawa Ke Hadapan',
+  usedDays: 'Telah Digunakan',
+  pendingDays: 'Menunggu Kelulusan',
+  remainingDays: 'Baki Cuti',
+  viewAllRecords: 'Lihat Semua Rekod Cuti',
+  thisYear: 'tahun ini',
+  updatesOn: 'permohonan ada kemas kini',
+  all: 'Semua',
+  sPending: 'Menunggu',
+  sApproved: 'Diluluskan',
+  sRejected: 'Ditolak',
+  sCancelled: 'Dibatalkan',
+  sCancelReq: 'Permohonan Batal',
+  noRecords: 'Tiada rekod cuti',
+  loadMore: 'Muat lagi',
+  details: 'Butiran',
+  leaveType: 'Jenis Cuti',
+  dates: 'Tarikh',
+  startDate: 'Tarikh Mula',
+  endDate: 'Tarikh Akhir',
+  duration: 'Tempoh',
+  halfDay: 'Separuh Hari',
+  am: 'Pagi (AM)',
+  pm: 'Petang (PM)',
+  note: 'Catatan / Sebab',
+  notePh: 'Catatan pilihan untuk pengurus anda',
+  submittedAt: 'Dihantar Pada',
+  submit: 'Hantar Permohonan',
+  submitting: 'Sedang menghantar...',
+  flowTitle: 'Status Kemajuan',
+  tlSubmitted: 'Telah Dihantar',
+  tlReviewing: 'Menunggu Pengurus',
+  tlApproved: 'Diluluskan',
+  tlRejected: 'Ditolak',
+  tlCancelReq: 'Permohonan batal dihantar, menunggu pengurus',
+  tlCancelled: 'Dibatalkan',
+  rejectReason: 'Sebab Penolakan',
+  cancelDeclined: 'Permohonan batal ditolak',
+  cancelReason: 'Catatan Pembatalan',
+  cancelRequest: 'Batal Permohonan',
+  requestCancel: 'Mohon Batal Cuti',
+  withdraw: 'Tarik Balik Permohonan Batal',
+  viewMc: 'Lihat Sijil Cuti Sakit (MC)',
+  attachMc: 'Lampirkan MC',
+  mcLabel: 'Dokumen MC (Gambar atau PDF, maks 5MB)',
+  uploading: 'Sedang memuat naik...',
+  thisRequest: 'Permohonan Ini',
+  afterwards: 'Baki Selepas Ini',
+  exceeds: 'Melebihi baki cuti anda',
+  annualNote: 'Hujung minggu dan cuti umum tidak dikira.',
+  pastDateNote: 'Hanya tarikh hari ini atau akan datang boleh dipilih. Untuk rekod lepas, sila minta pengurus masukkan.',
+  pickPlaceholder: 'Sila pilih',
+  selectLeaveType: 'Pilih jenis cuti',
+  loadFail: 'Gagal memuatkan rekod cuti',
+  retry: 'Cuba lagi',
+  chooseDates: 'Sila pilih tarikh cuti.',
+  endBeforeStart: 'Tarikh akhir tidak boleh sebelum tarikh mula.',
+  confirm: 'Sahkan',
+  cancel: 'Batal',
+  confirmCancelReq: 'Pasti ingin membatalkan permohonan cuti ini?',
+  confirmReqCancel: 'Pengurus anda perlu mengesahkan sebelum cuti yang diluluskan dibatalkan.',
+  toastSubmitted: 'Permohonan cuti berjaya dihantar — menunggu kelulusan.',
+  toastFail: 'Ralat berlaku. Sila cuba lagi.',
+  toastMcAttached: 'Sijil MC berjaya dilampirkan.',
+  loading: 'Sedang memuatkan...',
+  notFound: 'Rekod tidak dijumpai.',
+  imported: 'Import Sejarah',
+  yearRecords: 'rekod pada tahun ini',
+
+  // 审批 / 日历 / 登录
+  apprTitle: 'Kelulusan Cuti',
+  apprSub: 'Semak dan proses permohonan cuti semua kakitangan.',
+  recordForEmployee: 'Masukkan Cuti Untuk Kakitangan',
+  allEmployees: 'Semua Kakitangan',
+  colEmployee: 'Kakitangan',
+  colStatus: 'Status',
+  colAction: 'Tindakan',
+  aApprove: 'Luluskan',
+  aReject: 'Tolak',
+  aConfirmCancel: 'Sahkan Batal',
+  aKeepLeave: 'Kekalkan Cuti',
+  aCancelLeave: 'Batalkan Cuti',
+  noRequests: 'Tiada permohonan cuti',
+  prevPage: 'Halaman Sebelumnya',
+  nextPage: 'Halaman Seterusnya',
+  calTitle: 'Kalendar Cuti Pasukan',
+  calSub: 'Cuti yang diluluskan dan cuti umum yang diaktifkan.',
+  calToday: 'Hari Ini',
+  calOnLeave: 'bercuti',
+  calNoOne: 'Tiada sesiapa bercuti',
+  calMore: 'lagi',
+  calPublicHoliday: 'Cuti Umum',
+  legendAnnual: 'Tahunan',
+  legendMedical: 'Sakit (MC)',
+  legendMaternity: 'Bersalin',
+  legendPaternity: 'Paterniti',
+  legendUnpaid: 'Tanpa Gaji',
+  loginTitle: 'Log Masuk ke eLeave',
+  loginSub: 'Sila log masuk menggunakan No. Pekerja anda',
+  staffId: 'No. Pekerja (Staff ID)',
+  password: 'Kata Laluan',
+  signIn: 'Log Masuk',
+  signingIn: 'Sedang log masuk...',
+  loginHint: 'Kali pertama guna? Sila hubungi pengurus anda untuk mendapatkan No. Pekerja dan kata laluan.',
+  loginSlogan: 'Permohonan dan kelulusan cuti, semuanya di satu tempat',
+  loginPoint1: 'Mohon cuti dalam talian dan jejak setiap langkah kelulusan',
+  loginPoint2: 'Pengurus meluluskan dengan satu klik di web atau Telegram',
+  loginPoint3: 'Baki cuti dan kalendar pasukan sentiasa dikemas kini',
+  statMonthLeave: 'Cuti Diluluskan Bulan Ini',
+  statStaff: 'Kakitangan Aktif',
+  statHintPending: 'Permohonan menunggu tindakan anda',
+  statHintNone: 'Tiada permohonan menunggu',
+  statHintCalendar: 'Buka kalendar pasukan',
+  statHintMonth: 'Permohonan diluluskan pada bulan ini',
+  statHintStaff: 'Kakitangan sepenuh masa',
+  quickEntry: 'Pintasan Pantas',
+}
+
 export type DictKey = keyof typeof en
 
 const zh: Record<DictKey, string> = {
+  // 导航
   workspace: '工作台',
   approvals: '审批',
   calendarTab: '日历',
@@ -184,13 +355,19 @@ const zh: Record<DictKey, string> = {
   logout: '退出登录',
   manager: '负责人',
   back: '返回',
+
+  // 工作台
   needsAttention: '需要处理',
   pendingApprovals: '待审批',
   onLeaveToday: '今天休假',
   staffUnit: '人',
   allFeatures: '全部功能',
+
+  // 我的
   language: '语言',
   account: '账号',
+
+  // 员工端
   hello: '你好',
   yearsOfService: '年工龄',
   quickActions: '快捷功能',
@@ -272,6 +449,8 @@ const zh: Record<DictKey, string> = {
   notFound: '找不到这条记录。',
   imported: '历史导入',
   yearRecords: '今年的记录',
+
+  // 审批 / 日历 / 登录
   apprTitle: '请假审批',
   apprSub: '审核并处理全体员工的请假申请。',
   recordForEmployee: '代员工补录请假',
@@ -320,19 +499,20 @@ const zh: Record<DictKey, string> = {
   quickEntry: '快捷入口',
 }
 
-// 假种名称(中/英)
-const TYPE_NAMES: Record<string, { zh: string; en: string }> = {
-  annual: { zh: '年假', en: 'Annual Leave' },
-  medical: { zh: '病假 (MC)', en: 'Medical Leave (MC)' },
-  unpaid: { zh: '无薪假', en: 'Unpaid Leave' },
-  maternity: { zh: '产假', en: 'Maternity Leave' },
-  paternity: { zh: '陪产假', en: 'Paternity Leave' },
+// 假种名称（BM / EN / 中文）
+const TYPE_NAMES: Record<string, { ms: string; en: string; zh: string }> = {
+  annual: { ms: 'Cuti Tahunan', en: 'Annual Leave', zh: '年假' },
+  medical: { ms: 'Cuti Sakit (MC)', en: 'Medical Leave (MC)', zh: '病假 (MC)' },
+  unpaid: { ms: 'Cuti Tanpa Gaji', en: 'Unpaid Leave', zh: '无薪假' },
+  maternity: { ms: 'Cuti Bersalin', en: 'Maternity Leave', zh: '产假' },
+  paternity: { ms: 'Cuti Paterniti', en: 'Paternity Leave', zh: '陪产假' },
 }
+
 export function leaveTypeName(type: string, lang: Lang) {
   return TYPE_NAMES[type]?.[lang] ?? type
 }
 
-const DICT: Record<Lang, Record<DictKey, string>> = { en, zh }
+const DICT: Record<Lang, Record<DictKey, string>> = { ms, en, zh }
 
 const KEY = 'eleave-lang'
 const EVENT = 'eleave-lang-change'
@@ -340,7 +520,7 @@ const EVENT = 'eleave-lang-change'
 function readStored(): Lang | null {
   try {
     const s = localStorage.getItem(KEY)
-    return s === 'en' || s === 'zh' ? s : null
+    return s === 'ms' || s === 'en' || s === 'zh' ? s : null
   } catch {
     return null
   }
@@ -355,18 +535,20 @@ export function useLang() {
       if (s) setLangState(s)
     }
     apply()
-    // 同一页里有好几个地方用到语言(侧边栏、页面),切换时让它们一起更新
     window.addEventListener(EVENT, apply)
     return () => window.removeEventListener(EVENT, apply)
   }, [])
 
   const setLang = useCallback((l: Lang) => {
     setLangState(l)
-    try { localStorage.setItem(KEY, l) } catch { /* 隐私模式可能不能存,忽略 */ }
+    try { localStorage.setItem(KEY, l) } catch { /* ignore */ }
     window.dispatchEvent(new Event(EVENT))
   }, [])
 
-  const t = useCallback((key: DictKey) => DICT[lang][key], [lang])
+  const t = useCallback((key: DictKey) => {
+    const dict = DICT[lang] || DICT['zh']
+    return dict[key] ?? en[key] ?? key
+  }, [lang])
 
   return { lang, setLang, t }
 }
