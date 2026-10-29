@@ -16,6 +16,7 @@ import {
   type LeaveLine,
 } from '@/lib/reportData'
 import ManagerShell from '@/components/ManagerShell'
+import { useLang, leaveTypeName } from '@/lib/lang'
 import { useEmployee } from '@/lib/useEmployee'
 import AuthStatus from '@/components/AuthStatus'
 import PageHeader, { DefaultButton } from '@/components/PageHeader'
@@ -119,7 +120,7 @@ function MagnifierIcon({ className = '' }: { className?: string }) {
 }
 
 // 年假余额可视化进度条
-function LeaveProgressBar({ taken, entitled, bf }: { taken: number; entitled: number; bf: number }) {
+function LeaveProgressBar({ taken, entitled, bf, lang }: { taken: number; entitled: number; bf: number; lang?: string }) {
   const total = entitled + bf
   if (total <= 0) return <span className="text-ink-faint tabular-nums">—</span>
   const balance = total - taken
@@ -141,7 +142,7 @@ function LeaveProgressBar({ taken, entitled, bf }: { taken: number; entitled: nu
         />
       </div>
       {overdrawn && (
-        <span className="mt-0.5 inline-block text-[10px] font-semibold text-st-rejected-text">透支</span>
+        <span className="mt-0.5 inline-block text-[10px] font-semibold text-st-rejected-text">{lang === 'ms' ? 'Terlebih Had' : lang === 'zh' ? '透支' : 'Overdrawn'}</span>
       )}
     </div>
   )
@@ -187,6 +188,7 @@ function DesktopReports() {
   const [filter, setFilter] = useState<'all' | 'leave' | 'unpaid' | 'mc'>('all')
   const [yearFilter, setYearFilter] = useState<'all' | 'overdrawn' | 'mc'>('all')
   const [searchQuery, setSearchQuery] = useState('')
+  const { lang, t } = useLang()
   const [hideNoLeave, setHideNoLeave] = useState(false)
 
   const [loading, setLoading] = useState(true)
@@ -379,7 +381,7 @@ function DesktopReports() {
             )}
           </div>
           {!e.is_active && (
-            <span className="mt-0.5 inline-block text-[10px] font-medium text-rust">已停用账号</span>
+            <span className="mt-0.5 inline-block text-[10px] font-medium text-rust">{lang === 'ms' ? 'Akaun Dinyahaktifkan' : lang === 'zh' ? '已停用账号' : 'Inactive account'}</span>
           )}
         </div>
       </div>
@@ -387,7 +389,7 @@ function DesktopReports() {
   }
 
   const detailsOf = (r: FtRow) => r.lines.map((l) => lineText(l, ym)).filter((x): x is string => Boolean(x))
-  const t = monthReport.totals
+  const totals = monthReport.totals
 
   const ftCount = employees.filter((e) => e.employment_type === 'full_time').length
   const ptCount = employees.filter((e) => e.employment_type === 'part_time').length
@@ -414,8 +416,8 @@ function DesktopReports() {
               value={view}
               onChange={setView}
               items={[
-                { key: 'month' as const, label: 'Month View' },
-                { key: 'year' as const, label: 'Year Balances' },
+                { key: 'month' as const, label: lang === 'ms' ? 'Paparan Bulanan' : lang === 'zh' ? '月度明细' : 'Month View' },
+                { key: 'year' as const, label: lang === 'ms' ? 'Baki Cuti Tahunan' : lang === 'zh' ? '年度总账' : 'Year Balances' },
               ]}
             />
           </div>
@@ -448,7 +450,7 @@ function DesktopReports() {
                 <MagnifierIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-faint" />
                 <input
                   type="text"
-                  placeholder="搜索姓名或工号..."
+                  placeholder={lang === 'ms' ? 'Cari nama atau No. Pekerja...' : lang === 'zh' ? '搜索姓名或工号...' : 'Search name or staff ID...'}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="h-8 w-40 sm:w-48 rounded-lg border border-line bg-surface pl-7 pr-6 text-xs text-ink placeholder:text-ink-faint focus:border-pine focus:outline-none focus:ring-1 focus:ring-pine/20"
@@ -462,9 +464,9 @@ function DesktopReports() {
             {/* 全职 / 兼职(和顶栏的中/EN 切换同一种样式)*/}
             <div className="flex rounded-lg bg-paper p-0.5 text-xs">
               {([
-                ['ft', 'Full-time', ftCount],
-                ['pt', 'Part-time', ptCount],
-                ['all', 'All staff', null],
+                ['ft', lang === 'ms' ? 'Sepenuh Masa' : lang === 'zh' ? '全职员工' : 'Full-time', ftCount],
+                ['pt', lang === 'ms' ? 'Sambilan' : lang === 'zh' ? '兼职员工' : 'Part-time', ptCount],
+                ['all', lang === 'ms' ? 'Semua' : lang === 'zh' ? '全员' : 'All staff', null],
               ] as [typeof scope, string, number | null][]).map(([key, label, n]) => (
                 <button
                   key={key}
@@ -490,25 +492,25 @@ function DesktopReports() {
               <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
                 <StatCard
                   label="Unpaid Leave" dot="bg-st-rejected" unit="days"
-                  value={fmt(t.unpaid)}
-                  valueClass={t.unpaid > 0 ? 'text-st-rejected-text' : 'text-ink'}
+                  value={fmt(totals.unpaid)}
+                  valueClass={totals.unpaid > 0 ? 'text-st-rejected-text' : 'text-ink'}
                   tag={<span className="badge badge-rejected">Deduct pay</span>}
-                  hint={`${t.unpaidStaff} staff affected`}
+                  hint={`${totals.unpaidStaff} staff affected`}
                 />
                 <StatCard
                   label="Medical Leave (MC)" dot="bg-st-pending" unit="days"
-                  value={fmt(t.medical)}
+                  value={fmt(totals.medical)}
                   tag={<span className="badge badge-approved">Paid</span>}
                   hint={`${monthReport.fullTime.filter((r) => r.medical > 0).length} staff`}
                 />
                 <StatCard
                   label="Annual Leave" dot="bg-brand" unit="days"
-                  value={fmt(t.annual)}
+                  value={fmt(totals.annual)}
                   hint={`${monthReport.fullTime.filter((r) => r.annual > 0).length} staff · working days`}
                 />
                 <StatCard
                   label="Maternity / Paternity" dot="bg-leave-paternity" unit="days"
-                  value={fmt(t.other)}
+                  value={fmt(totals.other)}
                   hint={`${monthReport.fullTime.filter((r) => r.other > 0).length} staff`}
                 />
               </div>
@@ -518,7 +520,7 @@ function DesktopReports() {
               <div className="grid grid-cols-2 gap-4">
                 <StatCard
                   label="Total Part-time Hours" dot="bg-brand" unit="hours"
-                  value={fmt(t.hours)}
+                  value={fmt(totals.hours)}
                   hint={`${monthReport.partTime.length} staff enrolled`}
                 />
                 <StatCard
@@ -534,18 +536,18 @@ function DesktopReports() {
               <div className="grid grid-cols-3 gap-4">
                 <StatCard
                   label="Unpaid Leave" dot="bg-st-rejected" unit="days"
-                  value={fmt(t.unpaid)}
-                  valueClass={t.unpaid > 0 ? 'text-st-rejected-text' : 'text-ink'}
-                  hint={`${t.unpaidStaff} staff`}
+                  value={fmt(totals.unpaid)}
+                  valueClass={totals.unpaid > 0 ? 'text-st-rejected-text' : 'text-ink'}
+                  hint={`${totals.unpaidStaff} staff`}
                 />
                 <StatCard
                   label="Medical Leave (MC)" dot="bg-st-pending" unit="days"
-                  value={fmt(t.medical)}
+                  value={fmt(totals.medical)}
                   hint="Paid leave"
                 />
                 <StatCard
                   label="Part-time Hours" dot="bg-brand" unit="hrs"
-                  value={fmt(t.hours)}
+                  value={fmt(totals.hours)}
                   hint={`${monthReport.partTime.length} staff`}
                 />
               </div>
@@ -596,7 +598,7 @@ function DesktopReports() {
                     >
                       With leave ({monthReport.fullTime.filter((r) => r.annual + r.medical + r.unpaid + r.other > 0 || r.lines.length > 0).length})
                     </button>
-                    {t.unpaid > 0 && (
+                    {totals.unpaid > 0 && (
                       <button
                         onClick={() => setFilter('unpaid')}
                         className={`${chip} ${filter === 'unpaid' ? chipOn : chipOff}`}
@@ -604,7 +606,7 @@ function DesktopReports() {
                         Unpaid ({monthReport.fullTime.filter((r) => r.unpaid > 0).length})
                       </button>
                     )}
-                    {t.medical > 0 && (
+                    {totals.medical > 0 && (
                       <button
                         onClick={() => setFilter('mc')}
                         className={`${chip} ${filter === 'mc' ? chipOn : chipOff}`}
@@ -621,7 +623,7 @@ function DesktopReports() {
                         onChange={(e) => setHideNoLeave(e.target.checked)}
                         className="h-3.5 w-3.5 accent-pine rounded"
                       />
-                      仅显示有假期
+                      {lang === 'ms' ? 'Hanya cuti aktif' : lang === 'zh' ? '仅显示有假期' : 'Leave only'}
                     </label>
                   </div>
                 </div>
@@ -640,7 +642,7 @@ function DesktopReports() {
                           <th className={`text-center ${th}`}>MC</th>
                           <th className={`text-center ${th}`}>Unpaid</th>
                           <th className={`text-center ${th}`}>Mat. / Pat.</th>
-                          <th className={`text-center ${th}`}>当月合计</th>
+                          <th className={`text-center ${th}`}>{lang === 'ms' ? 'Jumlah Bulan Ini' : lang === 'zh' ? '当月合计' : 'Month Total'}</th>
                           <th className={`text-left ${th}`}>Details & Dates</th>
                         </tr>
                       </thead>
@@ -730,11 +732,11 @@ function DesktopReports() {
                       <tfoot>
                         <tr className="bg-[#FAFAFA] font-medium text-ink border-t border-line">
                           <td className="px-3.5 py-3.5">Total ({ftRows.length})</td>
-                          <td className={tdNum}>{fmt(t.annual)}</td>
-                          <td className={tdNum}>{fmt(t.medical)}</td>
-                          <td className={`${tdNum} text-st-rejected-text font-medium`}>{fmt(t.unpaid)}</td>
-                          <td className={tdNum}>{fmt(t.other)}</td>
-                          <td className={`${tdNum} text-pine font-bold`}>{fmt(t.annual + t.medical + t.unpaid + t.other)}d</td>
+                          <td className={tdNum}>{fmt(totals.annual)}</td>
+                          <td className={tdNum}>{fmt(totals.medical)}</td>
+                          <td className={`${tdNum} text-st-rejected-text font-medium`}>{fmt(totals.unpaid)}</td>
+                          <td className={tdNum}>{fmt(totals.other)}</td>
+                          <td className={`${tdNum} text-pine font-bold`}>{fmt(totals.annual + totals.medical + totals.unpaid + totals.other)}d</td>
                           <td />
                         </tr>
                       </tfoot>
@@ -792,7 +794,7 @@ function DesktopReports() {
                       <tfoot>
                         <tr className="bg-[#FAFAFA] font-medium text-ink border-t border-line">
                           <td className="px-3.5 py-3">Total</td>
-                          <td className="px-3.5 py-3 text-right tabular-nums font-medium text-ink">{fmt(t.hours)} h</td>
+                          <td className="px-3.5 py-3 text-right tabular-nums font-medium text-ink">{fmt(totals.hours)} h</td>
                         </tr>
                       </tfoot>
                     </table>
@@ -869,7 +871,7 @@ function DesktopReports() {
                               )}
                             </td>
                             <td className="px-3.5 py-3 align-middle">
-                              <LeaveProgressBar taken={r.alTaken} entitled={r.alEntitled} bf={r.bf} />
+                              <LeaveProgressBar taken={r.alTaken} entitled={r.alEntitled} bf={r.bf} lang={lang} />
                             </td>
                             <td className={tdNum}>{fmt(r.mcTaken)} <span className="text-ink-faint">/ {fmt(r.mcEntitled)}</span></td>
                             <td className={tdNum}>{num(r.unpaid)}</td>
