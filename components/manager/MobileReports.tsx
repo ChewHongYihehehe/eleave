@@ -26,7 +26,7 @@ const THIS_MONTH = new Date().getMonth() + 1
 const MONTH_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const MONTH_ZH = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
 
-type Lang = 'zh' | 'en'
+import type { Lang } from '@/lib/lang'
 type MainTab = 'ft' | 'pt' | 'year'
 type Filter = 'all' | 'leave' | 'unpaid' | 'mc'
 type YearFilter = 'all' | 'overdrawn' | 'mc'
