@@ -1,4 +1,5 @@
 'use client'
+import React from 'react'
 
 import MobileEmployees from '@/components/manager/MobileEmployees'
 import { useEffect, useState, useMemo } from 'react'
@@ -31,17 +32,17 @@ function getInitials(name: string) {
 }
 
 // ── Icons ────────────────────────────────────────────────────────────────────
-function SearchIcon({ className }: { className?: string }) {
+function SearchIcon({ className = '' }: { className?: string }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <svg className={`h-3.5 w-3.5 shrink-0 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
     </svg>
   )
 }
 
-function PlusIcon({ className }: { className?: string }) {
+function PlusIcon({ className = '' }: { className?: string }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <svg className={`h-4 w-4 shrink-0 ${className}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
     </svg>
   )
@@ -82,7 +83,7 @@ function UserIcon({ className }: { className?: string }) {
 // ═════════════════════════════════════════════════════════════════════════════
 // 电脑版: 钉钉企业花名册风格 (Desktop Employees Roster)
 // ═════════════════════════════════════════════════════════════════════════════
-function DesktopEmployees() {
+function DesktopEmployees(): React.ReactElement | null {
   const auth = useEmployee({ requireManager: true })
   const [employees, setEmployees] = useState<Employee[]>([])
   const [loading, setLoading] = useState(true)
