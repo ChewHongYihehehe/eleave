@@ -172,7 +172,7 @@ export default function ManagerShell({
 
   return (
     // translate="no":告诉浏览器不要自动翻译这些页面(名字、月份、术语都会被翻错)
-    <div translate="no" lang={lang === 'zh' ? 'zh-Hans' : 'en'} className="min-h-screen bg-paper">
+    <div translate="no" lang={lang === 'zh' ? 'zh-Hans' : lang === 'ms' ? 'ms' : 'en'} className="min-h-screen bg-paper">
       {/* ══ 电脑版顶部栏(钉钉后台:白底、左边产品名、右边语言 / 通知 / 用户)══ */}
       <header className="fixed inset-x-0 top-0 z-40 hidden h-14 items-center justify-between border-b border-line bg-white px-5 print:hidden lg:flex">
         <Link href="/workspace" className="flex items-center gap-2.5">
