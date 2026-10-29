@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import AuthStatus from '@/components/AuthStatus'
 import { supabase } from '@/lib/supabaseClient'
-import { useLang } from '@/lib/lang'
+import { useLang, LANG_OPTIONS } from '@/lib/lang'
 import { useLeaveData } from '@/lib/useLeaveData'
 import { getYearsOfService } from '@/lib/leaveRules'
 import { Avatar, Card, EI, Hero, Icon, MenuRow, TabPage } from '@/components/employee/EmployeeShell'
@@ -37,9 +37,9 @@ export default function EmployeeMe() {
         <Card className="px-4 py-3 shadow-sm">
           <p className="mb-2 text-sm text-gray-500">{t('language')}</p>
           <div className="flex rounded-lg bg-gray-100 p-0.5">
-            {(['zh', 'en'] as const).map((l) => (
+            {LANG_OPTIONS.map(({ key: l, label }) => (
               <button key={l} onClick={() => setLang(l)} className={`flex-1 rounded-md py-2 text-sm ${lang === l ? 'bg-white font-semibold text-brand shadow-sm' : 'text-gray-600'}`}>
-                {l === 'zh' ? '中文' : 'English'}
+                {label}
               </button>
             ))}
           </div>
