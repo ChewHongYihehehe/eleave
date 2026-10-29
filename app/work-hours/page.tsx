@@ -245,7 +245,7 @@ function DesktopWorkHours(): React.ReactElement | null {
   // -- Export CSV -----------------------------------------------------------
 
   function handleExportCsv() {
-    const header = ['???? (Employee)', ...MONTHS, '???? (Total Hours)']
+    const header = ['员工姓名 (Employee)', ...MONTHS, '总计工时 (Total Hours)']
     const rows = employees.map((emp) => [
       emp.full_name,
       ...Array.from({ length: 12 }, (_, i) => hours[key(emp.id, i + 1)] || '0'),
@@ -259,7 +259,7 @@ function DesktopWorkHours(): React.ReactElement | null {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `??????-${year}.csv`
+    a.download = `兼职工时明细-${year}.csv`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -278,13 +278,13 @@ function DesktopWorkHours(): React.ReactElement | null {
         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="font-display text-2xl font-bold tracking-tight text-ink">{lang === 'ms' ? 'Pengurusan Jam Kerja Sambilan' : lang === 'zh' ? '??????' : 'Part-Time Work Hours'}</h1>
+              <h1 className="font-display text-2xl font-bold tracking-tight text-ink">{lang === 'ms' ? 'Pengurusan Jam Kerja Sambilan' : lang === 'zh' ? '兼职工时管理' : 'Part-Time Work Hours'}</h1>
               <span className="rounded-full bg-pine-soft px-2.5 py-0.5 text-xs font-semibold text-pine">
                 Work Hours
               </span>
             </div>
             <p className="mt-1 text-sm text-ink-faint">
-              {lang === 'ms' ? 'Rekod dan kira jam kerja sambilan bulanan. Simpan automatik apabila keluar dari kotak input. Menyokong eksport tahunan.' : lang === 'zh' ? '?????????????????,???????,???????????' : 'Log and calculate monthly part-time work hours. Auto-saves on blur. Supports annual ledger and export.'}
+              {lang === 'ms' ? 'Rekod dan kira jam kerja sambilan bulanan. Simpan automatik apabila keluar dari kotak input. Menyokong eksport tahunan.' : lang === 'zh' ? '按月记录并核算兼职员工工时,离开输入框时自动保存,支持导出年度台账' : 'Log and calculate monthly part-time work hours. Auto-saves on blur. Supports annual ledger and export.'}
             </p>
           </div>
 
@@ -295,7 +295,7 @@ function DesktopWorkHours(): React.ReactElement | null {
               className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-2 text-xs font-semibold text-ink shadow-sm transition hover:bg-paper disabled:opacity-50"
             >
               <DownloadIcon className="h-4 w-4 text-pine" />
-              <span>{lang === 'ms' ? 'Eksport Excel / CSV' : lang === 'zh' ? '?? Excel / CSV' : 'Export Excel / CSV'}</span>
+              <span>{lang === 'ms' ? 'Eksport Excel / CSV' : lang === 'zh' ? '导出 Excel / CSV' : 'Export Excel / CSV'}</span>
             </button>
           </div>
         </div>
@@ -304,34 +304,34 @@ function DesktopWorkHours(): React.ReactElement | null {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCard
             icon={<ClockIcon className="h-5 w-5" />}
-            label={lang === 'ms' ? 'Jumlah Jam Sambilan Tahunan' : lang === 'zh' ? '???????' : 'Annual Total PT Hours'}
+            label={lang === 'ms' ? 'Jumlah Jam Sambilan Tahunan' : lang === 'zh' ? '兼职年度总工时' : 'Annual Total PT Hours'}
             value={grandTotal().toFixed(1)}
             unit="h"
-            subtext={`${year} ???????`}
+            subtext={lang === 'ms' ? `Jumlah terkumpul ${year}` : lang === 'zh' ? `${year} 年累计工时` : `${year} cumulative hours`}
             tone="blue"
           />
           <MetricCard
             icon={<UsersIcon className="h-5 w-5" />}
-            label={lang === 'ms' ? 'Kakitangan Sambilan Aktif' : lang === 'zh' ? '??????' : 'Active Part-Time Staff'}
+            label={lang === 'ms' ? 'Kakitangan Sambilan Aktif' : lang === 'zh' ? '在职兼职员工' : 'Active Part-Time Staff'}
             value={employees.length}
-            unit={lang === 'ms' ? 'org' : lang === 'zh' ? '?' : 'staff'}
-            subtext="?????????"
+            unit={lang === 'ms' ? 'org' : lang === 'zh' ? '人' : 'staff'}
+            subtext={lang === 'ms' ? 'Pekerja sambilan berdaftar' : lang === 'zh' ? '在册兼职员工人数' : 'Registered part-time staff'}
             tone="teal"
           />
           <MetricCard
             icon={<CalendarIcon className="h-5 w-5" />}
-            label={`${isCurrentYear ? '??' : `${year}?12?`}????`}
+            label={lang === 'ms' ? `Jam ${isCurrentYear ? 'Bulan Ini' : `Dis ${year}`}` : lang === 'zh' ? `${isCurrentYear ? '本月' : `${year}年12月`}工时合计` : `${isCurrentYear ? 'This Month' : `Dec ${year}`} Hours`}
             value={colTotal(isCurrentYear ? currentMonthNumber : 12).toFixed(1)}
             unit="h"
-            subtext={isCurrentYear ? `? ${currentMonthNumber} ??????` : '??????'}
+            subtext={isCurrentYear ? (lang === 'ms' ? `Jumlah bulan ke-${currentMonthNumber}` : lang === 'zh' ? `第 ${currentMonthNumber} 月兼职工时汇总` : `Month ${currentMonthNumber} part-time total`) : (lang === 'ms' ? 'Jumlah hujung tahun' : lang === 'zh' ? '年末月份汇总' : 'Year-end month total')}
             tone="amber"
           />
           <MetricCard
             icon={<ClockIcon className="h-5 w-5" />}
-            label={lang === 'ms' ? 'Purata Jam Setahun' : lang === 'zh' ? '???????' : 'Avg Annual Hours/Staff'}
+            label={lang === 'ms' ? 'Purata Jam Setahun' : lang === 'zh' ? '人均年度工时' : 'Avg Annual Hours/Staff'}
             value={employees.length > 0 ? (grandTotal() / employees.length).toFixed(1) : '0.0'}
             unit="h"
-            subtext="????????"
+            subtext={lang === 'ms' ? 'Jumlah setahun ÷ bilangan pekerja' : lang === 'zh' ? '年度总工时 ÷ 员工人数' : 'Annual total ÷ staff count'}
             tone="slate"
           />
         </div>
@@ -341,13 +341,13 @@ function DesktopWorkHours(): React.ReactElement | null {
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-paper text-ink-faint">
               <UsersIcon className="h-6 w-6" />
             </div>
-            <h3 className="mt-3 text-base font-semibold text-ink">??????</h3>
-            <p className="mt-1 text-sm text-ink-faint">???????????????(Part-time)?</p>
+            <h3 className="mt-3 text-base font-semibold text-ink">{lang === 'ms' ? 'Tiada pekerja sambilan' : lang === 'zh' ? '暂无兼职员工' : 'No part-time staff yet'}</h3>
+            <p className="mt-1 text-sm text-ink-faint">{lang === 'ms' ? 'Sila tambah pekerja berjenis Sambilan (Part-time) di halaman Pekerja.' : lang === 'zh' ? '请先在员工管理中添加用工类型为兼职(Part-time)的员工。' : 'Add an employee with the Part-time type in Employees first.'}</p>
             <button
               onClick={() => router.push('/manage')}
               className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-pine px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-pine-deep"
             >
-              ?????????????? ?
+              {lang === 'ms' ? 'Ke Pekerja untuk tambah →' : lang === 'zh' ? '前往员工管理添加兼职员工 →' : 'Go to Employees to add →'}
             </button>
           </div>
         ) : (
@@ -361,18 +361,18 @@ function DesktopWorkHours(): React.ReactElement | null {
                     type="button"
                     onClick={() => setYear((y) => y - 1)}
                     className="rounded p-1 text-ink-soft transition hover:bg-surface hover:text-ink"
-                    title="???"
+                    title={lang === 'ms' ? 'Tahun lepas' : lang === 'zh' ? '上一年' : 'Previous year'}
                   >
                     <ChevronLeftIcon className="h-4 w-4" />
                   </button>
                   <span className="px-3 text-sm font-bold text-ink tabular-nums">
-                    {year} ?
+                    {year}{lang === 'zh' ? ' 年' : ''}
                   </span>
                   <button
                     type="button"
                     onClick={() => setYear((y) => y + 1)}
                     className="rounded p-1 text-ink-soft transition hover:bg-surface hover:text-ink"
-                    title="???"
+                    title={lang === 'ms' ? 'Tahun depan' : lang === 'zh' ? '下一年' : 'Next year'}
                   >
                     <ChevronRightIcon className="h-4 w-4" />
                   </button>
@@ -384,12 +384,12 @@ function DesktopWorkHours(): React.ReactElement | null {
                     onClick={() => setYear(THIS_YEAR)}
                     className="rounded-lg border border-pine/30 bg-pine-soft px-2.5 py-1 text-xs font-semibold text-pine transition hover:bg-pine-soft/80"
                   >
-                    {lang === 'ms' ? 'Kembali ke Tahun Ini' : lang === 'zh' ? '????' : 'This Year'}
+                    {lang === 'ms' ? 'Kembali ke Tahun Ini' : lang === 'zh' ? '回到今年' : 'This Year'}
                   </button>
                 )}
 
                 <span className="hidden text-xs text-ink-faint sm:inline">
-                  ??????????
+                  {lang === 'ms' ? 'Klik sel untuk memasukkan jam; simpan automatik apabila keluar' : lang === 'zh' ? '点击单元格输入工时，离开后自动保存' : 'Click a cell to enter hours; auto-saves on blur'}
                 </span>
               </div>
 
@@ -402,7 +402,7 @@ function DesktopWorkHours(): React.ReactElement | null {
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder={lang === 'ms' ? 'Cari nama pekerja sambilan...' : lang === 'zh' ? '????????...' : 'Search part-time staff name...'}
+                    placeholder={lang === 'ms' ? 'Cari nama pekerja sambilan...' : lang === 'zh' ? '搜索兼职员工姓名...' : 'Search part-time staff name...'}
                     className="w-52 rounded-lg border border-line bg-paper/50 py-1.5 pl-8 pr-3 text-xs text-ink placeholder:text-ink-faint/60 transition focus:border-pine focus:bg-surface focus:outline-none focus:ring-2 focus:ring-pine/10 sm:w-64"
                   />
                   {searchQuery && (
@@ -411,13 +411,13 @@ function DesktopWorkHours(): React.ReactElement | null {
                       onClick={() => setSearchQuery('')}
                       className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-ink-faint hover:text-ink"
                     >
-                      �
+                      ×
                     </button>
                   )}
                 </div>
 
                 <span className="hidden text-xs font-medium text-ink-faint lg:inline">
-                  ?? {filteredEmployees.length} / {employees.length} ?
+                  {lang === 'ms' ? `Memaparkan ${filteredEmployees.length} / ${employees.length}` : lang === 'zh' ? `显示 ${filteredEmployees.length} / ${employees.length} 人` : `Showing ${filteredEmployees.length} / ${employees.length}`}
                 </span>
               </div>
             </div>
@@ -429,7 +429,7 @@ function DesktopWorkHours(): React.ReactElement | null {
                   <thead>
                     <tr className="border-b border-line bg-paper/60">
                       <th className="sticky left-0 z-20 bg-paper/95 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-soft min-w-[200px]">
-                        ???? / Employee
+                        {lang === 'zh' ? '员工姓名 / Employee' : lang === 'ms' ? 'Pekerja / Employee' : 'Employee'}
                       </th>
                       {MONTHS.map((m, idx) => {
                         const monthNum = idx + 1
@@ -447,7 +447,7 @@ function DesktopWorkHours(): React.ReactElement | null {
                               <span>{m}</span>
                               {isCurrentMonth && (
                                 <span className="mt-0.5 rounded-full bg-pine px-1.5 py-0.5 text-[9px] font-bold text-white leading-none">
-                                  {lang === 'ms' ? 'Bulan Ini' : lang === 'zh' ? '??' : 'Current'}
+                                  {lang === 'ms' ? 'Bulan Ini' : lang === 'zh' ? '本月' : 'Current'}
                                 </span>
                               )}
                             </div>
@@ -455,7 +455,7 @@ function DesktopWorkHours(): React.ReactElement | null {
                         )
                       })}
                       <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-ink-soft min-w-[90px]">
-                        {lang === 'ms' ? 'Jumlah Tahunan' : lang === 'zh' ? '????' : 'Annual Total'}
+                        {lang === 'ms' ? 'Jumlah Tahunan' : lang === 'zh' ? '年度合计' : 'Annual Total'}
                       </th>
                     </tr>
                   </thead>
@@ -464,7 +464,7 @@ function DesktopWorkHours(): React.ReactElement | null {
                     {filteredEmployees.length === 0 ? (
                       <tr>
                         <td colSpan={14} className="py-12 text-center text-sm text-ink-faint">
-                          ????? �{searchQuery}� ?????
+                          {lang === 'ms' ? `Tiada pekerja sepadan dengan “${searchQuery}”` : lang === 'zh' ? `未找到与 “${searchQuery}” 相关的员工` : `No staff match “${searchQuery}”`}
                         </td>
                       </tr>
                     ) : (
@@ -489,7 +489,7 @@ function DesktopWorkHours(): React.ReactElement | null {
                                   {emp.full_name}
                                 </div>
                                 <div className="text-[11px] text-ink-faint">
-                                  #????
+                                  {lang === 'ms' ? 'Sambilan' : lang === 'zh' ? '兼职' : 'Part-time'}
                                 </div>
                               </div>
                             </div>
@@ -515,7 +515,7 @@ function DesktopWorkHours(): React.ReactElement | null {
                                   value={hours[k] ?? ''}
                                   onChange={(e) => handleChange(emp.id, m, e.target.value)}
                                   onBlur={(e) => handleBlur(emp.id, m, e.target.value)}
-                                  placeholder="�"
+                                  placeholder="—"
                                   className={[
                                     'w-14 rounded-md border text-center text-xs py-1.5 font-medium transition-all focus:outline-none tabular-nums',
                                     isSaving
@@ -536,7 +536,7 @@ function DesktopWorkHours(): React.ReactElement | null {
                                 <span className="text-[11px] text-ink-faint">h</span>
                               </span>
                             ) : (
-                              <span className="text-ink-faint font-normal">�</span>
+                              <span className="text-ink-faint font-normal">—</span>
                             )}
                           </td>
                         </tr>
@@ -547,7 +547,7 @@ function DesktopWorkHours(): React.ReactElement | null {
                   <tfoot>
                     <tr className="border-t-2 border-line bg-paper/80 font-semibold">
                       <td className="sticky left-0 z-10 bg-paper/95 px-4 py-3 text-xs font-bold uppercase tracking-wider text-ink-soft">
-                        {lang === 'ms' ? 'Jumlah Jam Bulanan' : lang === 'zh' ? '???????' : 'Monthly Total'}
+                        {lang === 'ms' ? 'Jumlah Jam Bulanan' : lang === 'zh' ? '月度工时合计' : 'Monthly Total'}
                       </td>
                       {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => {
                         const t = colTotal(m)
@@ -559,7 +559,7 @@ function DesktopWorkHours(): React.ReactElement | null {
                               isCurrentMonth ? 'bg-pine-soft/30 text-pine' : 'text-ink'
                             }`}
                           >
-                            {t > 0 ? `${t.toFixed(1)}h` : '�'}
+                            {t > 0 ? `${t.toFixed(1)}h` : '—'}
                           </td>
                         )
                       })}
@@ -574,9 +574,9 @@ function DesktopWorkHours(): React.ReactElement | null {
 
             {/* Helper tips */}
             <div className="flex items-center gap-2 rounded-lg border border-line/60 bg-paper/50 px-3.5 py-2 text-xs text-ink-faint">
-              <span className="text-pine font-bold">?? ??:</span>
+              <span className="text-pine font-bold">{lang === 'zh' ? '💡 提示:' : lang === 'ms' ? '💡 Petua:' : '💡 Tip:'}</span>
               <span>
-                ??????????????(??)???????;?? 0 ????????????;{lang === 'ms' ? 'Bulan Ini' : lang === 'zh' ? '??' : 'Current'}????????????????
+                {lang === 'ms' ? 'Klik sel untuk memasukkan jam bulanan. Simpan automatik apabila keluar; kosong dikira 0 jam; lajur bulan semasa diserlahkan.' : lang === 'zh' ? '点击单元格输入每月工时（小时），离开输入框时自动保存；留空按 0 计算；高亮列为本月。' : 'Click a cell to enter monthly hours. Auto-saves on blur; blank counts as 0 hours; the current month column is highlighted.'}
               </span>
             </div>
           </>
