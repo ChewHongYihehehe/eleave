@@ -62,7 +62,7 @@ export default function ApplyPage() {
     setBusy(true)
     const err = await submitApplication({
       employeeId: employee.id, leaveType: type, startDate: start, endDate: realEnd,
-      isHalfDay: half, halfDayPeriod: period, reason, mcFile: mc,
+      isHalfDay: half, halfDayPeriod: period, reason, mcFile: mc, lang,
     })
     setBusy(false)
     if (err) return setError(err)
@@ -152,7 +152,7 @@ export default function ApplyPage() {
               accept="image/jpeg,image/png,image/webp,image/heic,application/pdf"
               onChange={(e) => {
                 const f = e.target.files?.[0] || null
-                if (f) { const bad = validateMcFile(f); if (bad) { setError(bad); setMc(null); e.target.value = ''; return } }
+                if (f) { const bad = validateMcFile(f, lang); if (bad) { setError(bad); setMc(null); e.target.value = ''; return } }
                 setError(''); setMc(f)
               }}
             />
