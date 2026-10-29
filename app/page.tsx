@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
-import { useLang } from '@/lib/lang'
+import { useLang, LANG_OPTIONS } from '@/lib/lang'
 
 // Employees log in with a Staff ID + password. Under the hood, Supabase Auth
 // only understands email + password, so we convert the Staff ID into an
@@ -138,14 +138,14 @@ function LoginForm() {
       <main className="relative flex flex-1 flex-col items-center justify-center bg-paper px-4 lg:bg-white">
         {/* 语言切换 */}
         <div className="absolute right-5 top-5 flex rounded-md bg-white p-0.5 text-xs shadow-xs ring-1 ring-line lg:bg-paper lg:ring-0">
-          {(['zh', 'en'] as const).map((l) => (
+          {LANG_OPTIONS.map(({ key: l, label }) => (
             <button
               key={l}
               type="button"
               onClick={() => setLang(l)}
               className={`rounded px-2.5 py-1 font-medium transition-colors ${lang === l ? 'bg-pine text-white' : 'text-ink-soft hover:text-ink'}`}
             >
-              {l === 'zh' ? '中文' : 'EN'}
+              {label}
             </button>
           ))}
         </div>
