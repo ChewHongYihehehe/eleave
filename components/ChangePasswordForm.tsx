@@ -13,7 +13,7 @@ export default function ChangePasswordForm({
 }: {
   open?: boolean
   onOpenChange?: (open: boolean) => void
-  forced?: boolean // 第一次登录的强制改密码:不能关掉这个表单,改好后回到首页
+  forced?: boolean // 第一次登录的强制改密码:不能关掉这个表单,改好后退出登录并回到登录页,用新密码重新登录
 } = {}) {
   const { t } = useLang()
   const { tr } = useTr()
@@ -75,7 +75,13 @@ export default function ChangePasswordForm({
     setSuccess(true)
     setNewPassword('')
     setConfirmPassword('')
-    if (forced) setTimeout(() => { window.location.href = '/' }, 1200)
+    if (forced) {
+      // 设好自己的密码后:先退出登录,再回登录页(不然登录页会看到已登录,直接又跳进系统)
+      setTimeout(async () => {
+        try { await supabase.auth.signOut() } catch { /* 退出失败也照样回登录页 */ }
+        window.location.href = '/'
+      }, 1500)
+    }
   }
 
   if (!open) {
@@ -126,7 +132,7 @@ export default function ChangePasswordForm({
         {error && <p className="text-sm text-rust">{error}</p>}
         {success && (
           <p className="text-sm text-pine-deep">
-            {tr('密码已修改!', 'Password changed successfully!', 'Kata laluan berjaya ditukar!')}{forced ? ' ' + tr('正在带你回首页…', 'Taking you to the home page…', 'Membawa anda ke halaman utama…') : ''}
+            {tr('密码已修改!', 'Password changed successfully!', 'Kata laluan berjaya ditukar!')}{forced ? ' ' + tr('请用新密码重新登录,正在带你回登录页…', 'Please sign in again with your new password. Taking you to the login page…', 'Sila log masuk semula dengan kata laluan baharu anda. Membawa anda ke halaman log masuk…') : ''}
           </p>
         )}
 
