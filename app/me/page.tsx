@@ -1,119 +1,62 @@
 'use client'
 
-import MobileMe from '@/components/manager/MobileMe'
-import { useEffect, useState } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabaseClient'
-import ManagerShell, { IC, SvgIcon } from '@/components/ManagerShell'
-import { useEmployee } from '@/lib/useEmployee'
 import AuthStatus from '@/components/AuthStatus'
-import { useLang } from '@/lib/lang'
+import { supabase } from '@/lib/supabaseClient'
+import { useLang, LANG_OPTIONS } from '@/lib/lang'
+import { useLeaveData } from '@/lib/useLeaveData'
+import { getYearsOfService } from '@/lib/leaveRules'
+import { Avatar, Card, EI, Hero, Icon, MenuRow, TabPage } from '@/components/employee/EmployeeShell'
 
-// 我的(手机版底部栏第 4 个):账号、语言、更改密码、Telegram 通知、退出登录。
+// 员工手机版 · 我的(负责人用的是 /me,员工用这个)
 
-function DesktopMe() {
-  const auth = useEmployee({ requireManager: true })
+export default function EmployeeMe() {
   const router = useRouter()
+  const { auth, employee, unseenCount } = useLeaveData()
   const { lang, setLang, t } = useLang()
-  const [user, setUser] = useState<{ name: string; initials: string } | null>(null)
-
-  useEffect(() => {
-    if (auth.status !== 'ready') return
-    supabase.auth.getUser().then(async ({ data: { user: u } }) => {
-      if (!u) return
-      const { data } = await supabase
-        .from('employees')
-        .select('full_name')
-        .eq('auth_user_id', u.id)
-        .maybeSingle()
-      if (data) {
-        const parts = data.full_name.trim().split(' ')
-        const initials = (parts[0]?.[0] ?? '') + (parts[parts.length - 1]?.[0] ?? '')
-        setUser({ name: data.full_name, initials: initials.toUpperCase() })
-      }
-    })
-  }, [auth.status])
-
-  async function handleLogout() {
-    await supabase.auth.signOut()
-    router.push('/')
-  }
-
   if (auth.status !== 'ready') return <AuthStatus state={auth} />
-
-  const row = 'flex items-center gap-3 px-4 py-3.5 text-sm text-ink'
-  const iconBox = 'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-500'
+  if (!employee) return null
 
   return (
-    <ManagerShell>
-      <div className="space-y-5 pb-4">
-        <h1 className="font-display text-2xl font-semibold text-ink">{t('me')}</h1>
-
-        {/* 账号 */}
-        <div className="flex items-center gap-4 rounded-xl border border-line bg-surface p-4">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-pine/20 text-lg font-bold text-pine">
-            {user?.initials ?? ''}
-          </div>
+    <TabPage tab="me" badge={unseenCount}>
+      {/* 蓝色头部 + 头像卡(钉钉「我的」) */}
+      <Hero className="!pb-16">
+        <div className="flex items-center gap-4">
+          <span className="rounded-full ring-2 ring-white/50"><Avatar name={employee.full_name} size={60} /></span>
           <div className="min-w-0">
-            <p className="truncate text-base font-semibold text-ink">{user?.name ?? ''}</p>
-            <p className="text-sm text-ink-soft">{t('manager')}</p>
+            <p className="truncate text-xl font-semibold">{employee.full_name}</p>
+            <p className="mt-1 flex flex-wrap gap-x-2 text-[13px] text-blue-100">
+              {employee.employee_no ? <span>#{employee.employee_no}</span> : null}
+              <span>{getYearsOfService(employee.date_of_commencement).toFixed(1)} {t('yearsOfService')}</span>
+            </p>
           </div>
         </div>
+      </Hero>
 
-        {/* 语言 */}
-        <div className="rounded-xl border border-line bg-surface p-4">
-          <p className="mb-2 text-sm text-ink-soft">{t('language')}</p>
-          <div className="flex rounded-lg border border-line p-0.5">
-            {(['zh', 'en'] as const).map((l) => (
-              <button
-                key={l}
-                onClick={() => setLang(l)}
-                className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${lang === l ? 'bg-pine text-white' : 'text-ink-soft'}`}
-              >
-                {l === 'zh' ? '中文' : 'English'}
+      <div className="relative -mt-10">
+        <Card className="px-4 py-3 shadow-sm">
+          <p className="mb-2 text-sm text-gray-500">{t('language')}</p>
+          <div className="flex rounded-lg bg-gray-100 p-0.5">
+            {LANG_OPTIONS.map(({ key: l, label }) => (
+              <button key={l} onClick={() => setLang(l)} className={`flex-1 rounded-md py-2 text-sm ${lang === l ? 'bg-white font-semibold text-brand shadow-sm' : 'text-gray-600'}`}>
+                {label}
               </button>
             ))}
           </div>
-        </div>
+        </Card>
 
-        {/* 设置 */}
-        <div className="divide-y divide-line rounded-xl border border-line bg-surface">
-          <Link href="/change-password" className={row}>
-            <span className={iconBox}><SvgIcon d={IC.key} size={18} /></span>
-            <span className="flex-1">{t('changePassword')}</span>
-            <span className="text-ink-faint"><SvgIcon d={IC.chevronR} size={16} /></span>
-          </Link>
-          <Link href="/notifications" className={row}>
-            <span className={iconBox}><SvgIcon d={IC.bell} size={18} /></span>
-            <span className="flex-1">{t('telegram')}</span>
-            <span className="text-ink-faint"><SvgIcon d={IC.chevronR} size={16} /></span>
-          </Link>
-        </div>
+        <Card className="mt-3">
+          <MenuRow icon={EI.key} tint="#1677FF" label={t('changePassword')} onClick={() => router.push('/change-password')} />
+          <div className="ml-[3.75rem] border-t border-gray-100" />
+          <MenuRow icon={EI.bell} tint="#722ED1" label={t('telegram')} onClick={() => router.push('/notifications')} />
+        </Card>
 
-        {/* 退出登录 */}
-        <button
-          onClick={handleLogout}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border border-line bg-surface py-3.5 text-sm font-medium text-rust"
-        >
-          <SvgIcon d={IC.logout} size={18} />
-          {t('logout')}
-        </button>
+        <Card className="mt-3">
+          <button onClick={async () => { await supabase.auth.signOut(); router.push('/') }} className="flex w-full items-center justify-center gap-2 py-3.5 text-[15px] font-medium text-st-rejected-text active:bg-red-50">
+            <Icon d={EI.logout} size={20} />{t('logout')}
+          </button>
+        </Card>
       </div>
-    </ManagerShell>
-  )
-}
-
-// 手机(< md)用钉钉风格的新版页面;电脑(≥ md)保持原来的版面。
-export default function MePage() {
-  return (
-    <>
-      <div className="md:hidden">
-        <MobileMe />
-      </div>
-      <div className="hidden md:block">
-        <DesktopMe />
-      </div>
-    </>
+    </TabPage>
   )
 }
