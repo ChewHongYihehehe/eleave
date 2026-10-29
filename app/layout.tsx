@@ -1,5 +1,6 @@
 import './globals.css'
 import type { Metadata, Viewport } from 'next'
+import type { ReactNode } from 'react'
 import { Manrope, Fraunces } from 'next/font/google'
 
 const manrope = Manrope({
@@ -37,7 +38,7 @@ export const viewport: Viewport = {
   themeColor: '#F5F6F8',
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={`${manrope.variable} ${fraunces.variable}`}>
       <body className="min-h-screen bg-paper font-sans text-ink">
