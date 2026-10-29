@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import AuthStatus from '@/components/AuthStatus'
 import { useLang, leaveTypeName } from '@/lib/lang'
+import { useTr } from '@/lib/tr'
 import { useLeaveData, fmtNum, TYPE_COLOR } from '@/lib/useLeaveData'
 import { toLocalDateStr } from '@/lib/dateUtils'
 import { getYearsOfService } from '@/lib/leaveRules'
@@ -23,6 +24,7 @@ function CalendarGridIcon({ className }: { className?: string }) {
 export default function EmployeeHome() {
   const { auth, employee, apps, balances, upcoming, error, unseenCount } = useLeaveData()
   const { lang, t } = useLang()
+  const { tr, locale } = useTr()
   if (auth.status !== 'ready') return <AuthStatus state={auth} />
   if (!employee) return null
 
@@ -72,10 +74,10 @@ export default function EmployeeHome() {
         >
           <div className="flex items-center justify-between px-5 py-4">
             <div>
-              <p className="mb-1 text-xs font-semibold tracking-wider text-blue-100">{lang === 'zh' ? '休假余额' : 'Leave balance'}</p>
+              <p className="mb-1 text-xs font-semibold tracking-wider text-blue-100">{tr('休假余额', 'Leave balance', 'Baki cuti')}</p>
               <p className="text-2xl font-bold leading-tight text-white">
                 {lang === 'zh' ? <>剩余{fmtNum(annual.remaining)}</> : fmtNum(annual.remaining)}
-                <span className="ml-1 text-sm font-normal text-blue-100">{lang === 'zh' ? '天' : 'days left'}</span>
+                <span className="ml-1 text-sm font-normal text-blue-100">{tr('天', 'days left', 'hari baki')}</span>
               </p>
               <p className="mt-0.5 text-xs text-blue-100">{leaveTypeName('annual', lang)} · {year}</p>
             </div>
@@ -88,7 +90,7 @@ export default function EmployeeHome() {
               {others.map((b) => (
                 <div key={b.type} className="flex-1 border-r border-white/20 px-3 py-2.5 text-center last:border-r-0">
                   <p className="text-sm font-bold text-white">{fmtNum(b.remaining)}</p>
-                  <p className="mt-0.5 text-[10px] leading-tight text-blue-100">{leaveTypeName(b.type, lang).replace(/( \(MC\)| Leave)/g, '')}</p>
+                  <p className="mt-0.5 text-[10px] leading-tight text-blue-100">{leaveTypeName(b.type, lang).replace(/( \(MC\)| Leave)/g, '').replace(/^Cuti /, '')}</p>
                 </div>
               ))}
             </div>
@@ -148,13 +150,13 @@ export default function EmployeeHome() {
               return (
                 <div key={h.holiday_date} className={`flex items-center gap-3 px-4 py-3 ${i ? 'border-t border-gray-100' : ''}`}>
                   <div className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl bg-brand-soft text-brand">
-                    <span className="text-[10px] leading-none">{lang === 'zh' ? `${dt.getMonth() + 1}月` : dt.toLocaleDateString('en-MY', { month: 'short' })}</span>
+                    <span className="text-[10px] leading-none">{lang === 'zh' ? `${dt.getMonth() + 1}月` : dt.toLocaleDateString(locale, { month: 'short' })}</span>
                     <span className="mt-0.5 text-base font-bold leading-none">{dt.getDate()}</span>
                   </div>
                   <div className="min-w-0">
                     <p className="truncate text-[15px] text-gray-900">{h.name}</p>
                     <p className="text-xs text-gray-400">
-                      {dt.toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-MY', { weekday: 'long' })}
+                      {dt.toLocaleDateString(locale, { weekday: 'long' })}
                       {h.holiday_date === today && <span className="ml-1.5 font-medium text-orange-500">· {t('today')}</span>}
                     </p>
                   </div>
