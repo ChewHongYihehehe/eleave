@@ -121,10 +121,15 @@ export function useMgrT() {
   return { t, lang }
 }
 
-export function leaveName(type: string, lang: 'zh' | 'en') {
-  const m: Record<string, [string, string]> = {
-    annual: ['年假', 'Annual Leave'], medical: ['病假 (MC)', 'Medical Leave (MC)'], unpaid: ['无薪假', 'Unpaid Leave'],
-    maternity: ['产假', 'Maternity Leave'], paternity: ['陪产假', 'Paternity Leave'],
+import type { Lang } from '@/lib/lang'
+
+export function leaveName(type: string, lang: Lang | 'zh' | 'en') {
+  const m: Record<string, { ms: string; en: string; zh: string }> = {
+    annual: { ms: 'Cuti Tahunan', en: 'Annual Leave', zh: '年假' },
+    medical: { ms: 'Cuti Sakit (MC)', en: 'Medical Leave (MC)', zh: '病假 (MC)' },
+    unpaid: { ms: 'Cuti Tanpa Gaji', en: 'Unpaid Leave', zh: '无薪假' },
+    maternity: { ms: 'Cuti Bersalin', en: 'Maternity Leave', zh: '产假' },
+    paternity: { ms: 'Cuti Paterniti', en: 'Paternity Leave', zh: '陪产假' },
   }
-  return m[type] ? m[type][lang === 'zh' ? 0 : 1] : type
+  return m[type]?.[lang as Lang] ?? m[type]?.['en'] ?? type
 }
