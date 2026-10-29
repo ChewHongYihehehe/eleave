@@ -51,7 +51,7 @@ const safeTop = 'env(safe-area-inset-top, 0px)'
 export function TabPage({ tab, badge, children }: { tab: TabKey; badge?: number; children: React.ReactNode }) {
   const { lang, t } = useLang()
   return (
-    <div translate="no" lang={lang === 'zh' ? 'zh-Hans' : 'en'} className="min-h-[100dvh] bg-app">
+    <div translate="no" lang={lang === 'zh' ? 'zh-Hans' : lang === 'ms' ? 'ms' : 'en'} className="min-h-[100dvh] bg-app">
       <div className="mx-auto max-w-md" style={{ paddingBottom: `calc(4.25rem + ${safeBottom})` }}>
         {children}
       </div>
@@ -85,7 +85,7 @@ export function SubPage({
   const router = useRouter()
   const { lang, t } = useLang()
   return (
-    <div translate="no" lang={lang === 'zh' ? 'zh-Hans' : 'en'} className="min-h-[100dvh] bg-app">
+    <div translate="no" lang={lang === 'zh' ? 'zh-Hans' : lang === 'ms' ? 'ms' : 'en'} className="min-h-[100dvh] bg-app">
       <div className="mx-auto max-w-md">
         <header className="sticky top-0 z-20 border-b border-gray-200 bg-white" style={{ paddingTop: safeTop }}>
           <div className="grid h-12 grid-cols-[4rem_1fr_4rem] items-center">
@@ -391,8 +391,8 @@ function DateSheetBody({ title, value, min, lang, onPick, onClose }: { title: st
   const todayKey = toLocalDateStr(new Date())
   const cells: (number | null)[] = Array(new Date(y, m, 1).getDay()).fill(null)
   for (let d = 1; d <= new Date(y, m + 1, 0).getDate(); d++) cells.push(d)
-  const weekdays = lang === 'zh' ? ['日', '一', '二', '三', '四', '五', '六'] : ['S', 'M', 'T', 'W', 'T', 'F', 'S']
-  const heading = lang === 'zh' ? `${y}年${m + 1}月` : cur.toLocaleDateString('en-MY', { month: 'long', year: 'numeric' })
+  const weekdays = lang === 'zh' ? ['日', '一', '二', '三', '四', '五', '六'] : lang === 'ms' ? ['A', 'I', 'S', 'R', 'K', 'J', 'S'] : ['S', 'M', 'T', 'W', 'T', 'F', 'S']
+  const heading = lang === 'zh' ? `${y}年${m + 1}月` : cur.toLocaleDateString(lang === 'ms' ? 'ms-MY' : 'en-MY', { month: 'long', year: 'numeric' })
   // 不让翻到 min 所在月份之前
   const canPrev = !min || new Date(y, m, 0) >= new Date(Number(min.slice(0, 4)), Number(min.slice(5, 7)) - 1, 1)
   return (
