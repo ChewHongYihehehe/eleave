@@ -1,4 +1,5 @@
 'use client'
+import React from 'react'
 
 import MobileWorkHoursPage from '@/components/manager/MobileWorkHours'
 import { useEffect, useState, useMemo } from 'react'
@@ -13,7 +14,7 @@ type Employee = { id: string; full_name: string }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const THIS_YEAR = new Date().getFullYear()
-const YEAR_OPTIONS = Array.from({ length: 5 }, (_, i) => THIS_YEAR - 2 + i) // 2 years back → 2 years ahead
+const YEAR_OPTIONS = Array.from({ length: 5 }, (_, i) => THIS_YEAR - 2 + i) // 2 years back ? 2 years ahead
 
 function getInitials(name: string) {
   if (!name) return '?'
@@ -118,7 +119,7 @@ function MetricCard({
   )
 }
 
-function DesktopWorkHours() {
+function DesktopWorkHours(): React.ReactElement | null {
   const { lang } = useLang()
   const router = useRouter()
   const auth = useEmployee({ requireManager: true })
@@ -126,7 +127,7 @@ function DesktopWorkHours() {
   const [year, setYear] = useState(THIS_YEAR)
   const [searchQuery, setSearchQuery] = useState('')
 
-  // hours[`${employeeId}|${month}`] → string value of that cell (controlled input)
+  // hours[`${employeeId}|${month}`] ? string value of that cell (controlled input)
   const [hours, setHours] = useState<Record<string, string>>({})
   // saving = set of keys currently being upserted
   const [saving, setSaving] = useState<Set<string>>(new Set())
@@ -184,7 +185,7 @@ function DesktopWorkHours() {
     setSaving((prev) => new Set(prev).add(k))
 
     if (num <= 0) {
-      // Zero or empty → delete the row to keep the table clean
+      // Zero or empty ? delete the row to keep the table clean
       await supabase
         .from('monthly_work_hours')
         .delete()
@@ -211,7 +212,7 @@ function DesktopWorkHours() {
     })
   }
 
-  // ── Totals ──────────────────────────────────────────────────────────────
+  // -- Totals --------------------------------------------------------------
 
   function rowTotal(empId: string) {
     let t = 0
@@ -233,7 +234,7 @@ function DesktopWorkHours() {
     return employees.reduce((s, emp) => s + rowTotal(emp.id), 0)
   }
 
-  // ── Filtered List ───────────────────────────────────────────────────────
+  // -- Filtered List -------------------------------------------------------
 
   const filteredEmployees = useMemo(() => {
     if (!searchQuery.trim()) return employees
@@ -241,10 +242,10 @@ function DesktopWorkHours() {
     return employees.filter((e) => e.full_name.toLowerCase().includes(q))
   }, [employees, searchQuery])
 
-  // ── Export CSV ───────────────────────────────────────────────────────────
+  // -- Export CSV -----------------------------------------------------------
 
   function handleExportCsv() {
-    const header = ['员工姓名 (Employee)', ...MONTHS, '全年累计 (Total Hours)']
+    const header = ['???? (Employee)', ...MONTHS, '???? (Total Hours)']
     const rows = employees.map((emp) => [
       emp.full_name,
       ...Array.from({ length: 12 }, (_, i) => hours[key(emp.id, i + 1)] || '0'),
@@ -258,12 +259,12 @@ function DesktopWorkHours() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `兼职工时汇总-${year}.csv`
+    a.download = `??????-${year}.csv`
     a.click()
     URL.revokeObjectURL(url)
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
 
   const isCurrentYear = year === THIS_YEAR
   const currentMonthNumber = new Date().getMonth() + 1
@@ -273,17 +274,17 @@ function DesktopWorkHours() {
   return (
     <ManagerShell>
       <div className="space-y-6 pb-12">
-        {/* ── Top Header ────────────────────────────────────────── */}
+        {/* -- Top Header ------------------------------------------ */}
         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="font-display text-2xl font-bold tracking-tight text-ink">{lang === 'ms' ? 'Pengurusan Jam Kerja Sambilan' : lang === 'zh' ? '兼职工时管理' : 'Part-Time Work Hours'}</h1>
+              <h1 className="font-display text-2xl font-bold tracking-tight text-ink">{lang === 'ms' ? 'Pengurusan Jam Kerja Sambilan' : lang === 'zh' ? '??????' : 'Part-Time Work Hours'}</h1>
               <span className="rounded-full bg-pine-soft px-2.5 py-0.5 text-xs font-semibold text-pine">
                 Work Hours
               </span>
             </div>
             <p className="mt-1 text-sm text-ink-faint">
-              {lang === 'ms' ? 'Rekod dan kira jam kerja sambilan bulanan. Simpan automatik apabila keluar dari kotak input. Menyokong eksport tahunan.' : lang === 'zh' ? '登记与核算兼职员工每月实际出勤工时，失焦即自动保存，支持按年度核算与导出。' : 'Log and calculate monthly part-time work hours. Auto-saves on blur. Supports annual ledger and export.'}
+              {lang === 'ms' ? 'Rekod dan kira jam kerja sambilan bulanan. Simpan automatik apabila keluar dari kotak input. Menyokong eksport tahunan.' : lang === 'zh' ? '?????????????????,???????,???????????' : 'Log and calculate monthly part-time work hours. Auto-saves on blur. Supports annual ledger and export.'}
             </p>
           </div>
 
@@ -294,43 +295,43 @@ function DesktopWorkHours() {
               className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-2 text-xs font-semibold text-ink shadow-sm transition hover:bg-paper disabled:opacity-50"
             >
               <DownloadIcon className="h-4 w-4 text-pine" />
-              <span>{lang === 'ms' ? 'Eksport Excel / CSV' : lang === 'zh' ? '导出 Excel / CSV' : 'Export Excel / CSV'}</span>
+              <span>{lang === 'ms' ? 'Eksport Excel / CSV' : lang === 'zh' ? '?? Excel / CSV' : 'Export Excel / CSV'}</span>
             </button>
           </div>
         </div>
 
-        {/* ── Metric Cards ──────────────────────────────────────── */}
+        {/* -- Metric Cards ---------------------------------------- */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCard
             icon={<ClockIcon className="h-5 w-5" />}
-            label={lang === 'ms' ? 'Jumlah Jam Sambilan Tahunan' : lang === 'zh' ? '年度兼职总工时' : 'Annual Total PT Hours'}
+            label={lang === 'ms' ? 'Jumlah Jam Sambilan Tahunan' : lang === 'zh' ? '???????' : 'Annual Total PT Hours'}
             value={grandTotal().toFixed(1)}
             unit="h"
-            subtext={`${year} 全年累计总工时`}
+            subtext={`${year} ???????`}
             tone="blue"
           />
           <MetricCard
             icon={<UsersIcon className="h-5 w-5" />}
-            label={lang === 'ms' ? 'Kakitangan Sambilan Aktif' : lang === 'zh' ? '兼职在册人数' : 'Active Part-Time Staff'}
+            label={lang === 'ms' ? 'Kakitangan Sambilan Aktif' : lang === 'zh' ? '??????' : 'Active Part-Time Staff'}
             value={employees.length}
-            unit={lang === 'ms' ? 'org' : lang === 'zh' ? '人' : 'staff'}
-            subtext="目前激活的兼职员工"
+            unit={lang === 'ms' ? 'org' : lang === 'zh' ? '?' : 'staff'}
+            subtext="?????????"
             tone="teal"
           />
           <MetricCard
             icon={<CalendarIcon className="h-5 w-5" />}
-            label={`${isCurrentYear ? '当月' : `${year}年12月`}工时汇总`}
+            label={`${isCurrentYear ? '??' : `${year}?12?`}????`}
             value={colTotal(isCurrentYear ? currentMonthNumber : 12).toFixed(1)}
             unit="h"
-            subtext={isCurrentYear ? `第 ${currentMonthNumber} 月出勤总工时` : '年末月度工时'}
+            subtext={isCurrentYear ? `? ${currentMonthNumber} ??????` : '??????'}
             tone="amber"
           />
           <MetricCard
             icon={<ClockIcon className="h-5 w-5" />}
-            label={lang === 'ms' ? 'Purata Jam Setahun' : lang === 'zh' ? '兼职人均年工时' : 'Avg Annual Hours/Staff'}
+            label={lang === 'ms' ? 'Purata Jam Setahun' : lang === 'zh' ? '???????' : 'Avg Annual Hours/Staff'}
             value={employees.length > 0 ? (grandTotal() / employees.length).toFixed(1) : '0.0'}
             unit="h"
-            subtext="全年人均工时贡献"
+            subtext="????????"
             tone="slate"
           />
         </div>
@@ -340,18 +341,18 @@ function DesktopWorkHours() {
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-paper text-ink-faint">
               <UsersIcon className="h-6 w-6" />
             </div>
-            <h3 className="mt-3 text-base font-semibold text-ink">暂无兼职员工</h3>
-            <p className="mt-1 text-sm text-ink-faint">系统当前没有激活状态的兼职人员（Part-time）。</p>
+            <h3 className="mt-3 text-base font-semibold text-ink">??????</h3>
+            <p className="mt-1 text-sm text-ink-faint">???????????????(Part-time)?</p>
             <button
               onClick={() => router.push('/manage')}
               className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-pine px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-pine-deep"
             >
-              前往员工管理页面添加兼职员工 →
+              ?????????????? ?
             </button>
           </div>
         ) : (
           <>
-            {/* ── Toolbar: Year stepper + Search box ──────────────── */}
+            {/* -- Toolbar: Year stepper + Search box ---------------- */}
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface p-3 shadow-sm">
               <div className="flex items-center gap-2">
                 {/* Year Stepper */}
@@ -360,18 +361,18 @@ function DesktopWorkHours() {
                     type="button"
                     onClick={() => setYear((y) => y - 1)}
                     className="rounded p-1 text-ink-soft transition hover:bg-surface hover:text-ink"
-                    title="上一年"
+                    title="???"
                   >
                     <ChevronLeftIcon className="h-4 w-4" />
                   </button>
                   <span className="px-3 text-sm font-bold text-ink tabular-nums">
-                    {year} 年
+                    {year} ?
                   </span>
                   <button
                     type="button"
                     onClick={() => setYear((y) => y + 1)}
                     className="rounded p-1 text-ink-soft transition hover:bg-surface hover:text-ink"
-                    title="下一年"
+                    title="???"
                   >
                     <ChevronRightIcon className="h-4 w-4" />
                   </button>
@@ -383,12 +384,12 @@ function DesktopWorkHours() {
                     onClick={() => setYear(THIS_YEAR)}
                     className="rounded-lg border border-pine/30 bg-pine-soft px-2.5 py-1 text-xs font-semibold text-pine transition hover:bg-pine-soft/80"
                   >
-                    {lang === 'ms' ? 'Kembali ke Tahun Ini' : lang === 'zh' ? '返回今年' : 'This Year'}
+                    {lang === 'ms' ? 'Kembali ke Tahun Ini' : lang === 'zh' ? '????' : 'This Year'}
                   </button>
                 )}
 
                 <span className="hidden text-xs text-ink-faint sm:inline">
-                  可在上方切换核算年份
+                  ??????????
                 </span>
               </div>
 
@@ -401,7 +402,7 @@ function DesktopWorkHours() {
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder={lang === 'ms' ? 'Cari nama pekerja sambilan...' : lang === 'zh' ? '搜索兼职员工姓名...' : 'Search part-time staff name...'}
+                    placeholder={lang === 'ms' ? 'Cari nama pekerja sambilan...' : lang === 'zh' ? '????????...' : 'Search part-time staff name...'}
                     className="w-52 rounded-lg border border-line bg-paper/50 py-1.5 pl-8 pr-3 text-xs text-ink placeholder:text-ink-faint/60 transition focus:border-pine focus:bg-surface focus:outline-none focus:ring-2 focus:ring-pine/10 sm:w-64"
                   />
                   {searchQuery && (
@@ -410,25 +411,25 @@ function DesktopWorkHours() {
                       onClick={() => setSearchQuery('')}
                       className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-ink-faint hover:text-ink"
                     >
-                      ×
+                      �
                     </button>
                   )}
                 </div>
 
                 <span className="hidden text-xs font-medium text-ink-faint lg:inline">
-                  显示 {filteredEmployees.length} / {employees.length} 人
+                  ?? {filteredEmployees.length} / {employees.length} ?
                 </span>
               </div>
             </div>
 
-            {/* ── Desktop: Full spreadsheet grid ───────────────────── */}
+            {/* -- Desktop: Full spreadsheet grid --------------------- */}
             <div className="overflow-hidden rounded-xl border border-line bg-surface shadow-sm">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-line bg-paper/60">
                       <th className="sticky left-0 z-20 bg-paper/95 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-soft min-w-[200px]">
-                        员工姓名 / Employee
+                        ???? / Employee
                       </th>
                       {MONTHS.map((m, idx) => {
                         const monthNum = idx + 1
@@ -446,7 +447,7 @@ function DesktopWorkHours() {
                               <span>{m}</span>
                               {isCurrentMonth && (
                                 <span className="mt-0.5 rounded-full bg-pine px-1.5 py-0.5 text-[9px] font-bold text-white leading-none">
-                                  {lang === 'ms' ? 'Bulan Ini' : lang === 'zh' ? '本月' : 'Current'}
+                                  {lang === 'ms' ? 'Bulan Ini' : lang === 'zh' ? '??' : 'Current'}
                                 </span>
                               )}
                             </div>
@@ -454,7 +455,7 @@ function DesktopWorkHours() {
                         )
                       })}
                       <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-ink-soft min-w-[90px]">
-                        {lang === 'ms' ? 'Jumlah Tahunan' : lang === 'zh' ? '年度合计' : 'Annual Total'}
+                        {lang === 'ms' ? 'Jumlah Tahunan' : lang === 'zh' ? '????' : 'Annual Total'}
                       </th>
                     </tr>
                   </thead>
@@ -463,7 +464,7 @@ function DesktopWorkHours() {
                     {filteredEmployees.length === 0 ? (
                       <tr>
                         <td colSpan={14} className="py-12 text-center text-sm text-ink-faint">
-                          未找到匹配 “{searchQuery}” 的兼职员工
+                          ????? �{searchQuery}� ?????
                         </td>
                       </tr>
                     ) : (
@@ -488,7 +489,7 @@ function DesktopWorkHours() {
                                   {emp.full_name}
                                 </div>
                                 <div className="text-[11px] text-ink-faint">
-                                  #兼职工时
+                                  #????
                                 </div>
                               </div>
                             </div>
@@ -514,7 +515,7 @@ function DesktopWorkHours() {
                                   value={hours[k] ?? ''}
                                   onChange={(e) => handleChange(emp.id, m, e.target.value)}
                                   onBlur={(e) => handleBlur(emp.id, m, e.target.value)}
-                                  placeholder="—"
+                                  placeholder="�"
                                   className={[
                                     'w-14 rounded-md border text-center text-xs py-1.5 font-medium transition-all focus:outline-none tabular-nums',
                                     isSaving
@@ -535,7 +536,7 @@ function DesktopWorkHours() {
                                 <span className="text-[11px] text-ink-faint">h</span>
                               </span>
                             ) : (
-                              <span className="text-ink-faint font-normal">—</span>
+                              <span className="text-ink-faint font-normal">�</span>
                             )}
                           </td>
                         </tr>
@@ -546,7 +547,7 @@ function DesktopWorkHours() {
                   <tfoot>
                     <tr className="border-t-2 border-line bg-paper/80 font-semibold">
                       <td className="sticky left-0 z-10 bg-paper/95 px-4 py-3 text-xs font-bold uppercase tracking-wider text-ink-soft">
-                        {lang === 'ms' ? 'Jumlah Jam Bulanan' : lang === 'zh' ? '月度总工时汇总' : 'Monthly Total'}
+                        {lang === 'ms' ? 'Jumlah Jam Bulanan' : lang === 'zh' ? '???????' : 'Monthly Total'}
                       </td>
                       {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => {
                         const t = colTotal(m)
@@ -558,7 +559,7 @@ function DesktopWorkHours() {
                               isCurrentMonth ? 'bg-pine-soft/30 text-pine' : 'text-ink'
                             }`}
                           >
-                            {t > 0 ? `${t.toFixed(1)}h` : '—'}
+                            {t > 0 ? `${t.toFixed(1)}h` : '�'}
                           </td>
                         )
                       })}
@@ -573,9 +574,9 @@ function DesktopWorkHours() {
 
             {/* Helper tips */}
             <div className="flex items-center gap-2 rounded-lg border border-line/60 bg-paper/50 px-3.5 py-2 text-xs text-ink-faint">
-              <span className="text-pine font-bold">💡 提示：</span>
+              <span className="text-pine font-bold">?? ??:</span>
               <span>
-                在对应月份输入工时后移开光标（失焦）将自动实时保存；输入 0 或清空将清除该月份的记录；{lang === 'ms' ? 'Bulan Ini' : lang === 'zh' ? '本月' : 'Current'}所在的月份列已自动为您高亮显示。
+                ??????????????(??)???????;?? 0 ????????????;{lang === 'ms' ? 'Bulan Ini' : lang === 'zh' ? '??' : 'Current'}????????????????
               </span>
             </div>
           </>
@@ -585,7 +586,7 @@ function DesktopWorkHours() {
   )
 }
 
-// ─── Mobile helper sub-component ─────────────────────────────────────────────
+// --- Mobile helper sub-component ---------------------------------------------
 
 function MobileWorkHours({
   employees,
@@ -627,7 +628,7 @@ function MobileWorkHours({
 
       {emp && (
         <>
-          {/* Month grid — 2 columns */}
+          {/* Month grid � 2 columns */}
           <div className="grid grid-cols-2 gap-3">
             {months.map((m, i) => {
               const monthNum = i + 1
@@ -670,7 +671,7 @@ function MobileWorkHours({
   )
 }
 
-// 手机(< md)用钉钉风格的新版页面;电脑(≥ md)保持原来的版面。
+// ??(< md)??????????;??(= md)????????
 export default function WorkHoursPage() {
   return (
     <>
