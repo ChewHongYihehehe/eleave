@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { useLang, LANG_OPTIONS } from '@/lib/lang'
+import { useTr } from '@/lib/tr'
 
 // Employees log in with a Staff ID + password. Under the hood, Supabase Auth
 // only understands email + password, so we convert the Staff ID into an
@@ -23,7 +24,7 @@ function LoginForm() {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
   const { lang, setLang, t } = useLang()
-  const zh = lang === 'zh'
+  const { tr } = useTr()
   const searchParams = useSearchParams()
   const notice = searchParams.get('notice')
   // 一进来先看是不是已经登录:是的话直接跳到该去的页面(装成桌面图标后,每次点开不用再登录一遍)
@@ -61,7 +62,7 @@ function LoginForm() {
     })
 
     if (signInError) {
-      setError(zh ? '登录失败,请检查工号和密码。' : 'Login failed. Please check your Staff ID / password.')
+      setError(tr('登录失败,请检查工号和密码。', 'Login failed. Please check your Staff ID / password.', 'Log masuk gagal. Sila semak No. Pekerja / kata laluan anda.'))
       setLoading(false)
       return
     }
@@ -76,10 +77,10 @@ function LoginForm() {
     if (profileError || !profile || profile.is_active === false || profile.employment_type === 'part_time') {
       await supabase.auth.signOut()
       setLoading(false)
-      if (profileError) setError(zh ? '无法读取你的资料,请重试。' : 'Could not load your profile. Please try again.')
-      else if (!profile) setError(zh ? '这个账号没有关联员工资料,请联系负责人。' : 'No employee profile is linked to this account. Please contact your manager.')
-      else if (profile.is_active === false) setError(zh ? '这个账号已被停用,请联系负责人。' : 'This account has been deactivated. Please contact your manager.')
-      else setError(zh ? '兼职员工没有系统登录权限,请联系负责人。' : "Part-time employees don't have system access. Please contact your manager.")
+      if (profileError) setError(tr('无法读取你的资料,请重试。', 'Could not load your profile. Please try again.', 'Tidak dapat memuatkan profil anda. Sila cuba lagi.'))
+      else if (!profile) setError(tr('这个账号没有关联员工资料,请联系负责人。', 'No employee profile is linked to this account. Please contact your manager.', 'Tiada profil pekerja dikaitkan dengan akaun ini. Sila hubungi pengurus anda.'))
+      else if (profile.is_active === false) setError(tr('这个账号已被停用,请联系负责人。', 'This account has been deactivated. Please contact your manager.', 'Akaun ini telah dinyahaktifkan. Sila hubungi pengurus anda.'))
+      else setError(tr('兼职员工没有系统登录权限,请联系负责人。', "Part-time employees don't have system access. Please contact your manager.", 'Pekerja sambilan tidak mempunyai akses sistem. Sila hubungi pengurus anda.'))
       return
     }
 
@@ -96,9 +97,9 @@ function LoginForm() {
 
   const noticeText =
     notice === 'part-time'
-      ? (zh ? '兼职员工没有系统登录权限,请联系负责人。' : "Part-time employees don't have system access. Please contact your manager.")
+      ? tr('兼职员工没有系统登录权限,请联系负责人。', "Part-time employees don't have system access. Please contact your manager.", 'Pekerja sambilan tidak mempunyai akses sistem. Sila hubungi pengurus anda.')
       : notice === 'inactive'
-        ? (zh ? '这个账号已被停用,请联系负责人。' : 'This account has been deactivated. Please contact your manager.')
+        ? tr('这个账号已被停用,请联系负责人。', 'This account has been deactivated. Please contact your manager.', 'Akaun ini telah dinyahaktifkan. Sila hubungi pengurus anda.')
         : ''
 
   return (
@@ -173,7 +174,7 @@ function LoginForm() {
                 value={staffId}
                 onChange={(e) => setStaffId(e.target.value)}
                 className="field-input h-10"
-                placeholder={zh ? '例如 001' : 'e.g. 001'}
+                placeholder={tr('例如 001', 'e.g. 001', 'cth. 001')}
               />
             </div>
             <div>
