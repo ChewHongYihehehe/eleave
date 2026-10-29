@@ -76,6 +76,19 @@ const TPL = {
     'employee.deactivated': '{A} 停用了 {T} 的账号',
     'employee.field_updated': '{A} 修改了 {T} 的{X}',
   },
+  ms: {
+    'leave.applied': '{A} memohon {X}',
+    'leave.approved': '{A} meluluskan {X} {T}',
+    'leave.rejected': '{A} menolak {X} {T}',
+    'leave.cancelled_by_manager': '{A} membatalkan {X} {T}',
+    'leave.cancellation_confirmed': '{A} mengesahkan pembatalan {X} {T}',
+    'leave.cancellation_declined': '{A} menolak pembatalan {X} {T}',
+    'leave.recorded_by_manager': '{A} merekodkan {X} untuk {T}',
+    'employee.password_reset': '{A} menetapkan semula kata laluan {T}',
+    'employee.activated': '{A} mengaktifkan akaun {T}',
+    'employee.deactivated': '{A} menyahaktifkan akaun {T}',
+    'employee.field_updated': '{A} mengubah {X} {T}',
+  },
   en: {
     'leave.applied': '{A} applied for {X}',
     'leave.approved': '{A} approved {T}’s {X}',
@@ -97,6 +110,12 @@ const TXT = {
     yesterday: '昨天', reason: '原因', mc: 'MC 已附', limit: `仅显示最近 ${LIMIT} 条记录`, leave: '假期',
     fields: { date_of_commencement: '入职日期', annual_leave_carry_forward: '年假结转', role: '角色' } as Record<string, string>,
     days: '天',
+  },
+  ms: {
+    cat: { approval: 'Kelulusan', cancel: 'Pembatalan', recorded: 'Direkodkan', account: 'Akaun' } as Record<Cat, string>,
+    yesterday: 'Semalam', reason: 'Sebab', mc: 'MC Disertakan', limit: `Hanya memaparkan ${LIMIT} rekod terkini`, leave: 'cuti',
+    fields: { date_of_commencement: 'tarikh mula kerja', annual_leave_carry_forward: 'bawa ke hadapan cuti tahunan', role: 'peranan' } as Record<string, string>,
+    days: 'hari',
   },
   en: {
     cat: { approval: 'Approvals', cancel: 'Cancellations', recorded: 'Recorded', account: 'Accounts' } as Record<Cat, string>,
@@ -123,7 +142,7 @@ function one<T>(v: T | T[] | null | undefined): T | null {
   return Array.isArray(v) ? (v[0] ?? null) : (v ?? null)
 }
 
-function fmtD(iso: string, lang: 'zh' | 'en') {
+function fmtD(iso: string, lang: string) {
   const [, m, d] = iso.split('-').map(Number)
   return lang === 'zh' ? `${m}月${d}日` : `${d} ${MONTH_EN[m - 1]}`
 }
@@ -142,7 +161,7 @@ const str = (v: unknown) => (typeof v === 'string' && v ? v : null)
 export default function MobileAuditLog() {
   const auth = useEmployee({ requireManager: true })
   const { t, lang } = useMgrT()
-  const L = TXT[lang]
+  const L = TXT[lang as 'zh'|'en'|'ms'] ?? TXT.en
 
   const [logs, setLogs] = useState<LogRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -237,7 +256,7 @@ export default function MobileAuditLog() {
     const target = one(log.target)?.full_name || '—'
     const isField = log.action === 'employee.field_updated'
     const X = isField ? (L.fields[String(d.field)] ?? String(d.field ?? '')) : leaveType ? leaveName(leaveType, lang) : L.leave
-    const tpl = (TPL[lang] as Record<string, string>)[log.action]
+    const tpl = ((TPL[lang as 'zh'|'en'|'ms'] ?? TPL.en) as Record<string, string>)[log.action]
 
     // 第二行:日期 · 天数(或字段修改前后)
     let line: string | null = null
