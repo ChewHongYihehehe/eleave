@@ -2,6 +2,8 @@
 
 import { useEffect } from 'react'
 import Link from 'next/link'
+import { useLang } from '@/lib/lang'
+import { useTr } from '@/lib/tr'
 
 export default function GlobalError({
   error,
@@ -10,6 +12,9 @@ export default function GlobalError({
   error: Error & { digest?: string }
   reset: () => void
 }) {
+  const { t } = useLang()
+  const { tr } = useTr()
+
   useEffect(() => {
     // 打印具体错误到浏览器控制台，方便排查
     console.error('Application error caught by boundary:', error)
@@ -23,12 +28,11 @@ export default function GlobalError({
         </svg>
       </div>
 
-      <h1 className="text-xl font-bold text-gray-900">页面加载遇到问题</h1>
-      <p className="mt-1 text-sm text-gray-500">Something went wrong while loading this page</p>
+      <h1 className="text-xl font-bold text-gray-900">{tr('页面加载遇到问题', 'Something went wrong while loading this page', 'Halaman ini menghadapi masalah semasa dimuatkan')}</h1>
 
       {error?.message && (
         <div className="mt-4 max-w-md w-full rounded-xl bg-white border border-gray-200 p-3.5 text-left text-xs font-mono text-gray-600 shadow-2xs overflow-x-auto">
-          <p className="text-[11px] font-bold text-red-500 mb-1">Error details:</p>
+          <p className="text-[11px] font-bold text-red-500 mb-1">{tr('错误详情:', 'Error details:', 'Butiran ralat:')}</p>
           <p className="break-all">{error.message}</p>
         </div>
       )}
@@ -38,13 +42,13 @@ export default function GlobalError({
           onClick={() => reset()}
           className="w-full sm:w-auto rounded-xl bg-brand px-6 py-2.5 text-sm font-semibold text-white shadow-xs transition-all active:scale-[0.98]"
         >
-          重新尝试 (Retry)
+          {t('retry')}
         </button>
         <Link
           href="/workspace"
           className="w-full sm:w-auto rounded-xl border border-gray-300 bg-white px-6 py-2.5 text-sm font-semibold text-gray-700 shadow-2xs hover:bg-gray-50 transition-all text-center"
         >
-          返回工作台 (Workspace)
+          {tr('返回工作台', 'Back to Workspace', 'Kembali ke Ruang Kerja')}
         </Link>
       </div>
     </div>

@@ -54,6 +54,11 @@ function LoginForm() {
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
     setError('')
+    // 不用浏览器自带的「请填写此字段」(它跟着手机系统语言走,会冒出中文),改用我们自己按语言显示的提示
+    if (!staffId.trim() || !password) {
+      setError(tr('请输入工号和密码。', 'Please enter your Staff ID and password.', 'Sila masukkan No. Pekerja dan kata laluan anda.'))
+      return
+    }
     setLoading(true)
 
     const { data, error: signInError } = await supabase.auth.signInWithPassword({
@@ -163,7 +168,7 @@ function LoginForm() {
             </div>
           )}
 
-          <form onSubmit={handleLogin} className="mt-7 space-y-5">
+          <form onSubmit={handleLogin} noValidate className="mt-7 space-y-5">
             <div>
               <label className="field-label">{t('staffId')}</label>
               <input
