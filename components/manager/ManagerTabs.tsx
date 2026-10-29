@@ -25,7 +25,7 @@ export function ManagerTabPage({ tab, badge, children }: { tab: (typeof TABS)[nu
   const fetched = useAttentionCount()
   const count = badge ?? fetched
   return (
-    <div translate="no" lang={lang === 'zh' ? 'zh-Hans' : 'en'} className="min-h-[100dvh] bg-app">
+    <div translate="no" lang={lang === 'zh' ? 'zh-Hans' : lang === 'ms' ? 'ms' : 'en'} className="min-h-[100dvh] bg-app">
       <div className="mx-auto max-w-md" style={{ paddingBottom: `calc(4.25rem + ${safeBottom})` }}>{children}</div>
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 bg-white" style={{ paddingBottom: safeBottom }}>
         <div className="mx-auto flex max-w-md">

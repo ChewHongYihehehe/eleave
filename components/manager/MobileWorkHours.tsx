@@ -6,7 +6,7 @@ import AuthStatus from '@/components/AuthStatus'
 import { BottomSheet, Card, EI, Icon, ListSkeleton, SubPage, useToast } from '@/components/employee/EmployeeShell'
 import { supabase } from '@/lib/supabaseClient'
 import { useEmployee } from '@/lib/useEmployee'
-import { useMgrT } from '@/lib/mgrText'
+import { monthShort, monthYear, useMgrT } from '@/lib/mgrText'
 import { Avatar } from './ManagerTabs'
 
 // 兼职工时 · 手机版(钉钉风格):
@@ -96,7 +96,7 @@ export default function MobileWorkHours() {
 
   if (auth.status !== 'ready') return <AuthStatus state={auth} />
 
-  const monthLabel = (m: number) => (lang === 'zh' ? `${m}月` : MONTH_EN[m - 1])
+  const monthLabel = (m: number) => monthShort(m, lang)
   const emps = employees ?? []
   const rowTotal = (id: string) => { let s = 0; for (let m = 1; m <= 12; m++) s += hours[keyOf(id, m)] || 0; return s }
   const monthSum = emps.reduce((s, e) => s + (hours[keyOf(e.id, month)] || 0), 0)
@@ -179,7 +179,7 @@ export default function MobileWorkHours() {
             <div className="flex h-12 items-center">
               <button onClick={() => (view === 'month' ? shiftMonth(-1) : setYear(year - 1))} className="flex h-12 w-12 items-center justify-center text-gray-500 active:bg-gray-50"><Icon d={EI.chevronL} size={20} /></button>
               <p className="flex-1 text-center text-base font-semibold text-gray-900">
-                {view === 'month' ? (lang === 'zh' ? `${year}年${month}月` : `${MONTH_EN[month - 1]} ${year}`) : `${year}${lang === 'zh' ? '年' : ''}`}
+                {view === 'month' ? monthYear(year, month, lang) : `${year}${lang === 'zh' ? '年' : ''}`}
               </p>
               <button onClick={() => (view === 'month' ? shiftMonth(1) : setYear(year + 1))} className="flex h-12 w-12 items-center justify-center text-gray-500 active:bg-gray-50"><Icon d={EI.chevronR} size={20} /></button>
             </div>
@@ -252,7 +252,7 @@ export default function MobileWorkHours() {
         <HoursSheet
           key={keyOf(target.empId, target.month)}
           title={t('enterHours')}
-          subtitle={`${targetEmp.full_name} · ${lang === 'zh' ? `${year}年${target.month}月` : `${MONTH_EN[target.month - 1]} ${year}`}`}
+          subtitle={`${targetEmp.full_name} · ${monthYear(year, target.month, lang)}`}
           initial={hours[keyOf(target.empId, target.month)] ? String(hours[keyOf(target.empId, target.month)]) : ''}
           busy={busy}
           onSave={save}

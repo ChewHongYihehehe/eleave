@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { eachDay, toLocalDateStr } from '@/lib/dateUtils'
 import { useEmployee } from '@/lib/useEmployee'
 import { TYPE_COLOR } from '@/lib/useLeaveData'
-import { leaveName, useMgrT } from '@/lib/mgrText'
+import { leaveName, localeOf, useMgrT } from '@/lib/mgrText'
 import { ManagerTabPage } from './ManagerTabs'
 
 // 团队日历(手机):月历格子里用小圆点,点日期在下面看"谁休假"。数据规则和电脑版一致
@@ -72,7 +72,7 @@ export default function MobileCalendar() {
   const selEntries = selInMonth ? entries[sel!] || [] : []
   const selHoliday = selInMonth ? holidays[sel!] : undefined
   const weekdays = t('weekdays').split(',')
-  const title = lang === 'zh' ? `${y}年${m + 1}月` : cur.toLocaleDateString('en-MY', { month: 'long', year: 'numeric' })
+  const title = lang === 'zh' ? `${y}年${m + 1}月` : lang === 'ms' ? cur.toLocaleDateString('ms-MY', { month: 'long', year: 'numeric' }) : cur.toLocaleDateString('en-MY', { month: 'long', year: 'numeric' })
 
   function go(delta: number) {
     const next = new Date(y, m + delta, 1)
@@ -133,7 +133,7 @@ export default function MobileCalendar() {
         <div className="mx-4 mt-3 rounded-xl bg-white p-4">
           <div className="flex items-baseline justify-between">
             <p className="text-base font-semibold text-gray-900">
-              {new Date(Number(sel!.slice(0, 4)), Number(sel!.slice(5, 7)) - 1, Number(sel!.slice(8, 10))).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-MY', { month: 'long', day: 'numeric', weekday: 'long' })}
+              {new Date(Number(sel!.slice(0, 4)), Number(sel!.slice(5, 7)) - 1, Number(sel!.slice(8, 10))).toLocaleDateString(localeOf(lang), { month: 'long', day: 'numeric', weekday: 'long' })}
             </p>
             {sel === todayKey && <span className="rounded-full bg-brand-soft px-2 py-0.5 text-xs font-medium text-brand">{t('today')}</span>}
           </div>

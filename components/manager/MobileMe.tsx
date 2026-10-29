@@ -36,9 +36,9 @@ export default function MobileMe() {
         <Card className="px-4 py-3 shadow-sm">
           <p className="mb-2 text-sm text-gray-500">{t('language')}</p>
           <div className="flex rounded-lg bg-gray-100 p-0.5">
-            {(['zh', 'en'] as const).map((l) => (
+            {(['ms', 'en', 'zh'] as const).map((l) => (
               <button key={l} onClick={() => setLang(l)} className={`flex-1 rounded-md py-2 text-sm ${lang === l ? 'bg-white font-semibold text-brand shadow-sm' : 'text-gray-600'}`}>
-                {l === 'zh' ? '中文' : 'English'}
+                {l === 'zh' ? '中文' : l === 'ms' ? 'BM' : 'EN'}
               </button>
             ))}
           </div>

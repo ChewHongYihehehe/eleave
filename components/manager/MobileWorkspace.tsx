@@ -9,7 +9,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { toLocalDateStr } from '@/lib/dateUtils'
 import { TYPE_COLOR, fmtNum } from '@/lib/useLeaveData'
 import { fmtRange } from '@/lib/employeeFmt'
-import { leaveName, useMgrT } from '@/lib/mgrText'
+import { leaveName, useMgrT, localeOf } from '@/lib/mgrText'
 import { useApprovals } from '@/lib/useApprovals'
 import { ManagerTabPage } from './ManagerTabs'
 
@@ -54,7 +54,7 @@ export default function MobileWorkspace() {
 
   if (auth.status !== 'ready') return <AuthStatus state={auth} />
 
-  const dateLabel = new Date().toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-MY', { month: 'long', day: 'numeric', weekday: 'long' })
+  const dateLabel = new Date().toLocaleDateString(localeOf(lang), { month: 'long', day: 'numeric', weekday: 'long' })
   const top = attention.slice(0, 3)
 
   return (

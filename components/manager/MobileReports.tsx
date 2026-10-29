@@ -17,7 +17,7 @@ import {
   type ReportApp,
   type ReportEmployee,
 } from '@/lib/reportData'
-import { leaveName, useMgrT } from '@/lib/mgrText'
+import { leaveName, useMgrT, pick, MONTH_MS } from '@/lib/mgrText'
 import { Avatar } from './ManagerTabs'
 
 // ── 常量与工具函数 ──
@@ -35,7 +35,7 @@ const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1))
 const fill = (s?: string | null, n?: number) => (s || '').replace('{n}', String(n ?? 0))
 
 function monthDisplayTitle(year: number, month: number, lang: Lang) {
-  return lang === 'zh' ? `${year}年${month}月` : `${MONTH_EN[month - 1] || ''} ${year}`
+  return lang === 'zh' ? `${year}年${month}月` : `${(lang === 'ms' ? MONTH_MS : MONTH_EN)[month - 1] || ''} ${year}`
 }
 
 function shortDate(iso?: string | null, lang: Lang = 'zh') {
@@ -43,7 +43,7 @@ function shortDate(iso?: string | null, lang: Lang = 'zh') {
   const parts = iso.split('-').map(Number)
   if (parts.length < 3 || isNaN(parts[1]) || isNaN(parts[2])) return iso
   const [, m, d] = parts
-  return lang === 'zh' ? `${m}月${d}日` : `${d} ${MONTH_EN[m - 1] || ''}`
+  return lang === 'zh' ? `${m}月${d}日` : `${d} ${(lang === 'ms' ? MONTH_MS : MONTH_EN)[m - 1] || ''}`
 }
 
 function dateRange(a?: string | null, b?: string | null, lang: Lang = 'zh') {
@@ -55,7 +55,7 @@ function dateRange(a?: string | null, b?: string | null, lang: Lang = 'zh') {
   if (aParts.length < 3 || bParts.length < 3) return `${a} – ${b}`
   const [, am, ad] = aParts
   const [, bm, bd] = bParts
-  if (am === bm) return lang === 'zh' ? `${am}月${ad}–${bd}日` : `${ad}–${bd} ${MONTH_EN[bm - 1] || ''}`
+  if (am === bm) return lang === 'zh' ? `${am}月${ad}–${bd}日` : `${ad}–${bd} ${(lang === 'ms' ? MONTH_MS : MONTH_EN)[bm - 1] || ''}`
   return `${shortDate(a, lang)} – ${shortDate(b, lang)}`
 }
 
@@ -72,7 +72,7 @@ function lineText(l: LeaveLine, ym: string, lang: Lang, t: ReturnType<typeof use
   const sDate = a.start_date || ''
   const eDate = a.end_date || ''
   const crossMonth = sDate.slice(0, 7) !== ym || eDate.slice(0, 7) !== ym
-  return `${label} ${dateRange(sDate, eDate, lang)}${half} · ${days}${crossMonth ? (lang === 'zh' ? '(本月部分)' : ' (this month)') : ''}`
+  return `${label} ${dateRange(sDate, eDate, lang)}${half} · ${days}${crossMonth ? (lang === 'zh' ? '(本月部分)' : lang === 'ms' ? ' (bahagian bulan ini)' : ' (this month)') : ''}`
 }
 
 function exportCsv(filename: string, header: string[], rows: (string | number)[][]) {
@@ -157,7 +157,7 @@ function MonthPickerSheet({
                     : 'bg-gray-50 text-gray-700 hover:bg-gray-100 active:scale-98'
                 }`}
               >
-                <span>{lang === 'zh' ? MONTH_ZH[m - 1] : MONTH_EN[m - 1]}</span>
+                <span>{lang === 'zh' ? MONTH_ZH[m - 1] : (lang === 'ms' ? MONTH_MS : MONTH_EN)[m - 1]}</span>
                 {isNow && !isSelected && (
                   <span className="absolute bottom-1 h-1 w-1 rounded-full bg-brand" />
                 )}
@@ -175,7 +175,7 @@ function MonthPickerSheet({
             }}
             className="w-full rounded-xl bg-gray-100 py-2.5 text-xs font-semibold text-gray-700 transition-colors hover:bg-gray-200 active:bg-gray-300"
           >
-            {lang === 'zh' ? '回到本月 (当前月份)' : 'Back to Current Month'}
+            {pick(lang, '回到本月 (当前月份)', 'Back to Current Month', 'Kembali ke Bulan Semasa')}
           </button>
         </div>
     </BottomSheet>
@@ -376,7 +376,7 @@ export default function MobileReports() {
             >
               <Icon d={EI.chevronL} size={18} />
             </button>
-            <span className="text-sm font-bold text-gray-900">{year}{lang === 'zh' ? '年度' : ' Year'}</span>
+            <span className="text-sm font-bold text-gray-900">{year}{pick(lang, '年度', ' Year', ' Tahunan')}</span>
             <button
               onClick={() => { setYear((y) => y + 1); setOpenId(null) }}
               className="flex h-9 w-9 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 active:bg-gray-200"
@@ -395,7 +395,7 @@ export default function MobileReports() {
             activeTab === 'ft' ? 'text-brand' : 'text-gray-500 hover:text-gray-800'
           }`}
         >
-          <span>{lang === 'zh' ? '全职月假' : 'Full-time'} ({ftStaffCount})</span>
+          <span>{pick(lang, '全职月假', 'Full-time', 'Sepenuh Masa')} ({ftStaffCount})</span>
           {activeTab === 'ft' && (
             <span className="absolute bottom-0 left-6 right-6 h-[2.5px] rounded-full bg-brand" />
           )}
@@ -407,7 +407,7 @@ export default function MobileReports() {
             activeTab === 'pt' ? 'text-brand' : 'text-gray-500 hover:text-gray-800'
           }`}
         >
-          <span>{lang === 'zh' ? '兼职工时' : 'Part-time'} ({ptStaffCount})</span>
+          <span>{pick(lang, '兼职工时', 'Part-time', 'Sambilan')} ({ptStaffCount})</span>
           {activeTab === 'pt' && (
             <span className="absolute bottom-0 left-6 right-6 h-[2.5px] rounded-full bg-brand" />
           )}
@@ -419,7 +419,7 @@ export default function MobileReports() {
             activeTab === 'year' ? 'text-brand' : 'text-gray-500 hover:text-gray-800'
           }`}
         >
-          <span>{lang === 'zh' ? '年度余额' : 'Annual Bal'}</span>
+          <span>{pick(lang, '年度余额', 'Annual Bal', 'Baki Tahunan')}</span>
           {activeTab === 'year' && (
             <span className="absolute bottom-0 left-6 right-6 h-[2.5px] rounded-full bg-brand" />
           )}
@@ -480,12 +480,12 @@ export default function MobileReports() {
 
               {/* 请假人次 */}
               <div className="px-1">
-                <p className="text-[11px] font-medium text-gray-500">{lang === 'zh' ? '请假人次' : 'Staff On Leave'}</p>
+                <p className="text-[11px] font-medium text-gray-500">{pick(lang, '请假人次', 'Staff On Leave', 'Pekerja Bercuti')}</p>
                 <p className="mt-1 text-[19px] font-bold leading-none tabular-nums text-gray-900">
                   {leaveStaffCount}<span className="text-xs font-normal text-gray-500">/{monthReport.fullTime.length}</span>
                 </p>
                 <p className="mt-1 text-[10px] font-medium text-emerald-600">
-                  {lang === 'zh' ? '出勤' : 'Present'} {monthReport.fullTime.length - leaveStaffCount}人
+                  {pick(lang, '出勤', 'Present', 'Hadir')} {monthReport.fullTime.length - leaveStaffCount}{lang === 'zh' ? '人' : ''}
                 </p>
               </div>
             </div>
@@ -513,7 +513,7 @@ export default function MobileReports() {
           {/* 员工明细标题 + 快捷筛选胶囊 */}
           <div className="flex items-center justify-between pt-1">
             <div className="flex items-center gap-1.5">
-              <span className="text-sm font-bold text-gray-900">{lang === 'zh' ? '员工明细' : 'Employees'}</span>
+              <span className="text-sm font-bold text-gray-900">{pick(lang, '员工明细', 'Employees', 'Pekerja')}</span>
               <span className="text-xs text-gray-500">({ftFiltered.length}{lang === 'zh' ? '人' : ''})</span>
             </div>
 
@@ -526,7 +526,7 @@ export default function MobileReports() {
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
-                {lang === 'zh' ? '全部' : 'All'}
+                {pick(lang, '全部', 'All', 'Semua')}
               </button>
               <button
                 onClick={() => setFilter('leave')}
@@ -536,7 +536,7 @@ export default function MobileReports() {
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
-                {lang === 'zh' ? '仅看休假' : 'Leaves'}
+                {pick(lang, '仅看休假', 'Leaves', 'Bercuti')}
               </button>
               {tot.unpaid > 0 && (
                 <button
@@ -547,7 +547,7 @@ export default function MobileReports() {
                       : 'bg-red-50 text-st-rejected-text hover:bg-red-100'
                   }`}
                 >
-                  {lang === 'zh' ? '仅看无薪' : 'Unpaid'}
+                  {pick(lang, '仅看无薪', 'Unpaid', 'Tanpa Gaji')}
                 </button>
               )}
             </div>
@@ -606,17 +606,17 @@ export default function MobileReports() {
                       <div className="flex shrink-0 items-center gap-1.5">
                         {r.unpaid > 0 && (
                           <span className="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[11px] font-bold text-st-rejected-text">
-                            {lang === 'zh' ? '无薪' : 'Unpaid'} {fmt(r.unpaid)}{t('daysUnit') || '天'}
+                            {pick(lang, '无薪', 'Unpaid', 'Tanpa Gaji')} {fmt(r.unpaid)}{t('daysUnit') || '天'}
                           </span>
                         )}
                         {r.medical > 0 && (
                           <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
-                            {lang === 'zh' ? '病假' : 'MC'} {fmt(r.medical)}{t('daysUnit') || '天'}
+                            {pick(lang, '病假', 'MC', 'MC')} {fmt(r.medical)}{t('daysUnit') || '天'}
                           </span>
                         )}
                         {r.annual > 0 && (
                           <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-brand">
-                            {lang === 'zh' ? '年假' : 'AL'} {fmt(r.annual)}{t('daysUnit') || '天'}
+                            {pick(lang, '年假', 'AL', 'CT')} {fmt(r.annual)}{t('daysUnit') || '天'}
                           </span>
                         )}
                         {r.other > 0 && (
@@ -626,7 +626,7 @@ export default function MobileReports() {
                         )}
                         {!hasLeave && (
                           <span className="text-[12px] font-medium text-gray-500">
-                            {lang === 'zh' ? '正常出勤 (无休假)' : 'Normal Attendance'}
+                            {pick(lang, '正常出勤 (无休假)', 'Normal Attendance', 'Kehadiran Biasa')}
                           </span>
                         )}
 
@@ -653,7 +653,7 @@ export default function MobileReports() {
                             ))}
                           </div>
                         ) : (
-                          <p className="text-xs text-gray-500">{lang === 'zh' ? '暂无具体日期明细' : 'No date details'}</p>
+                          <p className="text-xs text-gray-500">{pick(lang, '暂无具体日期明细', 'No date details', 'Tiada butiran tarikh')}</p>
                         )}
                       </div>
                     )}
@@ -709,7 +709,7 @@ export default function MobileReports() {
           </div>
 
           <div className="flex items-center justify-between pt-1">
-            <span className="text-sm font-bold text-gray-900">{lang === 'zh' ? '兼职列表' : 'Part-time Staff'}</span>
+            <span className="text-sm font-bold text-gray-900">{pick(lang, '兼职列表', 'Part-time Staff', 'Pekerja Sambilan')}</span>
             <Link href="/work-hours" className="text-xs font-semibold text-brand hover:underline">
               {t('enterHours') || (lang === 'zh' ? '去录入' : 'Enter Hours')} &rarr;
             </Link>
@@ -730,7 +730,7 @@ export default function MobileReports() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[14px] font-bold text-gray-900">{r.emp.full_name}</p>
                     <p className="mt-0.5 text-[11px] font-medium text-gray-500">
-                      {r.emp.employee_no ? `#${r.emp.employee_no} · ` : ''}{lang === 'zh' ? '兼职' : 'Part-time'}
+                      {r.emp.employee_no ? `#${r.emp.employee_no} · ` : ''}{pick(lang, '兼职', 'Part-time', 'Sambilan')}
                     </p>
                   </div>
                   {r.hours === null ? (
@@ -752,7 +752,7 @@ export default function MobileReports() {
         /* ══════════════════ TAB 3: 年度余额 ══════════════════ */
         <div className="space-y-3 p-4">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-bold text-gray-900">{year}{lang === 'zh' ? '年度假余额' : ' Annual Balances'}</span>
+            <span className="text-sm font-bold text-gray-900">{year}{pick(lang, '年度假余额', ' Annual Balances', ' Baki Tahunan')}</span>
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setYearFilter('all')}
@@ -760,7 +760,7 @@ export default function MobileReports() {
                   yearFilter === 'all' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600'
                 }`}
               >
-                {lang === 'zh' ? '全部' : 'All'}
+                {pick(lang, '全部', 'All', 'Semua')}
               </button>
               <button
                 onClick={() => setYearFilter('overdrawn')}
@@ -768,7 +768,7 @@ export default function MobileReports() {
                   yearFilter === 'overdrawn' ? 'bg-st-rejected text-white' : 'bg-red-50 text-st-rejected-text'
                 }`}
               >
-                {lang === 'zh' ? '已透支' : 'Overdrawn'}
+                {pick(lang, '已透支', 'Overdrawn', 'Terlebih Had')}
               </button>
             </div>
           </div>

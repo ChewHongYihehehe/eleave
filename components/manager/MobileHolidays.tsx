@@ -9,7 +9,7 @@ import { recalcAnnualLeave } from '@/lib/recalcLeave'
 import { loadWorkWeek, saveWorkWeek } from '@/lib/settings'
 import { DEFAULT_WORK_WEEK, type WorkWeek } from '@/lib/leaveRules'
 import { toLocalDateStr } from '@/lib/dateUtils'
-import { useMgrT } from '@/lib/mgrText'
+import { monthShort, useMgrT } from '@/lib/mgrText'
 
 // 公假 · 手机版(钉钉风格):
 //  · 工作周:7 个按钮,点一下在 全天 → 半天 → 休息 之间切换,改了才出现"保存"
@@ -148,7 +148,7 @@ export default function MobileHolidays() {
     const m = parseDate(h.holiday_date).m
     byMonth.set(m, [...(byMonth.get(m) || []), h])
   }
-  const monthLabel = (m: number) => (lang === 'zh' ? `${m}月` : MONTH_EN[m - 1])
+  const monthLabel = (m: number) => monthShort(m, lang)
 
   return (
     <SubPage

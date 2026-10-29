@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { useEmployee } from '@/lib/useEmployee'
 import { toLocalDateStr } from '@/lib/dateUtils'
 import { fmtNum } from '@/lib/useLeaveData'
-import { leaveName, useMgrT } from '@/lib/mgrText'
+import { MONTH_MS, leaveName, localeOf, useMgrT } from '@/lib/mgrText'
 
 // 审计日志 · 手机版(钉钉风格):
 //  · 顶部一排可左右滑动的筛选标签(员工 + 审批 / 取消 / 代录入 / 账号)
@@ -144,7 +144,7 @@ function one<T>(v: T | T[] | null | undefined): T | null {
 
 function fmtD(iso: string, lang: string) {
   const [, m, d] = iso.split('-').map(Number)
-  return lang === 'zh' ? `${m}月${d}日` : `${d} ${MONTH_EN[m - 1]}`
+  return lang === 'zh' ? `${m}月${d}日` : `${d} ${(lang === 'ms' ? MONTH_MS : MONTH_EN)[m - 1]}`
 }
 
 function renderTpl(tpl: string, vars: { A: string; T: string; X: string }) {
@@ -227,7 +227,7 @@ export default function MobileAuditLog() {
       const dt = new Date(y, m - 1, d)
       return lang === 'zh'
         ? dt.toLocaleDateString('zh-CN', { year: y === thisYear ? undefined : 'numeric', month: 'long', day: 'numeric', weekday: 'short' })
-        : dt.toLocaleDateString('en-MY', { year: y === thisYear ? undefined : 'numeric', weekday: 'short', day: 'numeric', month: 'short' })
+        : dt.toLocaleDateString(localeOf(lang), { year: y === thisYear ? undefined : 'numeric', weekday: 'short', day: 'numeric', month: 'short' })
     }
     const out: { key: string; label: string; rows: LogRow[] }[] = []
     for (const r of logs.slice(0, visible)) {
@@ -267,7 +267,7 @@ export default function MobileAuditLog() {
     }
     const reason = str(d.reason)
     const tags = [d.mc_attached ? L.mc : null, d.via === 'telegram' ? 'Telegram' : null].filter(Boolean) as string[]
-    const time = new Date(log.created_at).toLocaleTimeString(lang === 'zh' ? 'zh-CN' : 'en-MY', { hour: '2-digit', minute: '2-digit', hour12: false })
+    const time = new Date(log.created_at).toLocaleTimeString(localeOf(lang), { hour: '2-digit', minute: '2-digit', hour12: false })
 
     return (
       <div key={log.id} className="flex gap-3 border-t border-gray-100 px-4 py-3.5 first:border-t-0">
