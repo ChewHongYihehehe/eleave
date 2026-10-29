@@ -42,11 +42,11 @@ const TYPE_LABEL: Record<string, string> = { annual: 'Annual', medical: 'MC', un
 type View = 'month' | 'year'
 
 const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1))
-const dash = <span className="text-ink-faint/50">�</span>
+const dash = <span className="text-ink-faint/50">—</span>
 const num = (n: number) => (n > 0 ? fmt(n) : dash)
 
 function shortDate(iso?: string | null) {
-  if (!iso || typeof iso !== 'string') return '�'
+  if (!iso || typeof iso !== 'string') return '—'
   const parts = iso.split('-')
   if (parts.length < 3) return iso
   const [, m, d] = parts
@@ -54,13 +54,13 @@ function shortDate(iso?: string | null) {
 }
 
 function dateRange(a?: string | null, b?: string | null) {
-  if (!a && !b) return '�'
+  if (!a && !b) return '—'
   if (!a) return shortDate(b)
   if (!b || a === b) return shortDate(a)
   if (typeof a === 'string' && typeof b === 'string' && a.length >= 7 && b.length >= 7 && a.slice(0, 7) === b.slice(0, 7)) {
-    return `${Number(a.slice(8))}�${shortDate(b)}`
+    return `${Number(a.slice(8))}–${shortDate(b)}`
   }
-  return `${shortDate(a)} � ${shortDate(b)}`
+  return `${shortDate(a)} – ${shortDate(b)}`
 }
 
 function lineText(l: LeaveLine, ym: string): string | null {
@@ -70,13 +70,13 @@ function lineText(l: LeaveLine, ym: string): string | null {
   const isHistorical = a.remarks?.includes('Historical import')
   if (isHistorical) {
     if (a.leave_type === 'annual') return null
-    let t = `${label} � ${fmt(l.days || 0)}d`
+    let t = `${label} · ${fmt(l.days || 0)}d`
     if (a.is_half_day && a.half_day_period) t += ` (${String(a.half_day_period).toUpperCase()})`
     return t
   }
   let t = `${label} ${dateRange(a.start_date, a.end_date)}`
   if (a.is_half_day && a.half_day_period) t += ` (${String(a.half_day_period).toUpperCase()})`
-  t += ` � ${fmt(l.days || 0)}d`
+  t += ` · ${fmt(l.days || 0)}d`
   const sDate = a.start_date || ''
   const eDate = a.end_date || ''
   if (sDate.slice(0, 7) !== ym || eDate.slice(0, 7) !== ym) t += ' (this month)'
@@ -87,7 +87,7 @@ function exportCsv(filename: string, header: string[], rows: (string | number)[]
   const csv = [header, ...rows]
     .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(','))
     .join('\n')
-  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' }) // \ufeff ? Excel ??????/????
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' }) // \ufeff BOM so Excel opens the CSV as UTF-8 (keeps Chinese readable)
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url; a.download = filename; a.click()
@@ -123,7 +123,7 @@ function MagnifierIcon({ className = '' }: { className?: string }) {
 // ??????????
 function LeaveProgressBar({ taken, entitled, bf, lang }: { taken: number; entitled: number; bf: number; lang?: string }) {
   const total = entitled + bf
-  if (total <= 0) return <span className="text-ink-faint tabular-nums">�</span>
+  if (total <= 0) return <span className="text-ink-faint tabular-nums">—</span>
   const balance = total - taken
   const pct = Math.min(Math.round((taken / total) * 100), 100)
   const overdrawn = balance < 0
@@ -143,7 +143,7 @@ function LeaveProgressBar({ taken, entitled, bf, lang }: { taken: number; entitl
         />
       </div>
       {overdrawn && (
-        <span className="mt-0.5 inline-block text-[10px] font-semibold text-st-rejected-text">{lang === 'ms' ? 'Terlebih Had' : lang === 'zh' ? '??' : 'Overdrawn'}</span>
+        <span className="mt-0.5 inline-block text-[10px] font-semibold text-st-rejected-text">{lang === 'ms' ? 'Terlebih Had' : lang === 'zh' ? '超额' : 'Overdrawn'}</span>
       )}
     </div>
   )
@@ -382,7 +382,7 @@ function DesktopReports(): React.ReactElement | null {
             )}
           </div>
           {!e.is_active && (
-            <span className="mt-0.5 inline-block text-[10px] font-medium text-rust">{lang === 'ms' ? 'Akaun Dinyahaktifkan' : lang === 'zh' ? '?????' : 'Inactive account'}</span>
+            <span className="mt-0.5 inline-block text-[10px] font-medium text-rust">{lang === 'ms' ? 'Akaun Dinyahaktifkan' : lang === 'zh' ? '账号已停用' : 'Inactive account'}</span>
           )}
         </div>
       </div>
@@ -400,7 +400,7 @@ function DesktopReports(): React.ReactElement | null {
       <div className="mx-auto max-w-[1360px] space-y-4 pb-12">
         <PageHeader
           title="Reports"
-          subtitle={view === 'month' ? `Monthly leave & work hours breakdown � ${monthLabel}` : `Annual leave balance ledger � ${year}`}
+          subtitle={view === 'month' ? `Monthly leave & work hours breakdown · ${monthLabel}` : `Annual leave balance ledger · ${year}`}
           actions={
             <div className="flex gap-2 print:hidden">
               <DefaultButton onClick={handleExport} disabled={loading}>Export CSV</DefaultButton>
@@ -417,8 +417,8 @@ function DesktopReports(): React.ReactElement | null {
               value={view}
               onChange={setView}
               items={[
-                { key: 'month' as const, label: lang === 'ms' ? 'Paparan Bulanan' : lang === 'zh' ? '????' : 'Month View' },
-                { key: 'year' as const, label: lang === 'ms' ? 'Baki Cuti Tahunan' : lang === 'zh' ? '????' : 'Year Balances' },
+                { key: 'month' as const, label: lang === 'ms' ? 'Paparan Bulanan' : lang === 'zh' ? '按月查看' : 'Month View' },
+                { key: 'year' as const, label: lang === 'ms' ? 'Baki Cuti Tahunan' : lang === 'zh' ? '年假余额' : 'Year Balances' },
               ]}
             />
           </div>
@@ -428,14 +428,14 @@ function DesktopReports(): React.ReactElement | null {
             <div className="flex items-center gap-3">
               {view === 'month' ? (
                 <div className="flex items-center gap-2">
-                  <button onClick={() => shiftMonth(-1)} className={sqBtn} aria-label="Previous month">�</button>
+                  <button onClick={() => shiftMonth(-1)} className={sqBtn} aria-label="Previous month">‹</button>
                   <select value={month} onChange={(e) => setMonth(Number(e.target.value))} className={`${sel} w-32`}>
                     {MONTH_NAMES.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
                   </select>
                   <select value={year} onChange={(e) => setYear(Number(e.target.value))} className={`${sel} w-24`}>
                     {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
                   </select>
-                  <button onClick={() => shiftMonth(1)} className={sqBtn} aria-label="Next month">�</button>
+                  <button onClick={() => shiftMonth(1)} className={sqBtn} aria-label="Next month">›</button>
                   {!isCurrentMonth && (
                     <button onClick={goToday} className="ml-1 text-xs font-medium text-pine transition-colors hover:text-pine-deep">This month</button>
                   )}
@@ -451,13 +451,13 @@ function DesktopReports(): React.ReactElement | null {
                 <MagnifierIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-faint" />
                 <input
                   type="text"
-                  placeholder={lang === 'ms' ? 'Cari nama atau No. Pekerja...' : lang === 'zh' ? '???????...' : 'Search name or staff ID...'}
+                  placeholder={lang === 'ms' ? 'Cari nama atau No. Pekerja...' : lang === 'zh' ? '搜索姓名或员工号...' : 'Search name or staff ID...'}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="h-8 w-40 sm:w-48 rounded-lg border border-line bg-surface pl-7 pr-6 text-xs text-ink placeholder:text-ink-faint focus:border-pine focus:outline-none focus:ring-1 focus:ring-pine/20"
                 />
                 {searchQuery && (
-                  <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-ink-faint hover:text-ink">?</button>
+                  <button onClick={() => setSearchQuery('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-ink-faint hover:text-ink">×</button>
                 )}
               </div>
             </div>
@@ -465,9 +465,9 @@ function DesktopReports(): React.ReactElement | null {
             {/* ?? / ??(?????/EN ???????)*/}
             <div className="flex rounded-lg bg-paper p-0.5 text-xs">
               {([
-                ['ft', lang === 'ms' ? 'Sepenuh Masa' : lang === 'zh' ? '????' : 'Full-time', ftCount],
-                ['pt', lang === 'ms' ? 'Sambilan' : lang === 'zh' ? '????' : 'Part-time', ptCount],
-                ['all', lang === 'ms' ? 'Semua' : lang === 'zh' ? '??' : 'All staff', null],
+                ['ft', lang === 'ms' ? 'Sepenuh Masa' : lang === 'zh' ? '全职员工' : 'Full-time', ftCount],
+                ['pt', lang === 'ms' ? 'Sambilan' : lang === 'zh' ? '兼职员工' : 'Part-time', ptCount],
+                ['all', lang === 'ms' ? 'Semua' : lang === 'zh' ? '全部' : 'All staff', null],
               ] as [typeof scope, string, number | null][]).map(([key, label, n]) => (
                 <button
                   key={key}
@@ -507,7 +507,7 @@ function DesktopReports(): React.ReactElement | null {
                 <StatCard
                   label="Annual Leave" dot="bg-brand" unit="days"
                   value={fmt(totals.annual)}
-                  hint={`${monthReport.fullTime.filter((r) => r.annual > 0).length} staff � working days`}
+                  hint={`${monthReport.fullTime.filter((r) => r.annual > 0).length} staff · working days`}
                 />
                 <StatCard
                   label="Maternity / Paternity" dot="bg-leave-paternity" unit="days"
@@ -624,7 +624,7 @@ function DesktopReports(): React.ReactElement | null {
                         onChange={(e) => setHideNoLeave(e.target.checked)}
                         className="h-3.5 w-3.5 accent-pine rounded"
                       />
-                      {lang === 'ms' ? 'Hanya cuti aktif' : lang === 'zh' ? '??????' : 'Leave only'}
+                      {lang === 'ms' ? 'Hanya cuti aktif' : lang === 'zh' ? '只显示有请假的' : 'Leave only'}
                     </label>
                   </div>
                 </div>
@@ -643,7 +643,7 @@ function DesktopReports(): React.ReactElement | null {
                           <th className={`text-center ${th}`}>MC</th>
                           <th className={`text-center ${th}`}>Unpaid</th>
                           <th className={`text-center ${th}`}>Mat. / Pat.</th>
-                          <th className={`text-center ${th}`}>{lang === 'ms' ? 'Jumlah Bulan Ini' : lang === 'zh' ? '????' : 'Month Total'}</th>
+                          <th className={`text-center ${th}`}>{lang === 'ms' ? 'Jumlah Bulan Ini' : lang === 'zh' ? '本月合计' : 'Month Total'}</th>
                           <th className={`text-left ${th}`}>Details & Dates</th>
                         </tr>
                       </thead>
@@ -709,7 +709,7 @@ function DesktopReports(): React.ReactElement | null {
                               </td>
                               <td className="px-3.5 py-3.5 text-xs text-ink-soft align-middle">
                                 {details.length === 0 ? (
-                                  <span className="text-ink-faint/60">�</span>
+                                  <span className="text-ink-faint/60">—</span>
                                 ) : (
                                   <div className="flex flex-wrap gap-1.5">
                                     {details.map((d, i) => (
@@ -811,7 +811,7 @@ function DesktopReports(): React.ReactElement | null {
               <div className="space-y-3">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
-                    <h2 className="text-[15px] font-semibold text-ink">Full-time staff � Annual Ledger</h2>
+                    <h2 className="text-[15px] font-semibold text-ink">Full-time staff · Annual Ledger</h2>
                     <span className="text-xs text-ink-faint">({ftYearRows.length})</span>
                   </div>
 
@@ -893,7 +893,7 @@ function DesktopReports(): React.ReactElement | null {
               <div className="space-y-3 pt-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <h2 className="text-[15px] font-semibold text-ink">Part-time staff � Annual Summary</h2>
+                    <h2 className="text-[15px] font-semibold text-ink">Part-time staff · Annual Summary</h2>
                     <span className="text-xs text-ink-faint">({yearReport.partTime.length})</span>
                   </div>
                 </div>
