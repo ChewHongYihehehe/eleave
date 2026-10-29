@@ -71,7 +71,7 @@ export default function RecordDetail() {
     e.target.value = ''
     if (!f || !employee || !app) return
     setBusy(true)
-    const err = await attachMc(employee.id, app.id, f)
+    const err = await attachMc(employee.id, app.id, f, lang)
     setBusy(false)
     if (err) { toast.show(err); return }
     toast.show(t('toastMcAttached'))
