@@ -1,5 +1,6 @@
 'use client'
 
+import React from 'react'
 import MobileApprove from '@/components/manager/MobileApprove'
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
@@ -125,7 +126,7 @@ function pageList(total: number, cur: number): (number | '…')[] {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-function DesktopApprove() {
+function DesktopApprove(): React.ReactElement | null {
   const auth = useEmployee({ requireManager: true })
   const { lang, t } = useLang()
   const zh = lang === 'zh'
