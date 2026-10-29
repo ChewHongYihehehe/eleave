@@ -8,6 +8,7 @@ import ManagerShell from '@/components/ManagerShell'
 import { useEmployee } from '@/lib/useEmployee'
 import AuthStatus from '@/components/AuthStatus'
 import { getYearsOfService } from '@/lib/leaveRules'
+import { useTr } from '@/lib/tr'
 
 type Employee = {
   id: string
@@ -85,6 +86,7 @@ function UserIcon({ className }: { className?: string }) {
 // ═════════════════════════════════════════════════════════════════════════════
 function DesktopEmployees(): React.ReactElement | null {
   const auth = useEmployee({ requireManager: true })
+  const { tr } = useTr()
   const [employees, setEmployees] = useState<Employee[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<Tab>('full_time')
@@ -166,9 +168,9 @@ function DesktopEmployees(): React.ReactElement | null {
     if (!res.ok) { setError(result.error || 'Failed to add employee.'); return }
 
     if (isPartTime) {
-      setMessage(`兼职员工 "${fullName}" 已创建。`)
+      setMessage(tr(`兼职员工 "${fullName}" 已创建。`, `Part-time staff "${fullName}" created.`, `Pekerja sambilan "${fullName}" telah dicipta.`))
     } else {
-      setMessage(`员工 "${fullName}" 创建成功！工号: ${staffId}，请将初始密码通知员工。`)
+      setMessage(tr(`员工 "${fullName}" 创建成功！工号: ${staffId}，请将初始密码通知员工。`, `Employee "${fullName}" created! Staff ID: ${staffId}. Please share the initial password with them.`, `Pekerja "${fullName}" berjaya dicipta! ID pekerja: ${staffId}. Sila maklumkan kata laluan awal kepada pekerja.`))
     }
 
     setStaffId(''); setPassword(''); setFullName('')
@@ -237,7 +239,7 @@ function DesktopEmployees(): React.ReactElement | null {
     await Promise.all(tasks)
     setSavingEdit(false)
     setEditingEmployee(null)
-    setMessage(`员工 ${editingEmployee.full_name} 资料已成功更新。`)
+    setMessage(tr(`员工 ${editingEmployee.full_name} 资料已成功更新。`, `Profile of ${editingEmployee.full_name} was updated.`, `Profil ${editingEmployee.full_name} berjaya dikemas kini.`))
     loadEmployees()
   }
 
@@ -253,7 +255,7 @@ function DesktopEmployees(): React.ReactElement | null {
       body: JSON.stringify({ id, is_active: !current }),
     })
     const result = await res.json().catch(() => ({}))
-    if (!res.ok) setError(result.error || '更新在职状态失败。')
+    if (!res.ok) setError(result.error || tr('更新在职状态失败。', 'Failed to update active status.', 'Gagal mengemas kini status aktif.'))
     loadEmployees()
   }
 
@@ -261,7 +263,7 @@ function DesktopEmployees(): React.ReactElement | null {
     e.preventDefault()
     if (!resettingEmployee) return
     if (newPassword.length < 6) {
-      setError('密码长度至少需要 6 个字符。')
+      setError(tr('密码长度至少需要 6 个字符。', 'Password must be at least 6 characters.', 'Kata laluan mesti sekurang-kurangnya 6 aksara.'))
       return
     }
 
@@ -280,11 +282,11 @@ function DesktopEmployees(): React.ReactElement | null {
     setResetting(false)
 
     if (!res.ok) {
-      setError(result.error || '重置密码失败。')
+      setError(result.error || tr('重置密码失败。', 'Failed to reset password.', 'Gagal menetapkan semula kata laluan.'))
       return
     }
 
-    setMessage(`已重置员工 ${resettingEmployee.name} 的登录密码，请单独将新密码告知该员工。`)
+    setMessage(tr(`已重置员工 ${resettingEmployee.name} 的登录密码，请单独将新密码告知该员工。`, `Password for ${resettingEmployee.name} has been reset. Please share the new password with them separately.`, `Kata laluan ${resettingEmployee.name} telah ditetapkan semula. Sila maklumkan kata laluan baharu secara berasingan.`))
     setResettingEmployee(null)
     setNewPassword('')
   }
@@ -328,13 +330,13 @@ function DesktopEmployees(): React.ReactElement | null {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-line pb-5">
           <div>
             <div className="flex items-center gap-2.5">
-              <h1 className="text-xl font-bold tracking-tight text-ink">员工花名册</h1>
+              <h1 className="text-xl font-bold tracking-tight text-ink">{tr('员工花名册', 'Employee Directory', 'Direktori Pekerja')}</h1>
               <span className="rounded-full bg-pine-soft px-2.5 py-0.5 text-xs font-semibold text-pine">
-                {totalEmployees} 人
+                {tr(`${totalEmployees} 人`, `${totalEmployees} staff`, `${totalEmployees} orang`)}
               </span>
             </div>
             <p className="mt-1 text-xs text-ink-faint">
-              管理全公司正式员工与兼职人员档案、假额特批与系统访问权限
+              {tr('管理全公司正式员工与兼职人员档案、假额特批与系统访问权限', 'Manage full-time and part-time staff records, leave entitlement overrides and system access', 'Urus rekod pekerja sepenuh masa dan sambilan, pelepasan kelayakan cuti dan akses sistem')}
             </p>
           </div>
 
@@ -346,7 +348,7 @@ function DesktopEmployees(): React.ReactElement | null {
               }}
               className="inline-flex items-center gap-1.5 rounded-lg bg-pine px-4 py-2 text-sm font-medium text-white shadow-xs transition hover:bg-pine-deep focus:outline-none focus:ring-2 focus:ring-pine/20"
             >
-              <PlusIcon className="h-4 w-4" /> 新增员工
+              <PlusIcon className="h-4 w-4" /> {tr('新增员工', 'Add Employee', 'Tambah Pekerja')}
             </button>
           </div>
         </div>
@@ -368,24 +370,24 @@ function DesktopEmployees(): React.ReactElement | null {
         {/* ── 钉钉概览卡片 (4 栏指标) ── */}
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <div className="rounded-xl border border-line bg-surface p-4 shadow-2xs">
-            <p className="text-xs font-medium text-ink-faint">在册员工总数</p>
+            <p className="text-xs font-medium text-ink-faint">{tr('在册员工总数', 'Total Staff', 'Jumlah Pekerja')}</p>
             <p className="mt-1 font-mono text-2xl font-bold text-ink">{totalEmployees}</p>
-            <p className="mt-0.5 text-[11px] text-ink-faint">涵盖所有用工类型</p>
+            <p className="mt-0.5 text-[11px] text-ink-faint">{tr('涵盖所有用工类型', 'All employment types', 'Semua jenis pekerjaan')}</p>
           </div>
           <div className="rounded-xl border border-line bg-surface p-4 shadow-2xs">
-            <p className="text-xs font-medium text-ink-faint">在职生效账号</p>
+            <p className="text-xs font-medium text-ink-faint">{tr('在职生效账号', 'Active Accounts', 'Akaun Aktif')}</p>
             <p className="mt-1 font-mono text-2xl font-bold text-emerald-600">{activeCount}</p>
-            <p className="mt-0.5 text-[11px] text-emerald-700">正常登录与考勤</p>
+            <p className="mt-0.5 text-[11px] text-emerald-700">{tr('正常登录与考勤', 'Can log in and apply leave', 'Boleh log masuk dan memohon cuti')}</p>
           </div>
           <div className="rounded-xl border border-line bg-surface p-4 shadow-2xs">
-            <p className="text-xs font-medium text-ink-faint">全职正式员工</p>
+            <p className="text-xs font-medium text-ink-faint">{tr('全职正式员工', 'Full-time Staff', 'Pekerja Sepenuh Masa')}</p>
             <p className="mt-1 font-mono text-2xl font-bold text-pine">{fullTimeEmployees.length}</p>
-            <p className="mt-0.5 text-[11px] text-pine-deep">拥有独立年假额度</p>
+            <p className="mt-0.5 text-[11px] text-pine-deep">{tr('拥有独立年假额度', 'Own annual leave entitlement', 'Kelayakan cuti tahunan sendiri')}</p>
           </div>
           <div className="rounded-xl border border-line bg-surface p-4 shadow-2xs">
-            <p className="text-xs font-medium text-ink-faint">兼职人员</p>
+            <p className="text-xs font-medium text-ink-faint">{tr('兼职人员', 'Part-time Staff', 'Pekerja Sambilan')}</p>
             <p className="mt-1 font-mono text-2xl font-bold text-amber-600">{partTimeEmployees.length}</p>
-            <p className="mt-0.5 text-[11px] text-amber-700">按工时模块记录</p>
+            <p className="mt-0.5 text-[11px] text-amber-700">{tr('按工时模块记录', 'Tracked by work hours', 'Direkod melalui jam kerja')}</p>
           </div>
         </div>
 
@@ -402,7 +404,7 @@ function DesktopEmployees(): React.ReactElement | null {
                     : 'text-ink-soft hover:text-ink'
                 }`}
               >
-                全职正式员工
+                {tr('全职正式员工', 'Full-time Staff', 'Pekerja Sepenuh Masa')}
                 <span className="rounded-full bg-paper px-1.5 py-0.5 text-[10px] font-mono text-ink-faint">
                   {fullTimeEmployees.length}
                 </span>
@@ -416,7 +418,7 @@ function DesktopEmployees(): React.ReactElement | null {
                     : 'text-ink-soft hover:text-ink'
                 }`}
               >
-                兼职人员
+                {tr('兼职人员', 'Part-time Staff', 'Pekerja Sambilan')}
                 <span className="rounded-full bg-paper px-1.5 py-0.5 text-[10px] font-mono text-ink-faint">
                   {partTimeEmployees.length}
                 </span>
@@ -429,7 +431,7 @@ function DesktopEmployees(): React.ReactElement | null {
                 <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ink-faint" />
                 <input
                   type="text"
-                  placeholder="搜索姓名或工号..."
+                  placeholder={tr('搜索姓名或工号...', 'Search name or staff ID...', 'Cari nama atau ID pekerja...')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="h-8 w-48 sm:w-60 rounded-lg border border-line bg-surface pl-8 pr-3 text-xs text-ink placeholder:text-ink-faint focus:border-pine focus:outline-none focus:ring-1 focus:ring-pine/20"
@@ -451,7 +453,7 @@ function DesktopEmployees(): React.ReactElement | null {
                       statusFilter === st ? 'bg-pine-soft text-pine font-semibold' : 'text-ink-soft hover:text-ink'
                     }`}
                   >
-                    {st === 'all' ? '全部' : st === 'active' ? '在职' : '已停用'}
+                    {st === 'all' ? tr('全部', 'All', 'Semua') : st === 'active' ? tr('在职', 'Active', 'Aktif') : tr('已停用', 'Inactive', 'Tidak aktif')}
                   </button>
                 ))}
               </div>
@@ -463,20 +465,20 @@ function DesktopEmployees(): React.ReactElement | null {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-line bg-paper/60 text-xs font-medium text-ink-soft">
-                  <th className="py-3 pl-6 pr-4">员工信息</th>
-                  <th className="py-3 px-4">入职时间 / 司龄</th>
-                  {activeTab === 'full_time' && <th className="py-3 px-4">年假额度口径</th>}
-                  {activeTab === 'full_time' && <th className="py-3 px-4">结转天数</th>}
-                  {activeTab === 'full_time' && <th className="py-3 px-4">系统权限</th>}
-                  <th className="py-3 px-4 text-center">账号状态</th>
-                  <th className="py-3 pl-4 pr-6 text-right">操作管理</th>
+                  <th className="py-3 pl-6 pr-4">{tr('员工信息', 'Employee', 'Pekerja')}</th>
+                  <th className="py-3 px-4">{tr('入职时间 / 司龄', 'Joined / Service', 'Tarikh Mula / Tempoh')}</th>
+                  {activeTab === 'full_time' && <th className="py-3 px-4">{tr('年假额度口径', 'Annual Entitlement', 'Kelayakan Cuti Tahunan')}</th>}
+                  {activeTab === 'full_time' && <th className="py-3 px-4">{tr('结转天数', 'Carry Forward', 'Bawa Ke Hadapan')}</th>}
+                  {activeTab === 'full_time' && <th className="py-3 px-4">{tr('系统权限', 'Role', 'Peranan')}</th>}
+                  <th className="py-3 px-4 text-center">{tr('账号状态', 'Status', 'Status')}</th>
+                  <th className="py-3 pl-4 pr-6 text-right">{tr('操作管理', 'Actions', 'Tindakan')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
                 {filteredList.length === 0 ? (
                   <tr>
                     <td colSpan={activeTab === 'full_time' ? 7 : 4} className="py-12 text-center text-xs text-ink-faint">
-                      未找到符合筛选条件的员工记录。
+                      {tr('未找到符合筛选条件的员工记录。', 'No employees match the filter.', 'Tiada pekerja sepadan dengan penapis.')}
                     </td>
                   </tr>
                 ) : (
@@ -502,7 +504,7 @@ function DesktopEmployees(): React.ReactElement | null {
                                 )}
                               </div>
                               <p className="text-[11px] text-ink-faint">
-                                {emp.employment_type === 'full_time' ? '全职员工' : '兼职人员'}
+                                {emp.employment_type === 'full_time' ? tr('全职员工', 'Full-time', 'Sepenuh Masa') : tr('兼职人员', 'Part-time', 'Sambilan')}
                               </p>
                             </div>
                           </div>
@@ -512,7 +514,7 @@ function DesktopEmployees(): React.ReactElement | null {
                         <td className="py-3.5 px-4 whitespace-nowrap text-xs text-ink">
                           <span className="font-mono">{emp.date_of_commencement}</span>
                           <span className="ml-2 rounded bg-paper px-1.5 py-0.5 text-[10px] text-ink-faint font-medium">
-                            {years.toFixed(1)} 年
+                            {tr(`${years.toFixed(1)} 年`, `${years.toFixed(1)} yrs`, `${years.toFixed(1)} thn`)}
                           </span>
                         </td>
 
@@ -521,10 +523,10 @@ function DesktopEmployees(): React.ReactElement | null {
                           <td className="py-3.5 px-4 whitespace-nowrap text-xs text-ink">
                             {emp.annual_leave_entitlement_override != null ? (
                               <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700 border border-amber-200">
-                                特批 {emp.annual_leave_entitlement_override} 天
+                                {tr(`特批 ${emp.annual_leave_entitlement_override} 天`, `Override ${emp.annual_leave_entitlement_override} days`, `Pelepasan ${emp.annual_leave_entitlement_override} hari`)}
                               </span>
                             ) : (
-                              <span className="text-ink-soft">按司龄自动计算</span>
+                              <span className="text-ink-soft">{tr('按司龄自动计算', 'Auto by years of service', 'Auto mengikut tempoh khidmat')}</span>
                             )}
                           </td>
                         )}
@@ -533,9 +535,9 @@ function DesktopEmployees(): React.ReactElement | null {
                         {activeTab === 'full_time' && (
                           <td className="py-3.5 px-4 whitespace-nowrap text-xs font-mono text-ink">
                             {emp.annual_leave_carry_forward > 0 ? (
-                              <span className="font-semibold text-pine">{emp.annual_leave_carry_forward} 天</span>
+                              <span className="font-semibold text-pine">{tr(`${emp.annual_leave_carry_forward} 天`, `${emp.annual_leave_carry_forward} days`, `${emp.annual_leave_carry_forward} hari`)}</span>
                             ) : (
-                              <span className="text-ink-faint">0 天</span>
+                              <span className="text-ink-faint">{tr('0 天', '0 days', '0 hari')}</span>
                             )}
                           </td>
                         )}
@@ -548,7 +550,7 @@ function DesktopEmployees(): React.ReactElement | null {
                                 ? 'bg-pine-soft text-pine border border-pine/30'
                                 : 'bg-paper text-ink-soft border border-line'
                             }`}>
-                              {emp.role === 'manager' ? '负责人 (Manager)' : '普通员工 (Staff)'}
+                              {emp.role === 'manager' ? tr('负责人 (Manager)', 'Manager', 'Pengurus') : tr('普通员工 (Staff)', 'Staff', 'Kakitangan')}
                             </span>
                           </td>
                         )}
@@ -557,7 +559,7 @@ function DesktopEmployees(): React.ReactElement | null {
                         <td className="py-3.5 px-4 whitespace-nowrap text-center">
                           <button
                             onClick={() => handleToggleActive(emp.id, emp.is_active)}
-                            title="点击快速切换在职/停用状态"
+                            title={tr('点击快速切换在职/停用状态', 'Click to toggle active / inactive', 'Klik untuk tukar aktif / tidak aktif')}
                             className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold transition ${
                               emp.is_active
                                 ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
@@ -565,7 +567,7 @@ function DesktopEmployees(): React.ReactElement | null {
                             }`}
                           >
                             <span className={`h-1.5 w-1.5 rounded-full ${emp.is_active ? 'bg-emerald-500' : 'bg-rust'}`} />
-                            {emp.is_active ? '在职' : '已停用'}
+                            {emp.is_active ? tr('在职', 'Active', 'Aktif') : tr('已停用', 'Inactive', 'Tidak aktif')}
                           </button>
                         </td>
 
@@ -577,7 +579,7 @@ function DesktopEmployees(): React.ReactElement | null {
                               className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium text-ink-soft hover:bg-paper hover:text-ink transition"
                             >
                               <EditIcon className="h-3.5 w-3.5 text-ink-faint" />
-                              编辑
+                              {tr('编辑', 'Edit', 'Edit')}
                             </button>
 
                             {emp.employment_type === 'full_time' && (
@@ -590,7 +592,7 @@ function DesktopEmployees(): React.ReactElement | null {
                                 className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium text-pine hover:bg-pine-soft/60 transition"
                               >
                                 <KeyIcon className="h-3.5 w-3.5" />
-                                重置密码
+                                {tr('重置密码', 'Reset Password', 'Tetap Semula Kata Laluan')}
                               </button>
                             )}
                           </div>
@@ -606,9 +608,9 @@ function DesktopEmployees(): React.ReactElement | null {
           {/* 表格底部信息 */}
           <div className="flex items-center justify-between border-t border-line px-5 py-3 bg-surface text-xs text-ink-faint">
             <span>
-              显示 {filteredList.length} / 共 {currentTabList.length} 位员工
+              {tr(`显示 ${filteredList.length} / 共 ${currentTabList.length} 位员工`, `Showing ${filteredList.length} of ${currentTabList.length} staff`, `Memaparkan ${filteredList.length} daripada ${currentTabList.length} pekerja`)}
             </span>
-            <span>💡 提示：点击状态胶囊可直接切换账户启停</span>
+            <span>💡 {tr('提示：点击状态胶囊可直接切换账户启停', 'Tip: click the status pill to activate / deactivate an account', 'Petua: klik status untuk mengaktif / menyahaktifkan akaun')}</span>
           </div>
         </div>
 
@@ -628,8 +630,8 @@ function DesktopEmployees(): React.ReactElement | null {
           >
             <div className="mb-5 flex items-start justify-between border-b border-line pb-4">
               <div>
-                <h2 className="text-base font-bold text-ink">新增员工账号</h2>
-                <p className="mt-0.5 text-xs text-ink-faint">为新入职人员建立组织人事档案</p>
+                <h2 className="text-base font-bold text-ink">{tr('新增员工账号', 'Add Employee', 'Tambah Pekerja')}</h2>
+                <p className="mt-0.5 text-xs text-ink-faint">{tr('为新入职人员建立组织人事档案', 'Create a staff record for a new hire', 'Cipta rekod untuk pekerja baharu')}</p>
               </div>
               <button
                 onClick={() => setShowAddModal(false)}
@@ -642,7 +644,7 @@ function DesktopEmployees(): React.ReactElement | null {
             <form onSubmit={handleAddEmployee} className="space-y-4 text-xs">
               {/* 用工类型切换 */}
               <div>
-                <label className="field-label">用工类型</label>
+                <label className="field-label">{tr('用工类型', 'Employment Type', 'Jenis Pekerjaan')}</label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
@@ -653,7 +655,7 @@ function DesktopEmployees(): React.ReactElement | null {
                         : 'border-line text-ink-soft hover:bg-paper'
                     }`}
                   >
-                    全职正式员工
+                    {tr('全职正式员工', 'Full-time Staff', 'Pekerja Sepenuh Masa')}
                   </button>
                   <button
                     type="button"
@@ -664,7 +666,7 @@ function DesktopEmployees(): React.ReactElement | null {
                         : 'border-line text-ink-soft hover:bg-paper'
                     }`}
                   >
-                    兼职人员
+                    {tr('兼职人员', 'Part-time Staff', 'Pekerja Sambilan')}
                   </button>
                 </div>
               </div>
@@ -672,18 +674,18 @@ function DesktopEmployees(): React.ReactElement | null {
               {/* 姓名与入职日期 */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="field-label">员工姓名 *</label>
+                  <label className="field-label">{tr('员工姓名', 'Full Name', 'Nama Penuh')} *</label>
                   <input
                     type="text"
                     required
-                    placeholder="如：张三 / John Doe"
+                    placeholder={tr('如：张三 / John Doe', 'e.g. John Doe', 'cth: Ahmad bin Ali')}
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     className="field-input"
                   />
                 </div>
                 <div>
-                  <label className="field-label">入职日期 *</label>
+                  <label className="field-label">{tr('入职日期', 'Commencement Date', 'Tarikh Mula Kerja')} *</label>
                   <input
                     type="date"
                     required
@@ -699,53 +701,53 @@ function DesktopEmployees(): React.ReactElement | null {
                 <>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="field-label">系统工号 (纯数字) *</label>
+                      <label className="field-label">{tr('系统工号 (纯数字)', 'Staff ID (numbers only)', 'ID Pekerja (nombor sahaja)')} *</label>
                       <input
                         type="text"
                         required
                         inputMode="numeric"
                         pattern="[0-9]{1,9}"
-                        title="只能填数字"
-                        placeholder="例如：003"
+                        title={tr('只能填数字', 'Numbers only', 'Nombor sahaja')}
+                        placeholder={tr('例如：003', 'e.g. 003', 'cth: 003')}
                         value={staffId}
                         onChange={(e) => setStaffId(e.target.value)}
                         className="field-input font-mono"
                       />
                     </div>
                     <div>
-                      <label className="field-label">系统权限角色</label>
+                      <label className="field-label">{tr('系统权限角色', 'System Role', 'Peranan Sistem')}</label>
                       <select
                         value={role}
                         onChange={(e) => setRole(e.target.value)}
                         className="field-input"
                       >
-                        <option value="staff">普通员工 (Staff)</option>
-                        <option value="manager">主管/负责人 (Manager)</option>
+                        <option value="staff">{tr('普通员工 (Staff)', 'Staff', 'Kakitangan')}</option>
+                        <option value="manager">{tr('主管/负责人 (Manager)', 'Manager', 'Pengurus')}</option>
                       </select>
                     </div>
                   </div>
 
                   <div>
-                    <label className="field-label">初始登录密码 (至少 6 位) *</label>
+                    <label className="field-label">{tr('初始登录密码 (至少 6 位)', 'Initial password (min. 6 characters)', 'Kata laluan awal (min. 6 aksara)')} *</label>
                     <input
                       type="text"
                       required
                       minLength={6}
-                      placeholder="设置默认初始密码"
+                      placeholder={tr('设置默认初始密码', 'Set an initial password', 'Tetapkan kata laluan awal')}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       className="field-input font-mono"
                     />
                     <p className="mt-1 text-[11px] text-ink-faint">
-                      员工首次登录后可在个人菜单自行修改密码。
+                      {tr('员工首次登录后可在个人菜单自行修改密码。', 'Staff can change their password from their profile menu after first login.', 'Pekerja boleh menukar kata laluan melalui menu profil selepas log masuk pertama.')}
                     </p>
                   </div>
                 </>
               ) : (
                 <div className="rounded-lg border border-line bg-paper/60 p-3 text-ink-soft">
-                  <p className="font-semibold text-ink">ℹ️ 兼职人员无系统登录账号</p>
+                  <p className="font-semibold text-ink">ℹ️ {tr('兼职人员无系统登录账号', 'Part-time staff have no login account', 'Pekerja sambilan tiada akaun log masuk')}</p>
                   <p className="mt-0.5 text-[11px] text-ink-faint">
-                    兼职人员不需要独立系统账户，工时由负责人在【工时记录】页面统一登记核算。
+                    {tr('兼职人员不需要独立系统账户，工时由负责人在【工时记录】页面统一登记核算。', 'Part-time staff do not need a system account. Managers record their hours on the Work Hours page.', 'Pekerja sambilan tidak memerlukan akaun sistem. Pengurus merekod jam kerja mereka di halaman Jam Kerja.')}
                   </p>
                 </div>
               )}
@@ -758,14 +760,14 @@ function DesktopEmployees(): React.ReactElement | null {
                   onClick={() => setShowAddModal(false)}
                   className="rounded-lg border border-line bg-surface px-4 py-2 text-xs font-medium text-ink-soft hover:bg-paper transition"
                 >
-                  取消
+                  {tr('取消', 'Cancel', 'Batal')}
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
                   className="rounded-lg bg-pine px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-pine-deep disabled:opacity-50 transition"
                 >
-                  {submitting ? '保存中...' : '确认添加'}
+                  {submitting ? tr('保存中...', 'Saving...', 'Menyimpan...') : tr('确认添加', 'Add', 'Tambah')}
                 </button>
               </div>
             </form>
@@ -787,7 +789,7 @@ function DesktopEmployees(): React.ReactElement | null {
           >
             <div className="mb-5 flex items-start justify-between border-b border-line pb-4">
               <div>
-                <h2 className="text-base font-bold text-ink">编辑员工档案</h2>
+                <h2 className="text-base font-bold text-ink">{tr('编辑员工档案', 'Edit Employee', 'Edit Pekerja')}</h2>
                 <p className="mt-0.5 text-xs text-ink-faint">
                   {editingEmployee.full_name} {editingEmployee.employee_no ? `(#${editingEmployee.employee_no})` : ''}
                 </p>
@@ -802,7 +804,7 @@ function DesktopEmployees(): React.ReactElement | null {
 
             <form onSubmit={handleSaveEdit} className="space-y-4 text-xs">
               <div>
-                <label className="field-label">入职日期 (Commencement Date)</label>
+                <label className="field-label">{tr('入职日期 (Commencement Date)', 'Commencement Date', 'Tarikh Mula Kerja')}</label>
                 <input
                   type="date"
                   required
@@ -815,34 +817,34 @@ function DesktopEmployees(): React.ReactElement | null {
               {editingEmployee.employment_type === 'full_time' && (
                 <>
                   <div>
-                    <label className="field-label">系统权限角色</label>
+                    <label className="field-label">{tr('系统权限角色', 'System Role', 'Peranan Sistem')}</label>
                     <select
                       value={editRole}
                       onChange={(e) => setEditRole(e.target.value)}
                       className="field-input"
                     >
-                      <option value="staff">普通员工 (Staff)</option>
-                      <option value="manager">主管/负责人 (Manager)</option>
+                      <option value="staff">{tr('普通员工 (Staff)', 'Staff', 'Kakitangan')}</option>
+                      <option value="manager">{tr('主管/负责人 (Manager)', 'Manager', 'Pengurus')}</option>
                     </select>
                   </div>
 
                   <div>
-                    <label className="field-label">年假额度特批覆盖 (Override)</label>
+                    <label className="field-label">{tr('年假额度特批覆盖 (Override)', 'Annual Leave Override', 'Pelepasan Cuti Tahunan')}</label>
                     <input
                       type="number"
                       step="0.5"
-                      placeholder="留空则按法定年资自动计算"
+                      placeholder={tr('留空则按法定年资自动计算', 'Leave blank to calculate automatically', 'Biarkan kosong untuk pengiraan automatik')}
                       value={editOverride}
                       onChange={(e) => setEditOverride(e.target.value)}
                       className="field-input"
                     />
                     <p className="mt-1 text-[11px] text-ink-faint">
-                      留空表示自动按马来西亚劳工法排期计算；填写数字则固定为该天数。
+                      {tr('留空表示自动按马来西亚劳工法排期计算；填写数字则固定为该天数。', 'Leave blank to calculate automatically under Malaysian labour law; enter a number to fix the entitlement.', 'Biarkan kosong untuk pengiraan automatik mengikut undang-undang buruh Malaysia; masukkan nombor untuk menetapkan kelayakan.')}
                     </p>
                   </div>
 
                   <div>
-                    <label className="field-label">年假结转天数 (Carry Forward)</label>
+                    <label className="field-label">{tr('年假结转天数 (Carry Forward)', 'Carry Forward Days', 'Hari Dibawa Ke Hadapan')}</label>
                     <input
                       type="number"
                       step="0.5"
@@ -850,7 +852,7 @@ function DesktopEmployees(): React.ReactElement | null {
                       onChange={(e) => setEditCarry(e.target.value)}
                       className="field-input"
                     />
-                    <p className="mt-1 text-[11px] text-ink-faint">从去年结转至今年的年假天数。</p>
+                    <p className="mt-1 text-[11px] text-ink-faint">{tr('从去年结转至今年的年假天数。', 'Annual leave days carried over from last year.', 'Hari cuti tahunan yang dibawa dari tahun lepas.')}</p>
                   </div>
                 </>
               )}
@@ -861,14 +863,14 @@ function DesktopEmployees(): React.ReactElement | null {
                   onClick={() => setEditingEmployee(null)}
                   className="rounded-lg border border-line bg-surface px-4 py-2 text-xs font-medium text-ink-soft hover:bg-paper transition"
                 >
-                  取消
+                  {tr('取消', 'Cancel', 'Batal')}
                 </button>
                 <button
                   type="submit"
                   disabled={savingEdit}
                   className="rounded-lg bg-pine px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-pine-deep disabled:opacity-50 transition"
                 >
-                  {savingEdit ? '保存中...' : '保存更改'}
+                  {savingEdit ? tr('保存中...', 'Saving...', 'Menyimpan...') : tr('保存更改', 'Save Changes', 'Simpan Perubahan')}
                 </button>
               </div>
             </form>
@@ -890,8 +892,8 @@ function DesktopEmployees(): React.ReactElement | null {
           >
             <div className="mb-4 flex items-start justify-between border-b border-line pb-3">
               <div>
-                <h2 className="text-base font-bold text-ink">重置员工密码</h2>
-                <p className="mt-0.5 text-xs text-ink-faint">员工: {resettingEmployee.name}</p>
+                <h2 className="text-base font-bold text-ink">{tr('重置员工密码', 'Reset Password', 'Tetap Semula Kata Laluan')}</h2>
+                <p className="mt-0.5 text-xs text-ink-faint">{tr('员工', 'Employee', 'Pekerja')}: {resettingEmployee.name}</p>
               </div>
               <button
                 onClick={() => setResettingEmployee(null)}
@@ -903,13 +905,13 @@ function DesktopEmployees(): React.ReactElement | null {
 
             <form onSubmit={handleConfirmResetPassword} className="space-y-4 text-xs">
               <div>
-                <label className="field-label">输入新密码 (至少 6 位)</label>
+                <label className="field-label">{tr('输入新密码 (至少 6 位)', 'New password (min. 6 characters)', 'Kata laluan baharu (min. 6 aksara)')}</label>
                 <input
                   type="text"
                   required
                   minLength={6}
                   autoFocus
-                  placeholder="请输入新密码"
+                  placeholder={tr('请输入新密码', 'Enter new password', 'Masukkan kata laluan baharu')}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   className="field-input font-mono"
@@ -924,14 +926,14 @@ function DesktopEmployees(): React.ReactElement | null {
                   onClick={() => setResettingEmployee(null)}
                   className="rounded-lg border border-line bg-surface px-4 py-2 text-xs font-medium text-ink-soft hover:bg-paper transition"
                 >
-                  取消
+                  {tr('取消', 'Cancel', 'Batal')}
                 </button>
                 <button
                   type="submit"
                   disabled={resetting || newPassword.length < 6}
                   className="rounded-lg bg-pine px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-pine-deep disabled:opacity-40 transition"
                 >
-                  {resetting ? '重置中...' : '确认重置'}
+                  {resetting ? tr('重置中...', 'Resetting...', 'Menetapkan semula...') : tr('确认重置', 'Reset', 'Tetap Semula')}
                 </button>
               </div>
             </form>
