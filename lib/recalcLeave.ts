@@ -1,6 +1,7 @@
 import { supabase } from './supabaseClient'
 import { calculateWorkingDays, type WorkWeek } from './leaveRules'
 import { loadWorkWeek } from './settings'
+import { holidayDatesForGroup } from './holidays'
 
 type Scope =
   | { kind: 'date'; date: string }        // 公假被新增/停用/启用/删除:重算覆盖该日期的年假
@@ -19,7 +20,7 @@ export async function recalcAnnualLeave(
 ): Promise<{ updated: number; error?: string }> {
   let query = supabase
     .from('leave_applications')
-    .select('id, start_date, end_date, is_half_day, total_days, remarks')
+    .select('id, employee_id, start_date, end_date, is_half_day, total_days, remarks')
     .eq('leave_type', 'annual')
     .in('status', ['pending', 'approved'])
     .eq('is_half_day', false)
@@ -36,17 +37,31 @@ export async function recalcAnnualLeave(
 
   const { data: holidays, error: hErr } = await supabase
     .from('public_holidays')
-    .select('holiday_date')
+    .select('holiday_date, applies_to')
     .eq('is_enabled', true)
   if (hErr) return { updated: 0, error: hErr.message }
 
-  const holidayDates = (holidays || []).map((h) => h.holiday_date)
+  // 每位员工属于华人 / 马来组,各自适用的公假不一样,所以要按员工分别算
+  const empIds = Array.from(new Set(apps.map((a) => a.employee_id)))
+  const { data: emps, error: eErr } = await supabase
+    .from('employees')
+    .select('id, holiday_group')
+    .in('id', empIds)
+  if (eErr) return { updated: 0, error: eErr.message }
+  const groupOf = new Map<string, string | null>((emps || []).map((e) => [e.id as string, e.holiday_group as string | null]))
+  const datesByGroup = new Map<string, string[]>()
+  const datesFor = (employeeId: string) => {
+    const g = groupOf.get(employeeId) === 'malay' ? 'malay' : 'chinese'
+    let d = datesByGroup.get(g)
+    if (!d) { d = holidayDatesForGroup(holidays || [], g); datesByGroup.set(g, d) }
+    return d
+  }
   const workWeek = workWeekOverride ?? (await loadWorkWeek())
 
   let updated = 0
   for (const app of apps) {
     if (app.remarks && app.remarks.includes('Historical import')) continue
-    const fresh = calculateWorkingDays(app.start_date, app.end_date, false, holidayDates, workWeek)
+    const fresh = calculateWorkingDays(app.start_date, app.end_date, false, datesFor(app.employee_id), workWeek)
     if (fresh !== Number(app.total_days)) {
       const { error: uErr } = await supabase
         .from('leave_applications')

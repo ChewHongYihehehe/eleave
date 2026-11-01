@@ -10,6 +10,7 @@ import {
   type WorkWeek,
 } from '@/lib/leaveRules'
 import { loadWorkWeek } from '@/lib/settings'
+import { holidaysForGroup } from '@/lib/holidays'
 import { useEmployee } from '@/lib/useEmployee'
 import { useTr } from '@/lib/tr'
 
@@ -87,14 +88,16 @@ export function useLeaveData() {
 
     const { data: holidays, error: hErr } = await supabase
       .from('public_holidays')
-      .select('holiday_date, name')
+      .select('holiday_date, name, applies_to')
       .eq('is_enabled', true)
       .order('holiday_date', { ascending: true })
     if (hErr) { setErrKey('holidays'); setLoading(false); return }
 
-    const dates = (holidays || []).map((h) => h.holiday_date)
+    // 只保留适用于我所属组别(华人 / 马来)的公假
+    const mine = holidaysForGroup(holidays || [], employee.holiday_group)
+    const dates = mine.map((h) => h.holiday_date)
     setHolidayDates(dates)
-    setUpcoming((holidays || []).filter((h) => h.holiday_date >= today).slice(0, 5))
+    setUpcoming(mine.filter((h) => h.holiday_date >= today).slice(0, 5).map((h) => ({ holiday_date: h.holiday_date, name: h.name })))
 
     const ww = await loadWorkWeek()
     setWorkWeek(ww)
