@@ -24,6 +24,7 @@ export default function NewEmployee() {
   const { t } = useMgrT()
   const [type, setType] = useState<'full_time' | 'part_time'>('full_time')
   const [role, setRole] = useState<'staff' | 'manager'>('staff')
+  const [group, setGroup] = useState<'chinese' | 'malay'>('chinese')
   const [staffId, setStaffId] = useState('')
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
@@ -45,6 +46,7 @@ export default function NewEmployee() {
       date_of_commencement: date,
       employment_type: type,
       role: part ? 'staff' : role,
+      holiday_group: group,
     })
     setBusy(false)
     if (err) return setError(err)
@@ -71,6 +73,14 @@ export default function NewEmployee() {
             <span className="flex rounded-lg bg-gray-100 p-0.5 text-sm">
               <button type="button" onClick={() => setRole('staff')} className={seg(role === 'staff')}>{t('roleStaff')}</button>
               <button type="button" onClick={() => setRole('manager')} className={seg(role === 'manager')}>{t('roleManager')}</button>
+            </span>
+          </Row>
+        )}
+        {!part && (
+          <Row label={t('holidayGroup')}>
+            <span className="flex rounded-lg bg-gray-100 p-0.5 text-sm">
+              <button type="button" onClick={() => setGroup('chinese')} className={seg(group === 'chinese')}>{t('groupChinese')}</button>
+              <button type="button" onClick={() => setGroup('malay')} className={seg(group === 'malay')}>{t('groupMalay')}</button>
             </span>
           </Row>
         )}
