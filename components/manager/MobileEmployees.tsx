@@ -43,7 +43,7 @@ export default function MobileEmployees() {
               <Avatar name={s.full_name} size={40} />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[15px] font-medium text-gray-900">{s.full_name}</p>
-                <p className="text-xs text-gray-500">{s.employee_no ? `#${s.employee_no} · ` : ''}{s.role === 'manager' ? t('roleManager') : t('roleStaff')}</p>
+                <p className="text-xs text-gray-500">{s.employee_no ? `#${s.employee_no} · ` : ''}{s.role === 'manager' ? t('roleManager') : t('roleStaff')}{s.employment_type === 'full_time' ? ` · ${s.holiday_group === 'malay' ? t('groupMalay') : t('groupChinese')}` : ''}</p>
               </div>
               {!s.is_active && <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">{t('inactive')}</span>}
               <Icon d={EI.chevronR} size={16} className="text-gray-300" />
