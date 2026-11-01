@@ -12,6 +12,7 @@ import {
 } from '@/lib/leaveRules'
 import { malaysiaToday, toLocalDateStr } from '@/lib/dateUtils'
 import { logAudit } from '@/lib/auditLog'
+import { holidayDatesForGroup } from '@/lib/holidays'
 import { appLink, esc, fmtDays, fmtRange, notifyEmployee, notifyManagers } from '@/lib/telegram'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -41,6 +42,7 @@ type ActorEmployee = {
   annual_leave_carry_forward: number
   annual_leave_entitlement_override: number | null
   full_name: string
+  holiday_group: string | null
 }
 
 async function getActor(request: NextRequest): Promise<ActorEmployee | null> {
@@ -53,7 +55,7 @@ async function getActor(request: NextRequest): Promise<ActorEmployee | null> {
 
   const { data: emp } = await supabaseAdmin
     .from('employees')
-    .select('id, role, is_active, employment_type, date_of_commencement, annual_leave_carry_forward, annual_leave_entitlement_override, full_name')
+    .select('id, role, is_active, employment_type, date_of_commencement, annual_leave_carry_forward, annual_leave_entitlement_override, full_name, holiday_group')
     .eq('auth_user_id', user.id)
     .maybeSingle()
 
@@ -91,12 +93,13 @@ export async function POST(request: NextRequest) {
     employment_type: string
     is_active: boolean
     full_name: string
+    holiday_group: string | null
   }
 
   if (isRecordMode) {
     const { data: targetEmp } = await supabaseAdmin
       .from('employees')
-      .select('id, date_of_commencement, annual_leave_carry_forward, annual_leave_entitlement_override, employment_type, is_active, full_name, is_owner')
+      .select('id, date_of_commencement, annual_leave_carry_forward, annual_leave_entitlement_override, employment_type, is_active, full_name, holiday_group, is_owner')
       .eq('id', requestedEmployeeId)
       .maybeSingle()
     if (!targetEmp) {
@@ -168,12 +171,13 @@ export async function POST(request: NextRequest) {
   // ─── Load holidays + work week (server-side, service role) ─────────────
   const { data: holidays, error: holidayError } = await supabaseAdmin
     .from('public_holidays')
-    .select('holiday_date')
+    .select('holiday_date, applies_to')
     .eq('is_enabled', true)
   if (holidayError) {
     return NextResponse.json({ error: 'Could not load public holidays. Please try again.' }, { status: 500 })
   }
-  const holidayDates = (holidays || []).map((h) => h.holiday_date)
+  // 只取适用于这位员工所属组别(华人 / 马来)的公假
+  const holidayDates = holidayDatesForGroup(holidays || [], target.holiday_group)
 
   const { data: wwRow } = await supabaseAdmin
     .from('app_settings')
