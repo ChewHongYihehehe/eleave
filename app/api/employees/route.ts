@@ -54,6 +54,8 @@ export async function POST(request: NextRequest) {
   const employment_type = body.employment_type === 'part_time' ? 'part_time' : 'full_time'
   const staffIdRaw = body.staffId == null ? '' : String(body.staffId).trim()
   const password = body.password == null ? '' : String(body.password)
+  // 公假组别:华人 / 马来(决定哪些公假算他的假期);没填就当华人
+  const holiday_group = body.holiday_group === 'malay' ? 'malay' : 'chinese'
 
   if (!full_name || !/^\d{4}-\d{2}-\d{2}$/.test(date_of_commencement)) {
     return NextResponse.json({ error: 'Full name and a valid commencement date are required' }, { status: 400 })
@@ -89,6 +91,7 @@ export async function POST(request: NextRequest) {
         date_of_commencement,
         employment_type: 'part_time',
         role: 'staff', // 兼职一律是 staff,不管前端传什么
+        holiday_group,
       })
       .select()
       .single()
@@ -131,6 +134,7 @@ export async function POST(request: NextRequest) {
       date_of_commencement,
       employment_type: 'full_time',
       role,
+      holiday_group,
       // 初始密码是负责人设的,员工第一次登录必须自己换一个(见 middleware.ts / /change-password)
       must_change_password: true,
     })
@@ -170,13 +174,16 @@ export async function PATCH(request: NextRequest) {
   // ── 模式一:改单一栏位(日期/结转天数/职级,从 /manage 的表格 onBlur 过来)──
   // 挪到服务器处理,是为了能记一笔「谁、把什么从多少改成多少」的审计日志。
   if (typeof body.field === 'string') {
-    const EDITABLE_FIELDS = ['date_of_commencement', 'annual_leave_carry_forward', 'annual_leave_entitlement_override', 'role']
+    const EDITABLE_FIELDS = ['date_of_commencement', 'annual_leave_carry_forward', 'annual_leave_entitlement_override', 'role', 'holiday_group']
     if (!EDITABLE_FIELDS.includes(body.field)) {
       return NextResponse.json({ error: 'That field cannot be edited this way.' }, { status: 400 })
     }
+    if (body.field === 'holiday_group' && body.value !== 'chinese' && body.value !== 'malay') {
+      return NextResponse.json({ error: 'Holiday group must be chinese or malay.' }, { status: 400 })
+    }
     const { data: before } = await supabaseAdmin
       .from('employees')
-      .select('date_of_commencement, annual_leave_carry_forward, annual_leave_entitlement_override, role, is_owner')
+      .select('date_of_commencement, annual_leave_carry_forward, annual_leave_entitlement_override, role, holiday_group, is_owner')
       .eq('id', body.id)
       .maybeSingle()
     if (!before) {
