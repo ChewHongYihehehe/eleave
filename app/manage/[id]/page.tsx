@@ -29,6 +29,7 @@ export default function EmployeeDetail() {
 
   const [date, setDate] = useState('')
   const [role, setRole] = useState('staff')
+  const [group, setGroup] = useState('chinese')
   const [override, setOverride] = useState('')
   const [carry, setCarry] = useState('')
   const [saving, setSaving] = useState(false)
@@ -40,9 +41,10 @@ export default function EmployeeDetail() {
     if (!emp) return
     setDate(emp.date_of_commencement)
     setRole(emp.role)
+    setGroup(emp.holiday_group === 'malay' ? 'malay' : 'chinese')
     setOverride(emp.annual_leave_entitlement_override == null ? '' : String(emp.annual_leave_entitlement_override))
     setCarry(String(emp.annual_leave_carry_forward ?? 0))
-  }, [emp?.id, emp?.date_of_commencement, emp?.role, emp?.annual_leave_entitlement_override, emp?.annual_leave_carry_forward])
+  }, [emp?.id, emp?.date_of_commencement, emp?.role, emp?.holiday_group, emp?.annual_leave_entitlement_override, emp?.annual_leave_carry_forward])
 
   if (auth.status !== 'ready') return <AuthStatus state={auth} />
   if (!emp) {
@@ -55,6 +57,7 @@ export default function EmployeeDetail() {
   if (date && date !== emp.date_of_commencement) changes.push(['date_of_commencement', date])
   if (full) {
     if (role !== emp.role) changes.push(['role', role])
+    if (group !== (emp.holiday_group === 'malay' ? 'malay' : 'chinese')) changes.push(['holiday_group', group])
     const ov = override.trim() === '' ? null : Number(override)
     if (ov !== (emp.annual_leave_entitlement_override ?? null)) changes.push(['annual_leave_entitlement_override', ov])
     if (Number(carry) !== Number(emp.annual_leave_carry_forward)) changes.push(['annual_leave_carry_forward', Number(carry)])
@@ -121,6 +124,15 @@ export default function EmployeeDetail() {
                   ))}
                 </span>
               )}
+            </Row>
+            <Row label={t('holidayGroup')}>
+              <span className="flex rounded-lg bg-gray-100 p-0.5 text-sm">
+                {(['chinese', 'malay'] as const).map((g) => (
+                  <button key={g} type="button" onClick={() => setGroup(g)} className={`rounded-md px-3 py-1 ${group === g ? 'bg-brand font-medium text-white' : 'text-gray-600'}`}>
+                    {g === 'malay' ? t('groupMalay') : t('groupChinese')}
+                  </button>
+                ))}
+              </span>
             </Row>
             <Row label={t('override')}>
               <input type="number" inputMode="decimal" step="0.5" value={override} onChange={(e) => setOverride(e.target.value)} placeholder="auto" className="w-20 bg-transparent text-right placeholder:text-gray-300" />
