@@ -20,6 +20,7 @@ type Employee = {
   annual_leave_carry_forward: number
   annual_leave_entitlement_override: number | null
   is_active: boolean
+  holiday_group: 'chinese' | 'malay'
 }
 
 type Tab = 'full_time' | 'part_time'
@@ -107,11 +108,13 @@ function DesktopEmployees(): React.ReactElement | null {
   const [dateOfCommencement, setDateOfCommencement] = useState('')
   const [employmentType, setEmploymentType] = useState('full_time')
   const [role, setRole] = useState('staff')
+  const [holidayGroup, setHolidayGroup] = useState('chinese')
   const [submitting, setSubmitting] = useState(false)
 
   // Edit Form state
   const [editCommencement, setEditCommencement] = useState('')
   const [editRole, setEditRole] = useState('staff')
+  const [editGroup, setEditGroup] = useState('chinese')
   const [editOverride, setEditOverride] = useState('')
   const [editCarry, setEditCarry] = useState('')
   const [savingEdit, setSavingEdit] = useState(false)
@@ -130,7 +133,7 @@ function DesktopEmployees(): React.ReactElement | null {
     setLoading(true)
     const { data, error: loadError } = await supabase
       .from('employees')
-      .select('id, employee_no, full_name, date_of_commencement, employment_type, role, annual_leave_carry_forward, annual_leave_entitlement_override, is_active')
+      .select('id, employee_no, full_name, date_of_commencement, employment_type, role, annual_leave_carry_forward, annual_leave_entitlement_override, is_active, holiday_group')
       .order('employment_type', { ascending: false })
       .order('employee_no', { ascending: true })
     if (loadError) setError('Could not load employees.')
@@ -159,6 +162,7 @@ function DesktopEmployees(): React.ReactElement | null {
         date_of_commencement: dateOfCommencement,
         employment_type: employmentType,
         role,
+        holiday_group: holidayGroup,
       }),
     })
 
@@ -174,7 +178,7 @@ function DesktopEmployees(): React.ReactElement | null {
     }
 
     setStaffId(''); setPassword(''); setFullName('')
-    setDateOfCommencement(''); setEmploymentType('full_time'); setRole('staff')
+    setDateOfCommencement(''); setEmploymentType('full_time'); setRole('staff'); setHolidayGroup('chinese')
     setShowAddModal(false)
     loadEmployees()
   }
@@ -209,6 +213,16 @@ function DesktopEmployees(): React.ReactElement | null {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
             body: JSON.stringify({ id: editingEmployee.id, field: 'role', value: editRole }),
+          })
+        )
+      }
+
+      if (editGroup !== editingEmployee.holiday_group) {
+        tasks.push(
+          fetch('/api/employees', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ id: editingEmployee.id, field: 'holiday_group', value: editGroup }),
           })
         )
       }
@@ -295,6 +309,7 @@ function DesktopEmployees(): React.ReactElement | null {
     setEditingEmployee(emp)
     setEditCommencement(emp.date_of_commencement || '')
     setEditRole(emp.role || 'staff')
+    setEditGroup(emp.holiday_group === 'malay' ? 'malay' : 'chinese')
     setEditOverride(emp.annual_leave_entitlement_override == null ? '' : String(emp.annual_leave_entitlement_override))
     setEditCarry(String(emp.annual_leave_carry_forward ?? 0))
   }
@@ -552,6 +567,9 @@ function DesktopEmployees(): React.ReactElement | null {
                             }`}>
                               {emp.role === 'manager' ? tr('负责人 (Manager)', 'Manager', 'Pengurus') : tr('普通员工 (Staff)', 'Staff', 'Kakitangan')}
                             </span>
+                            <span className="ml-1.5 inline-flex items-center rounded-md border border-line bg-paper px-2 py-0.5 text-[11px] font-medium text-ink-soft">
+                              {emp.holiday_group === 'malay' ? tr('马来', 'Malay', 'Melayu') : tr('华人', 'Chinese', 'Cina')}
+                            </span>
                           </td>
                         )}
 
@@ -728,6 +746,18 @@ function DesktopEmployees(): React.ReactElement | null {
                   </div>
 
                   <div>
+                    <label className="field-label">{tr('公假组别', 'Holiday Group', 'Kumpulan Cuti Umum')}</label>
+                    <select
+                      value={holidayGroup}
+                      onChange={(e) => setHolidayGroup(e.target.value)}
+                      className="field-input"
+                    >
+                      <option value="chinese">{tr('华人', 'Chinese', 'Cina')}</option>
+                      <option value="malay">{tr('马来', 'Malay', 'Melayu')}</option>
+                    </select>
+                  </div>
+
+                  <div>
                     <label className="field-label">{tr('初始登录密码 (至少 6 位)', 'Initial password (min. 6 characters)', 'Kata laluan awal (min. 6 aksara)')} *</label>
                     <input
                       type="text"
@@ -825,6 +855,18 @@ function DesktopEmployees(): React.ReactElement | null {
                     >
                       <option value="staff">{tr('普通员工 (Staff)', 'Staff', 'Kakitangan')}</option>
                       <option value="manager">{tr('主管/负责人 (Manager)', 'Manager', 'Pengurus')}</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="field-label">{tr('公假组别', 'Holiday Group', 'Kumpulan Cuti Umum')}</label>
+                    <select
+                      value={editGroup}
+                      onChange={(e) => setEditGroup(e.target.value)}
+                      className="field-input"
+                    >
+                      <option value="chinese">{tr('华人', 'Chinese', 'Cina')}</option>
+                      <option value="malay">{tr('马来', 'Malay', 'Melayu')}</option>
                     </select>
                   </div>
 
