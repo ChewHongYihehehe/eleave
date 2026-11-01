@@ -35,6 +35,10 @@ create table if not exists employees (
 alter table employees add column if not exists annual_leave_carry_forward numeric not null default 0;
 alter table employees add column if not exists annual_leave_entitlement_override numeric;
 alter table employees add column if not exists last_notifications_seen_at timestamptz;
+-- 公假组别:chinese / malay,决定哪些公假算这位员工的假期
+alter table employees add column if not exists holiday_group text not null default 'chinese';
+alter table employees drop constraint if exists employees_holiday_group_check;
+alter table employees add constraint employees_holiday_group_check check (holiday_group in ('chinese', 'malay'));
 update employees set is_active = true where is_active is null;
 alter table employees alter column is_active set default true;
 alter table employees alter column is_active set not null;
@@ -104,32 +108,41 @@ create table if not exists public_holidays (
 
 alter table public_holidays add column if not exists is_enabled boolean not null default true;
 
--- 预填 2026 年登嘉楼(Terengganu)官方公假。日期已存在就跳过,不会覆盖你手动加/改过的。
-insert into public_holidays (holiday_date, name, is_enabled) values
-  ('2026-01-17', 'Israk and Mikraj', true),
-  ('2026-01-18', 'Israk and Mikraj Holiday', true),
-  ('2026-02-17', 'Chinese New Year', true),
-  ('2026-02-18', 'Chinese New Year Holiday', true),
-  ('2026-03-04', 'Installation of Sultan of Terengganu', true),
-  ('2026-03-07', 'Nuzul Al-Quran', true),
-  ('2026-03-08', 'Nuzul Al-Quran Holiday', true),
-  ('2026-03-20', 'Hari Raya Aidilfitri Holiday', true),
-  ('2026-03-21', 'Hari Raya Aidilfitri', true),
-  ('2026-03-22', 'Hari Raya Aidilfitri Holiday', true),
-  ('2026-03-23', 'Hari Raya Aidilfitri Holiday', true),
-  ('2026-04-26', 'Sultan of Terengganu''s Birthday', true),
-  ('2026-05-01', 'Labour Day', true),
-  ('2026-05-26', 'Arafat Day', true),
-  ('2026-05-27', 'Hari Raya Haji', true),
-  ('2026-05-28', 'Hari Raya Haji Holiday', true),
-  ('2026-05-31', 'Wesak Day', true),
-  ('2026-06-01', 'Agong''s Birthday', true),
-  ('2026-06-17', 'Awal Muharram', true),
-  ('2026-08-25', 'Prophet Muhammad''s Birthday', true),
-  ('2026-08-31', 'Merdeka Day', true),
-  ('2026-09-16', 'Malaysia Day', true),
-  ('2026-11-08', 'Deepavali', true),
-  ('2026-12-25', 'Christmas Day', true)
+-- 公假「适用对象」:all = 全公司,chinese = 只有华人组,malay = 只有马来组
+alter table public_holidays add column if not exists applies_to text not null default 'all';
+alter table public_holidays drop constraint if exists public_holidays_applies_to_check;
+alter table public_holidays add constraint public_holidays_applies_to_check check (applies_to in ('all', 'chinese', 'malay'));
+
+-- 预填公司的公假版本(每人每年 11 天;华人 / 马来各自适用不同的春节、开斋节天数)。日期已存在就跳过。
+insert into public_holidays (holiday_date, name, is_enabled, applies_to) values
+  -- ── 2026 ──
+  ('2026-02-17', 'Chinese New Year', true, 'all'),
+  ('2026-02-18', 'Chinese New Year (Day 2)', true, 'chinese'),
+  ('2026-02-19', 'Chinese New Year (Day 3)', true, 'chinese'),
+  ('2026-03-21', 'Hari Raya Aidilfitri', true, 'all'),
+  ('2026-03-22', 'Hari Raya Aidilfitri (Day 2)', true, 'malay'),
+  ('2026-03-23', 'Hari Raya Aidilfitri (Day 3)', true, 'malay'),
+  ('2026-04-26', 'Sultan of Terengganu''s Birthday', true, 'all'),
+  ('2026-05-01', 'Labour Day', true, 'all'),
+  ('2026-05-27', 'Hari Raya Haji', true, 'all'),
+  ('2026-05-28', 'Hari Raya Haji (Day 2)', true, 'all'),
+  ('2026-06-01', 'Agong''s Birthday', true, 'all'),
+  ('2026-08-31', 'National Day', true, 'all'),
+  ('2026-09-16', 'Malaysia Day', true, 'all'),
+  -- ── 2027(日期来自官方 2027 公假公告;回历节日以官方最后公布为准)──
+  ('2027-02-06', 'Chinese New Year', true, 'all'),
+  ('2027-02-07', 'Chinese New Year (Day 2)', true, 'chinese'),
+  ('2027-02-08', 'Chinese New Year (Day 3)', true, 'chinese'),
+  ('2027-03-10', 'Hari Raya Aidilfitri', true, 'all'),
+  ('2027-03-11', 'Hari Raya Aidilfitri (Day 2)', true, 'malay'),
+  ('2027-03-12', 'Hari Raya Aidilfitri (Day 3)', true, 'malay'),
+  ('2027-04-26', 'Sultan of Terengganu''s Birthday', true, 'all'),
+  ('2027-05-01', 'Labour Day', true, 'all'),
+  ('2027-05-17', 'Hari Raya Haji', true, 'all'),
+  ('2027-05-18', 'Hari Raya Haji (Day 2)', true, 'all'),
+  ('2027-06-07', 'Agong''s Birthday', true, 'all'),
+  ('2027-08-31', 'National Day', true, 'all'),
+  ('2027-09-16', 'Malaysia Day', true, 'all')
 on conflict (holiday_date) do nothing;
 
 
