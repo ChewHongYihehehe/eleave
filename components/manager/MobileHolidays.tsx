@@ -17,7 +17,7 @@ import { monthShort, useMgrT } from '@/lib/mgrText'
 //  · 点某一行 → 底部菜单 → 删除(再确认一次);底部固定按钮"新增公假"
 // 读写的表和电脑版一样:public_holidays、app_settings(工作周)。
 
-type Holiday = { id: string; holiday_date: string; name: string; is_enabled: boolean }
+type Holiday = { id: string; holiday_date: string; name: string; is_enabled: boolean; applies_to: 'all' | 'chinese' | 'malay' }
 
 const MONTH_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const WEEK_ORDER = [1, 2, 3, 4, 5, 6, 0] // 周一排最前面,周日最后(getDay: 0 = 周日)
@@ -54,6 +54,7 @@ export default function MobileHolidays() {
   const [adding, setAdding] = useState(false)
   const [newDate, setNewDate] = useState('')
   const [newName, setNewName] = useState('')
+  const [newApplies, setNewApplies] = useState<'all' | 'chinese' | 'malay'>('all')
   const [busy, setBusy] = useState(false)
 
   const [menuFor, setMenuFor] = useState<Holiday | null>(null)
@@ -67,7 +68,7 @@ export default function MobileHolidays() {
   }, [auth.status])
 
   async function loadHolidays() {
-    const { data, error } = await supabase.from('public_holidays').select('id, holiday_date, name, is_enabled').order('holiday_date', { ascending: true })
+    const { data, error } = await supabase.from('public_holidays').select('id, holiday_date, name, is_enabled, applies_to').order('holiday_date', { ascending: true })
     if (error) { setBanner({ kind: 'err', text: t('loadFail') }); return }
     setHolidays((data || []) as Holiday[])
     setLoaded(true)
@@ -97,12 +98,12 @@ export default function MobileHolidays() {
     if (!newDate || !newName.trim()) return
     setBanner(null)
     setBusy(true)
-    const { error } = await supabase.from('public_holidays').insert({ holiday_date: newDate, name: newName.trim() })
+    const { error } = await supabase.from('public_holidays').insert({ holiday_date: newDate, name: newName.trim(), applies_to: newApplies })
     setBusy(false)
     if (error) { show(error.message.includes('duplicate') ? t('dupDate') : t('failAdd')); return }
     const added = newDate
     setAdding(false)
-    setNewDate(''); setNewName('')
+    setNewDate(''); setNewName(''); setNewApplies('all')
     setYear(parseDate(added).y) // 跳到刚加的那一年,让人看到它
     await recalcForDate(added)
     loadHolidays()
@@ -215,7 +216,7 @@ export default function MobileHolidays() {
                       </span>
                       <span className="min-w-0">
                         <span className={`block truncate text-[15px] font-medium ${h.is_enabled ? 'text-gray-900' : 'text-gray-500'}`}>{h.name}</span>
-                        <span className="mt-0.5 block text-xs text-gray-500">{dayLabel(p.dow)} · {h.is_enabled ? t('holidayOn') : t('holidayOff')}</span>
+                        <span className="mt-0.5 block text-xs text-gray-500">{dayLabel(p.dow)} · {h.applies_to === 'chinese' ? t('appliesChinese') : h.applies_to === 'malay' ? t('appliesMalay') : t('appliesAll')} · {h.is_enabled ? t('holidayOn') : t('holidayOff')}</span>
                       </span>
                     </button>
                     <Switch on={h.is_enabled} onClick={() => toggle(h)} label={h.name} />
@@ -244,6 +245,16 @@ export default function MobileHolidays() {
               <div>
                 <label className="mb-1 block text-xs text-gray-500">{t('holidayName')}</label>
                 <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder={t('holidayNamePh')} maxLength={60} className="w-full rounded-lg bg-gray-50 p-3 text-[15px] text-gray-800 placeholder:text-gray-400 focus:outline-none" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-gray-500">{t('appliesTo')}</label>
+                <div className="flex rounded-lg bg-gray-100 p-0.5 text-sm">
+                  {(['all', 'chinese', 'malay'] as const).map((a) => (
+                    <button key={a} type="button" onClick={() => setNewApplies(a)} className={`flex-1 rounded-md py-2 ${newApplies === a ? 'bg-brand font-medium text-white' : 'text-gray-600'}`}>
+                      {a === 'chinese' ? t('appliesChinese') : a === 'malay' ? t('appliesMalay') : t('appliesAll')}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
         </BottomSheet>
