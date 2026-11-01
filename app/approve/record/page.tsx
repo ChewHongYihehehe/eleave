@@ -12,12 +12,14 @@ import { fmtNum } from '@/lib/useLeaveData'
 import { useMgrT, leaveName } from '@/lib/mgrText'
 import { LEAVE_TYPE_LABELS, calculateLeaveDays, calculateWorkingDays, DEFAULT_WORK_WEEK, type WorkWeek } from '@/lib/leaveRules'
 import { loadWorkWeek } from '@/lib/settings'
+import { holidayDatesForGroup } from '@/lib/holidays'
 import { uploadMcFile, validateMcFile } from '@/lib/mcAttachments'
 
 type Emp = {
   id: string
   employee_no: number | null
   full_name: string
+  holiday_group: string | null
 }
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
@@ -37,11 +39,16 @@ export default function RecordLeavePage() {
   const today = toLocalDateStr(new Date())
 
   const [employees, setEmployees] = useState<Emp[]>([])
-  const [holidayDates, setHolidayDates] = useState<string[]>([])
+  const [holidayRows, setHolidayRows] = useState<{ holiday_date: string; applies_to: string | null }[]>([])
   const [workWeek, setWorkWeek] = useState<WorkWeek>(DEFAULT_WORK_WEEK)
   const [ready, setReady] = useState(false)
 
   const [employeeId, setEmployeeId] = useState('')
+  // 只算适用于「被登记员工」所属组别(华人 / 马来)的公假
+  const holidayDates = useMemo(
+    () => holidayDatesForGroup(holidayRows, employees.find((x) => x.id === employeeId)?.holiday_group),
+    [holidayRows, employees, employeeId],
+  )
   const [leaveType, setLeaveType] = useState('medical')
   const [startDate, setStartDate] = useState(today)
   const [endDate, setEndDate] = useState(today)
@@ -59,12 +66,12 @@ export default function RecordLeavePage() {
       const [empRes, holRes, ww] = await Promise.all([
         supabase
           .from('employees')
-          .select('id, employee_no, full_name')
+          .select('id, employee_no, full_name, holiday_group')
           .eq('is_active', true)
           .eq('is_owner', false)
           .eq('employment_type', 'full_time')
           .order('employee_no', { ascending: true }),
-        supabase.from('public_holidays').select('holiday_date').eq('is_enabled', true),
+        supabase.from('public_holidays').select('holiday_date, applies_to').eq('is_enabled', true),
         loadWorkWeek(),
       ])
 
@@ -76,7 +83,7 @@ export default function RecordLeavePage() {
       const list = (empRes.data || []) as Emp[]
       setEmployees(list)
       if (list.length > 0) setEmployeeId(list[0].id)
-      setHolidayDates((holRes.data || []).map((h) => h.holiday_date))
+      setHolidayRows((holRes.data || []) as { holiday_date: string; applies_to: string | null }[])
       setWorkWeek(ww)
       setReady(true)
     }
