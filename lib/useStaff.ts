@@ -13,7 +13,7 @@ export function useStaff() {
   const reload = useCallback(async () => {
     const { data } = await supabase
       .from('employees')
-      .select('id, employee_no, full_name, date_of_commencement, employment_type, role, annual_leave_carry_forward, annual_leave_entitlement_override, is_active')
+      .select('id, employee_no, full_name, date_of_commencement, employment_type, role, annual_leave_carry_forward, annual_leave_entitlement_override, is_active, holiday_group')
       .order('employment_type', { ascending: false })
       .order('employee_no', { ascending: true })
     setStaff((data || []) as StaffRow[])

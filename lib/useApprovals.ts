@@ -42,6 +42,7 @@ export type StaffRow = {
   annual_leave_carry_forward: number
   annual_leave_entitlement_override: number | null
   is_active: boolean
+  holiday_group?: string | null
 }
 
 export type Action = 'approve' | 'reject' | 'cancel' | 'confirm_cancellation' | 'decline_cancellation'

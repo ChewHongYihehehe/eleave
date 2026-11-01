@@ -15,6 +15,7 @@ export type CurrentEmployee = {
   annual_leave_carry_forward: number
   annual_leave_entitlement_override: number | null
   last_notifications_seen_at: string | null
+  holiday_group: 'chinese' | 'malay'
 }
 
 // 记在内存里:已经登录过的人切换页面时,直接用上一次的资料马上显示页面(同时在背景里悄悄再确认一次),
@@ -55,7 +56,7 @@ export function useEmployee(opts: { requireManager?: boolean } = {}): State {
 
       const { data: emp, error } = await supabase
         .from('employees')
-        .select('id, employee_no, full_name, date_of_commencement, employment_type, role, is_active, annual_leave_carry_forward, annual_leave_entitlement_override, last_notifications_seen_at')
+        .select('id, employee_no, full_name, date_of_commencement, employment_type, role, is_active, annual_leave_carry_forward, annual_leave_entitlement_override, last_notifications_seen_at, holiday_group')
         .eq('auth_user_id', user.id)
         .maybeSingle()
       if (cancelled) return
