@@ -17,6 +17,7 @@ type Holiday = {
   holiday_date: string
   name: string
   is_enabled: boolean
+  applies_to: 'all' | 'chinese' | 'malay'
 }
 
 function TrashIcon() {
@@ -119,6 +120,7 @@ function DesktopHolidays() {
   const [holidays, setHolidays] = useState<Holiday[]>([])
   const [date, setDate] = useState('')
   const [name, setName] = useState('')
+  const [applies, setApplies] = useState<'all' | 'chinese' | 'malay'>('all')
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -139,7 +141,7 @@ function DesktopHolidays() {
   async function loadHolidays() {
     const { data, error: loadError } = await supabase
       .from('public_holidays')
-      .select('id, holiday_date, name, is_enabled')
+      .select('id, holiday_date, name, is_enabled, applies_to')
       .order('holiday_date', { ascending: true })
     if (loadError) { setError(tr('无法加载公假列表。', 'Could not load holidays.', 'Tidak dapat memuatkan senarai cuti umum.')); return }
     if (data) setHolidays(data)
@@ -174,7 +176,7 @@ function DesktopHolidays() {
 
     const { error: insertError } = await supabase
       .from('public_holidays')
-      .insert({ holiday_date: date, name })
+      .insert({ holiday_date: date, name, applies_to: applies })
 
     setSubmitting(false)
 
@@ -188,6 +190,7 @@ function DesktopHolidays() {
     await recalcForDate(date)
     setDate('')
     setName('')
+    setApplies('all')
     setShowAddModal(false)
     setNotice(tr(`公假 "${name}" (${date}) 已成功加入。`, `Public holiday "${name}" (${date}) added successfully.`, `Cuti umum "${name}" (${date}) berjaya ditambah.`))
     loadHolidays()
@@ -482,6 +485,11 @@ function DesktopHolidays() {
                         {/* 2. 名称 */}
                         <td className="py-3.5 px-4 font-semibold text-ink text-xs">
                           {h.name}
+                          {h.applies_to !== 'all' && (
+                            <span className="ml-2 rounded-full bg-paper px-2 py-0.5 text-[10px] font-medium text-ink-soft">
+                              {h.applies_to === 'malay' ? tr('仅马来', 'Malay only', 'Melayu sahaja') : tr('仅华人', 'Chinese only', 'Cina sahaja')}
+                            </span>
+                          )}
                         </td>
 
                         {/* 3. 状态开关 */}
@@ -577,6 +585,19 @@ function DesktopHolidays() {
                   onChange={(e) => setName(e.target.value)}
                   className="field-input"
                 />
+              </div>
+
+              <div>
+                <label className="field-label">{tr('适用对象', 'Applies to', 'Terpakai kepada')}</label>
+                <select
+                  value={applies}
+                  onChange={(e) => setApplies(e.target.value as 'all' | 'chinese' | 'malay')}
+                  className="field-input"
+                >
+                  <option value="all">{tr('全部员工', 'All staff', 'Semua pekerja')}</option>
+                  <option value="chinese">{tr('仅华人', 'Chinese only', 'Cina sahaja')}</option>
+                  <option value="malay">{tr('仅马来', 'Malay only', 'Melayu sahaja')}</option>
+                </select>
               </div>
 
               {error && <p className="text-xs text-rust">{error}</p>}
