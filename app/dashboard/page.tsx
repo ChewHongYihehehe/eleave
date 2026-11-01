@@ -18,6 +18,7 @@ import AuthStatus from '@/components/AuthStatus'
 import EmployeeHome from '@/components/employee/EmployeeHome'
 import { uploadMcFile, getMcSignedUrl, validateMcFile } from '@/lib/mcAttachments'
 import HelpDocModal from '@/components/HelpDocModal'
+import { holidaysForGroup } from '@/lib/holidays'
 
 type Employee = {
   id: string
@@ -27,6 +28,7 @@ type Employee = {
   employment_type: string
   annual_leave_carry_forward: number
   annual_leave_entitlement_override: number | null
+  holiday_group: 'chinese' | 'malay'
 }
 
 type LeaveApplication = {
@@ -397,14 +399,16 @@ export default function DashboardPage() {
 
     const { data: holidays, error: holidayError } = await supabase
       .from('public_holidays')
-      .select('holiday_date, name')
+      .select('holiday_date, name, applies_to')
       .eq('is_enabled', true)
       .order('holiday_date', { ascending: true })
     if (holidayError) { setLoadError('Could not load public holidays.'); return }
 
-    const holidayDates = (holidays || []).map((h) => h.holiday_date)
+    // 只保留适用于我所属组别(华人 / 马来)的公假
+    const myHolidays = holidaysForGroup(holidays || [], emp.holiday_group)
+    const holidayDates = myHolidays.map((h) => h.holiday_date)
     setPublicHolidays(holidayDates)
-    setUpcomingHolidays((holidays || []).filter((h) => h.holiday_date >= today).slice(0, 5))
+    setUpcomingHolidays(myHolidays.filter((h) => h.holiday_date >= today).slice(0, 5).map((h) => ({ holiday_date: h.holiday_date, name: h.name })))
 
     const ww = await loadWorkWeek()
     setWorkWeek(ww)
